@@ -2,8 +2,9 @@ import { getShortData, getCompanyBySlug } from "@/lib/data";
 import { formatPercent, formatNumber, formatDate } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, TrendingDown, Building2, Calendar, Users } from "lucide-react";
+import { ArrowLeft, TrendingDown, Building2, Calendar, Users, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
+import { ShortHistoryChart } from "@/components/short-history-chart";
 
 export const revalidate = 3600;
 
@@ -80,39 +81,80 @@ export default async function CompanyPage({ params }: PageProps) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-          <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-            <Users className="w-5 h-5 text-gray-600" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{company.positions.length}</div>
-            <div className="text-sm text-gray-500">Aktører med posisjon</div>
-          </div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-          <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-            <TrendingDown className="w-5 h-5 text-red-500" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold">
-              {formatNumber(
-                company.positions.reduce((sum, p) => sum + p.positionShares, 0)
-              )}
+      {(() => {
+        const history = company.history;
+        const hasHistory = history.length >= 2;
+        const firstPoint = history[0];
+        const lastPoint = history[history.length - 1];
+        const change = hasHistory ? lastPoint.totalShortPct - firstPoint.totalShortPct : 0;
+        const changePositive = change > 0;
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                <Users className="w-5 h-5 text-gray-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{company.positions.length}</div>
+                <div className="text-sm text-gray-500">Aktører</div>
+              </div>
             </div>
-            <div className="text-sm text-gray-500">Aksjer shortet</div>
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                <TrendingDown className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  {formatNumber(
+                    company.positions.reduce((sum, p) => sum + p.positionShares, 0)
+                  )}
+                </div>
+                <div className="text-sm text-gray-500">Aksjer shortet</div>
+              </div>
+            </div>
+            {hasHistory && (
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+                <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                  {changePositive ? (
+                    <TrendingUp className="w-5 h-5 text-red-500" />
+                  ) : (
+                    <TrendingDown className="w-5 h-5 text-green-500" />
+                  )}
+                </div>
+                <div>
+                  <div className={`text-2xl font-bold ${changePositive ? "text-red-600" : "text-green-600"}`}>
+                    {changePositive ? "+" : ""}{change.toFixed(2)}%
+                  </div>
+                  <div className="text-sm text-gray-500">Endring totalt</div>
+                </div>
+              </div>
+            )}
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                <Calendar className="w-5 h-5 text-gray-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{formatDate(company.latestDate)}</div>
+                <div className="text-sm text-gray-500">Sist oppdatert</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Historical Chart */}
+      {company.history.length > 1 && (
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-8">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
+            <h2 className="font-semibold">Historikk</h2>
+            <span className="text-sm text-gray-500">{company.history.length} datapunkter</span>
+          </div>
+          <div className="p-4">
+            <ShortHistoryChart history={company.history} companyName={company.issuerName} />
           </div>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-          <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-            <Calendar className="w-5 h-5 text-gray-600" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{formatDate(company.latestDate)}</div>
-            <div className="text-sm text-gray-500">Sist oppdatert</div>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Positions table */}
       <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">

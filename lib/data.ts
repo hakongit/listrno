@@ -1,4 +1,4 @@
-import { RawInstrument, ShortPosition, CompanyShortData, ShortDataSummary } from "./types";
+import { RawInstrument, ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint } from "./types";
 import { slugify } from "./utils";
 
 const API_URL = "https://ssr.finanstilsynet.no/api/v2/instruments/export-json";
@@ -17,6 +17,32 @@ export async function fetchShortPositions(): Promise<RawInstrument[]> {
   }
 
   return res.json();
+}
+
+function parseHistoricalData(events: RawInstrument["events"]): HistoricalDataPoint[] {
+  // Sort events chronologically (oldest first)
+  const sortedEvents = [...events].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  const history: HistoricalDataPoint[] = [];
+
+  for (const event of sortedEvents) {
+    const positions = event.activePositions.map((pos) => ({
+      holder: pos.positionHolder,
+      pct: parseFloat(pos.shortPercent),
+    }));
+
+    const totalShortPct = positions.reduce((sum, p) => sum + p.pct, 0);
+
+    history.push({
+      date: event.date,
+      totalShortPct: Math.round(totalShortPct * 100) / 100,
+      positions,
+    });
+  }
+
+  return history;
 }
 
 export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
@@ -55,6 +81,9 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
     // Calculate total short percentage
     const totalShortPct = activePositions.reduce((sum, p) => sum + p.positionPct, 0);
 
+    // Parse historical data
+    const history = parseHistoricalData(events);
+
     companies.push({
       isin,
       issuerName,
@@ -62,6 +91,7 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
       totalShortPct,
       positions: activePositions.sort((a, b) => b.positionPct - a.positionPct),
       latestDate: latestEvent.date,
+      history,
     });
   }
 

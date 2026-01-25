@@ -26,6 +26,15 @@ export interface ShortPosition {
   status: "active" | "closed";
 }
 
+export interface HistoricalDataPoint {
+  date: string;
+  totalShortPct: number;
+  positions: {
+    holder: string;
+    pct: number;
+  }[];
+}
+
 export interface CompanyShortData {
   isin: string;
   issuerName: string;
@@ -33,6 +42,7 @@ export interface CompanyShortData {
   totalShortPct: number;
   positions: ShortPosition[];
   latestDate: string;
+  history: HistoricalDataPoint[];
 }
 
 export interface ShortDataSummary {

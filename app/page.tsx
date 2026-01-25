@@ -1,7 +1,7 @@
 import { getShortData } from "@/lib/data";
 import { formatPercent, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowUpRight, TrendingDown } from "lucide-react";
+import { TrendingDown } from "lucide-react";
 
 export const revalidate = 3600; // Revalidate every hour
 
@@ -61,20 +61,19 @@ export default async function HomePage() {
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden md:table-cell">
                   Sist oppdatert
                 </th>
-                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
               {data.companies.map((company) => (
                 <tr
                   key={company.isin}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors relative cursor-pointer"
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                    <Link href={`/${company.slug}`} className="flex items-center gap-2 after:absolute after:inset-0">
                       <TrendingDown className="w-4 h-4 text-red-500" />
                       <span className="font-medium">{company.issuerName}</span>
-                    </div>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <span
@@ -94,15 +93,6 @@ export default async function HomePage() {
                   </td>
                   <td className="px-4 py-3 text-right text-gray-500 text-sm hidden md:table-cell">
                     {formatDate(company.latestDate)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/${company.slug}`}
-                      className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      Detaljer
-                      <ArrowUpRight className="w-3 h-3" />
-                    </Link>
                   </td>
                 </tr>
               ))}

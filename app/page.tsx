@@ -65,7 +65,7 @@ export default async function HomePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="hidden md:grid grid-cols-4 gap-4 mb-8">
         <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
           <div className="text-2xl font-bold">{data.totalCompanies}</div>
           <div className="text-sm text-gray-500">Selskaper</div>

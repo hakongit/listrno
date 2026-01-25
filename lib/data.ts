@@ -1,5 +1,7 @@
 import { RawInstrument, ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint, PositionHolder, HolderCompanyPosition } from "./types";
 import { slugify } from "./utils";
+import { getTicker } from "./tickers";
+import { fetchStockPrices } from "./prices";
 
 const API_URL = "https://ssr.finanstilsynet.no/api/v2/instruments/export-json";
 
@@ -132,17 +134,27 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
       change = Math.round((totalShortPct - previousShortPct) * 100) / 100;
     }
 
+    // Get ticker for this company
+    const ticker = getTicker(isin, issuerName);
+
+    // Calculate total shares shorted
+    const totalShortShares = activePositions.reduce((sum, p) => sum + p.positionShares, 0);
+
     companies.push({
       isin,
       issuerName,
       slug: companySlug,
+      ticker,
       totalShortPct,
+      totalShortShares,
       previousShortPct,
       previousDate,
       change,
       positions: activePositions.sort((a, b) => b.positionPct - a.positionPct),
       latestDate: latestEvent.date,
       history,
+      stockPrice: null,
+      shortValue: null,
     });
   }
 
@@ -178,7 +190,28 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
 
 export async function getShortData(): Promise<ShortDataSummary> {
   const rawData = await fetchShortPositions();
-  return parseShortPositions(rawData);
+  const data = parseShortPositions(rawData);
+
+  // Fetch stock prices for companies with tickers
+  const tickers = data.companies
+    .map((c) => c.ticker)
+    .filter((t): t is string => t !== null);
+
+  if (tickers.length > 0) {
+    const prices = await fetchStockPrices(tickers);
+
+    // Update companies with prices and calculate short values
+    for (const company of data.companies) {
+      if (company.ticker && prices.has(company.ticker)) {
+        company.stockPrice = prices.get(company.ticker) || null;
+        if (company.stockPrice) {
+          company.shortValue = company.totalShortShares * company.stockPrice;
+        }
+      }
+    }
+  }
+
+  return data;
 }
 
 export async function getCompanyBySlug(slug: string): Promise<CompanyShortData | null> {

@@ -39,13 +39,17 @@ export interface CompanyShortData {
   isin: string;
   issuerName: string;
   slug: string;
+  ticker: string | null;
   totalShortPct: number;
+  totalShortShares: number;
   previousShortPct: number | null;
   previousDate: string | null;
   change: number;
   positions: ShortPosition[];
   latestDate: string;
   history: HistoricalDataPoint[];
+  stockPrice: number | null;
+  shortValue: number | null;
 }
 
 export interface HolderPositionHistory {

@@ -1,5 +1,5 @@
 import { getShortData } from "@/lib/data";
-import { formatPercent, formatDate } from "@/lib/utils";
+import { formatPercent, formatDate, formatNOK } from "@/lib/utils";
 import Link from "next/link";
 import { TrendingDown, TrendingUp, ArrowRight, Minus } from "lucide-react";
 
@@ -65,29 +65,36 @@ export default async function HomePage() {
       </div>
 
       {/* Stats */}
-      <div className="hidden md:grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-          <div className="text-2xl font-bold">{data.totalCompanies}</div>
-          <div className="text-sm text-gray-500">Selskaper</div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-          <div className="text-2xl font-bold">{data.totalPositions}</div>
-          <div className="text-sm text-gray-500">Posisjoner</div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-          <div className="text-2xl font-bold">{data.uniqueHolders}</div>
-          <div className="text-sm text-gray-500">Aktører</div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-          <div className="text-2xl font-bold">
-            {formatPercent(
-              data.companies.reduce((sum, c) => sum + c.totalShortPct, 0) /
-                data.companies.length
-            )}
+      {(() => {
+        const totalShortValue = data.companies.reduce((sum, c) => sum + (c.shortValue || 0), 0);
+        return (
+          <div className="hidden md:grid grid-cols-4 gap-4 mb-8">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <div className="text-2xl font-bold">{data.totalCompanies}</div>
+              <div className="text-sm text-gray-500">Selskaper</div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <div className="text-2xl font-bold">{data.totalPositions}</div>
+              <div className="text-sm text-gray-500">Posisjoner</div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <div className="text-2xl font-bold">
+                {formatPercent(
+                  data.companies.reduce((sum, c) => sum + c.totalShortPct, 0) /
+                    data.companies.length
+                )}
+              </div>
+              <div className="text-sm text-gray-500">Snitt short</div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <div className="text-2xl font-bold font-mono">
+                {totalShortValue > 0 ? formatNOK(totalShortValue) : "-"}
+              </div>
+              <div className="text-sm text-gray-500">Total verdi</div>
+            </div>
           </div>
-          <div className="text-sm text-gray-500">Snitt short</div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Highlight Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -191,7 +198,7 @@ export default async function HomePage() {
                   Endring
                 </th>
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden md:table-cell">
-                  Posisjoner
+                  Verdi (NOK)
                 </th>
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">
                   Sist oppdatert
@@ -231,8 +238,8 @@ export default async function HomePage() {
                   <td className="px-4 py-3 text-right hidden sm:table-cell">
                     <ChangeIndicator change={company.change} previousDate={company.previousDate} />
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 hidden md:table-cell">
-                    {company.positions.length}
+                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-sm hidden md:table-cell">
+                    {company.shortValue ? formatNOK(company.shortValue) : "-"}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-500 text-sm hidden lg:table-cell">
                     {formatDate(company.latestDate)}

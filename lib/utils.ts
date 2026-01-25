@@ -31,3 +31,14 @@ export function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
+
+export function formatNOK(value: number): string {
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toFixed(1)} mrd`;
+  } else if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(0)} mill`;
+  } else if (value >= 1_000) {
+    return `${Math.round(value / 1_000)} k`;
+  }
+  return Math.round(value).toString();
+}

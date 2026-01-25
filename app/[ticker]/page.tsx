@@ -1,8 +1,8 @@
 import { getShortData, getCompanyBySlug } from "@/lib/data";
-import { formatPercent, formatNumber, formatDate } from "@/lib/utils";
+import { formatPercent, formatNumber, formatDate, slugify } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, TrendingDown, Building2, Calendar, Users, TrendingUp } from "lucide-react";
+import { ArrowLeft, TrendingDown, Briefcase, Calendar, Users, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 import { ShortHistoryChart } from "@/components/short-history-chart";
 
@@ -183,13 +183,16 @@ export default async function CompanyPage({ params }: PageProps) {
               {company.positions.map((position, index) => (
                 <tr
                   key={`${position.positionHolder}-${index}`}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors relative cursor-pointer"
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-gray-400" />
+                    <Link
+                      href={`/aktor/${slugify(position.positionHolder)}`}
+                      className="flex items-center gap-2 after:absolute after:inset-0"
+                    >
+                      <Briefcase className="w-4 h-4 text-gray-400" />
                       <span className="font-medium">{position.positionHolder}</span>
-                    </div>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <span className="font-mono font-medium text-red-600 dark:text-red-400">

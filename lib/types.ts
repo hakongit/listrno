@@ -45,10 +45,35 @@ export interface CompanyShortData {
   history: HistoricalDataPoint[];
 }
 
+export interface HolderPositionHistory {
+  date: string;
+  pct: number;
+  shares: number;
+}
+
+export interface HolderCompanyPosition {
+  isin: string;
+  issuerName: string;
+  companySlug: string;
+  currentPct: number;
+  currentShares: number;
+  latestDate: string;
+  history: HolderPositionHistory[];
+}
+
+export interface PositionHolder {
+  name: string;
+  slug: string;
+  totalPositions: number;
+  totalShortPct: number;
+  companies: HolderCompanyPosition[];
+}
+
 export interface ShortDataSummary {
   totalCompanies: number;
   totalPositions: number;
   uniqueHolders: number;
   lastUpdate: string;
   companies: CompanyShortData[];
+  holders: PositionHolder[];
 }

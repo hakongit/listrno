@@ -1,4 +1,4 @@
-import { RawInstrument, ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint } from "./types";
+import { RawInstrument, ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint, PositionHolder, HolderCompanyPosition } from "./types";
 import { slugify } from "./utils";
 
 const API_URL = "https://ssr.finanstilsynet.no/api/v2/instruments/export-json";
@@ -47,11 +47,12 @@ function parseHistoricalData(events: RawInstrument["events"]): HistoricalDataPoi
 
 export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
   const companies: CompanyShortData[] = [];
-  const allHolders = new Set<string>();
+  const holdersMap = new Map<string, HolderCompanyPosition[]>();
   let totalPositions = 0;
 
   for (const instrument of data) {
     const { isin, issuerName, events } = instrument;
+    const companySlug = slugify(issuerName);
 
     // Sort events by date (newest first for latest positions)
     const sortedEvents = [...events].sort(
@@ -74,20 +75,56 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
 
     if (activePositions.length === 0) continue;
 
-    // Track unique holders
-    activePositions.forEach((p) => allHolders.add(p.positionHolder));
+    // Build holder history for each position holder in this company
+    const sortedEventsChronological = [...events].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    // Track each holder's positions in this company
+    for (const pos of activePositions) {
+      const holderHistory = sortedEventsChronological
+        .map((event) => {
+          const holderPos = event.activePositions.find(
+            (p) => p.positionHolder === pos.positionHolder
+          );
+          if (holderPos) {
+            return {
+              date: event.date,
+              pct: parseFloat(holderPos.shortPercent),
+              shares: parseInt(holderPos.shares, 10),
+            };
+          }
+          return null;
+        })
+        .filter((h): h is NonNullable<typeof h> => h !== null);
+
+      const holderCompanyPos: HolderCompanyPosition = {
+        isin,
+        issuerName,
+        companySlug,
+        currentPct: pos.positionPct,
+        currentShares: pos.positionShares,
+        latestDate: pos.positionDate,
+        history: holderHistory,
+      };
+
+      const existing = holdersMap.get(pos.positionHolder) || [];
+      existing.push(holderCompanyPos);
+      holdersMap.set(pos.positionHolder, existing);
+    }
+
     totalPositions += activePositions.length;
 
     // Calculate total short percentage
     const totalShortPct = activePositions.reduce((sum, p) => sum + p.positionPct, 0);
 
-    // Parse historical data
+    // Parse historical data for company
     const history = parseHistoricalData(events);
 
     companies.push({
       isin,
       issuerName,
-      slug: slugify(issuerName),
+      slug: companySlug,
       totalShortPct,
       positions: activePositions.sort((a, b) => b.positionPct - a.positionPct),
       latestDate: latestEvent.date,
@@ -98,12 +135,30 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
   // Sort companies by total short percentage (highest first)
   companies.sort((a, b) => b.totalShortPct - a.totalShortPct);
 
+  // Build holders array
+  const holders: PositionHolder[] = Array.from(holdersMap.entries()).map(
+    ([name, companyPositions]) => {
+      const totalShortPct = companyPositions.reduce((sum, c) => sum + c.currentPct, 0);
+      return {
+        name,
+        slug: slugify(name),
+        totalPositions: companyPositions.length,
+        totalShortPct: Math.round(totalShortPct * 100) / 100,
+        companies: companyPositions.sort((a, b) => b.currentPct - a.currentPct),
+      };
+    }
+  );
+
+  // Sort holders by number of positions (most active first)
+  holders.sort((a, b) => b.totalPositions - a.totalPositions);
+
   return {
     totalCompanies: companies.length,
     totalPositions,
-    uniqueHolders: allHolders.size,
+    uniqueHolders: holders.length,
     lastUpdate: new Date().toISOString(),
     companies,
+    holders,
   };
 }
 
@@ -120,4 +175,14 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyShortData |
 export async function getCompanyByIsin(isin: string): Promise<CompanyShortData | null> {
   const data = await getShortData();
   return data.companies.find((c) => c.isin === isin) || null;
+}
+
+export async function getHolderBySlug(slug: string): Promise<PositionHolder | null> {
+  const data = await getShortData();
+  return data.holders.find((h) => h.slug === slug) || null;
+}
+
+export async function getAllHolders(): Promise<PositionHolder[]> {
+  const data = await getShortData();
+  return data.holders;
 }

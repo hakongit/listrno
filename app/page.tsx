@@ -7,7 +7,7 @@ export const revalidate = 3600; // Revalidate every hour
 
 function ChangeIndicator({ change, previousDate }: { change: number; previousDate: string | null }) {
   const dateStr = previousDate
-    ? new Date(previousDate).toLocaleDateString("nb-NO", { day: "numeric", month: "short" })
+    ? new Date(previousDate).toLocaleDateString("nb-NO", { day: "2-digit", month: "2-digit", year: "2-digit" })
     : null;
 
   if (change > 0.01) {
@@ -15,7 +15,7 @@ function ChangeIndicator({ change, previousDate }: { change: number; previousDat
       <span className="inline-flex items-center gap-1 text-red-500 text-xs">
         <TrendingUp className="w-3 h-3" />
         <span>+{change.toFixed(2)}</span>
-        {dateStr && <span className="text-gray-400 hidden lg:inline">fra {dateStr}</span>}
+        {dateStr && <span className="text-gray-400 hidden lg:inline">({dateStr})</span>}
       </span>
     );
   } else if (change < -0.01) {
@@ -23,7 +23,7 @@ function ChangeIndicator({ change, previousDate }: { change: number; previousDat
       <span className="inline-flex items-center gap-1 text-green-500 text-xs">
         <TrendingDown className="w-3 h-3" />
         <span>{change.toFixed(2)}</span>
-        {dateStr && <span className="text-gray-400 hidden lg:inline">fra {dateStr}</span>}
+        {dateStr && <span className="text-gray-400 hidden lg:inline">({dateStr})</span>}
       </span>
     );
   }

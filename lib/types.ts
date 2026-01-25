@@ -41,6 +41,7 @@ export interface CompanyShortData {
   slug: string;
   totalShortPct: number;
   previousShortPct: number | null;
+  previousDate: string | null;
   change: number;
   positions: ShortPosition[];
   latestDate: string;

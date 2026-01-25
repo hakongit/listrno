@@ -5,19 +5,25 @@ import { TrendingDown, TrendingUp, ArrowRight, Minus } from "lucide-react";
 
 export const revalidate = 3600; // Revalidate every hour
 
-function ChangeIndicator({ change }: { change: number }) {
+function ChangeIndicator({ change, previousDate }: { change: number; previousDate: string | null }) {
+  const dateStr = previousDate
+    ? new Date(previousDate).toLocaleDateString("nb-NO", { day: "numeric", month: "short" })
+    : null;
+
   if (change > 0.01) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-red-500 text-xs">
+      <span className="inline-flex items-center gap-1 text-red-500 text-xs">
         <TrendingUp className="w-3 h-3" />
         <span>+{change.toFixed(2)}</span>
+        {dateStr && <span className="text-gray-400 hidden lg:inline">fra {dateStr}</span>}
       </span>
     );
   } else if (change < -0.01) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-green-500 text-xs">
+      <span className="inline-flex items-center gap-1 text-green-500 text-xs">
         <TrendingDown className="w-3 h-3" />
         <span>{change.toFixed(2)}</span>
+        {dateStr && <span className="text-gray-400 hidden lg:inline">fra {dateStr}</span>}
       </span>
     );
   }
@@ -218,12 +224,12 @@ export default async function HomePage() {
                         {formatPercent(company.totalShortPct)}
                       </span>
                       <span className="sm:hidden">
-                        <ChangeIndicator change={company.change} />
+                        <ChangeIndicator change={company.change} previousDate={company.previousDate} />
                       </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right hidden sm:table-cell">
-                    <ChangeIndicator change={company.change} />
+                    <ChangeIndicator change={company.change} previousDate={company.previousDate} />
                   </td>
                   <td className="px-4 py-3 text-right text-gray-500 hidden md:table-cell">
                     {company.positions.length}

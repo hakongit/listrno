@@ -123,9 +123,12 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
 
     // Calculate change from previous data point
     let previousShortPct: number | null = null;
+    let previousDate: string | null = null;
     let change = 0;
     if (history.length >= 2) {
-      previousShortPct = history[history.length - 2].totalShortPct;
+      const prevPoint = history[history.length - 2];
+      previousShortPct = prevPoint.totalShortPct;
+      previousDate = prevPoint.date;
       change = Math.round((totalShortPct - previousShortPct) * 100) / 100;
     }
 
@@ -135,6 +138,7 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
       slug: companySlug,
       totalShortPct,
       previousShortPct,
+      previousDate,
       change,
       positions: activePositions.sort((a, b) => b.positionPct - a.positionPct),
       latestDate: latestEvent.date,

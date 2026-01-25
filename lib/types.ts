@@ -40,6 +40,8 @@ export interface CompanyShortData {
   issuerName: string;
   slug: string;
   totalShortPct: number;
+  previousShortPct: number | null;
+  change: number;
   positions: ShortPosition[];
   latestDate: string;
   history: HistoricalDataPoint[];

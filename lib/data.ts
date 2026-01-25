@@ -121,11 +121,21 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
     // Parse historical data for company
     const history = parseHistoricalData(events);
 
+    // Calculate change from previous data point
+    let previousShortPct: number | null = null;
+    let change = 0;
+    if (history.length >= 2) {
+      previousShortPct = history[history.length - 2].totalShortPct;
+      change = Math.round((totalShortPct - previousShortPct) * 100) / 100;
+    }
+
     companies.push({
       isin,
       issuerName,
       slug: companySlug,
       totalShortPct,
+      previousShortPct,
+      change,
       positions: activePositions.sort((a, b) => b.positionPct - a.positionPct),
       latestDate: latestEvent.date,
       history,

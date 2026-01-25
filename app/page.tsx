@@ -1,12 +1,52 @@
 import { getShortData } from "@/lib/data";
 import { formatPercent, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { TrendingDown } from "lucide-react";
+import { TrendingDown, TrendingUp, ArrowRight, Minus } from "lucide-react";
 
 export const revalidate = 3600; // Revalidate every hour
 
+function ChangeIndicator({ change }: { change: number }) {
+  if (change > 0.01) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-red-500 text-xs">
+        <TrendingUp className="w-3 h-3" />
+        <span>+{change.toFixed(2)}</span>
+      </span>
+    );
+  } else if (change < -0.01) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-green-500 text-xs">
+        <TrendingDown className="w-3 h-3" />
+        <span>{change.toFixed(2)}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center text-gray-400 text-xs">
+      <Minus className="w-3 h-3" />
+    </span>
+  );
+}
+
 export default async function HomePage() {
   const data = await getShortData();
+
+  // Top 5 highest shorts
+  const highestShorts = [...data.companies]
+    .sort((a, b) => b.totalShortPct - a.totalShortPct)
+    .slice(0, 5);
+
+  // Top 5 biggest increases
+  const biggestIncreases = [...data.companies]
+    .filter((c) => c.change > 0)
+    .sort((a, b) => b.change - a.change)
+    .slice(0, 5);
+
+  // Top 5 biggest decreases
+  const biggestDecreases = [...data.companies]
+    .filter((c) => c.change < 0)
+    .sort((a, b) => a.change - b.change)
+    .slice(0, 5);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -43,8 +83,94 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Highlight Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Highest Shorts */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950">
+            <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center gap-2">
+              <TrendingDown className="w-4 h-4" />
+              Høyest short
+            </h2>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {highestShorts.map((company) => (
+              <Link
+                key={company.isin}
+                href={`/${company.slug}`}
+                className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+              >
+                <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                <span className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
+                  {formatPercent(company.totalShortPct)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Biggest Increases */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950">
+            <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Størst økning
+            </h2>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {biggestIncreases.length > 0 ? (
+              biggestIncreases.map((company) => (
+                <Link
+                  key={company.isin}
+                  href={`/${company.slug}`}
+                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                >
+                  <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                  <span className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
+                    +{company.change.toFixed(2)}%
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-500">Ingen økninger registrert</div>
+            )}
+          </div>
+        </div>
+
+        {/* Biggest Decreases */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-green-50 dark:bg-green-950">
+            <h2 className="font-semibold text-green-900 dark:text-green-100 flex items-center gap-2">
+              <TrendingDown className="w-4 h-4" />
+              Størst nedgang
+            </h2>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {biggestDecreases.length > 0 ? (
+              biggestDecreases.map((company) => (
+                <Link
+                  key={company.isin}
+                  href={`/${company.slug}`}
+                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                >
+                  <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                  <span className="font-mono text-sm font-medium text-green-600 dark:text-green-400 whitespace-nowrap">
+                    {company.change.toFixed(2)}%
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-500">Ingen nedganger registrert</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Full Table */}
       <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+          <h2 className="font-semibold">Alle selskaper</h2>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -56,9 +182,12 @@ export default async function HomePage() {
                   Total short
                 </th>
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden sm:table-cell">
-                  Antall posisjoner
+                  Endring
                 </th>
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden md:table-cell">
+                  Posisjoner
+                </th>
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">
                   Sist oppdatert
                 </th>
               </tr>
@@ -71,27 +200,35 @@ export default async function HomePage() {
                 >
                   <td className="px-4 py-3">
                     <Link href={`/${company.slug}`} className="flex items-center gap-2 after:absolute after:inset-0">
-                      <TrendingDown className="w-4 h-4 text-red-500" />
+                      <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
                       <span className="font-medium">{company.issuerName}</span>
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <span
-                      className={`font-mono font-medium ${
-                        company.totalShortPct >= 5
-                          ? "text-red-600 dark:text-red-400"
-                          : company.totalShortPct >= 2
-                          ? "text-orange-600 dark:text-orange-400"
-                          : "text-gray-900 dark:text-gray-100"
-                      }`}
-                    >
-                      {formatPercent(company.totalShortPct)}
-                    </span>
+                    <div className="flex items-center justify-end gap-2">
+                      <span
+                        className={`font-mono font-medium ${
+                          company.totalShortPct >= 5
+                            ? "text-red-600 dark:text-red-400"
+                            : company.totalShortPct >= 2
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-gray-900 dark:text-gray-100"
+                        }`}
+                      >
+                        {formatPercent(company.totalShortPct)}
+                      </span>
+                      <span className="sm:hidden">
+                        <ChangeIndicator change={company.change} />
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 hidden sm:table-cell">
+                  <td className="px-4 py-3 text-right hidden sm:table-cell">
+                    <ChangeIndicator change={company.change} />
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-500 hidden md:table-cell">
                     {company.positions.length}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 text-sm hidden md:table-cell">
+                  <td className="px-4 py-3 text-right text-gray-500 text-sm hidden lg:table-cell">
                     {formatDate(company.latestDate)}
                   </td>
                 </tr>

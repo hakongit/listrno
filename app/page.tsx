@@ -37,19 +37,29 @@ function ChangeIndicator({ change, previousDate }: { change: number; previousDat
 export default async function HomePage() {
   const data = await getShortData();
 
+  // Find the most recent date in the dataset
+  const allDates = data.companies.map(c => new Date(c.latestDate).getTime());
+  const mostRecentDate = new Date(Math.max(...allDates));
+  const mostRecentDateStr = mostRecentDate.toISOString().split('T')[0];
+
+  // Filter to only companies updated on the most recent date
+  const recentCompanies = data.companies.filter(c =>
+    c.latestDate.startsWith(mostRecentDateStr)
+  );
+
   // Top 5 highest shorts
   const highestShorts = [...data.companies]
     .sort((a, b) => b.totalShortPct - a.totalShortPct)
     .slice(0, 5);
 
-  // Top 5 biggest increases
-  const biggestIncreases = [...data.companies]
+  // Top 5 biggest increases (only from most recent date)
+  const biggestIncreases = [...recentCompanies]
     .filter((c) => c.change > 0)
     .sort((a, b) => b.change - a.change)
     .slice(0, 5);
 
-  // Top 5 biggest decreases
-  const biggestDecreases = [...data.companies]
+  // Top 5 biggest decreases (only from most recent date)
+  const biggestDecreases = [...recentCompanies]
     .filter((c) => c.change < 0)
     .sort((a, b) => a.change - b.change)
     .slice(0, 5);
@@ -163,7 +173,10 @@ export default async function HomePage() {
             <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
-                Størst økning
+                <span>
+                  Størst økning
+                  <span className="font-normal text-xs opacity-75 ml-1">({mostRecentDate.toLocaleDateString("nb-NO", { day: "2-digit", month: "2-digit", year: "2-digit" })})</span>
+                </span>
               </span>
               <ArrowRight className="w-4 h-4" />
             </h2>
@@ -197,7 +210,10 @@ export default async function HomePage() {
             <h2 className="font-semibold text-green-900 dark:text-green-100 flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <TrendingDown className="w-4 h-4" />
-                Størst nedgang
+                <span>
+                  Størst nedgang
+                  <span className="font-normal text-xs opacity-75 ml-1">({mostRecentDate.toLocaleDateString("nb-NO", { day: "2-digit", month: "2-digit", year: "2-digit" })})</span>
+                </span>
               </span>
               <ArrowRight className="w-4 h-4" />
             </h2>

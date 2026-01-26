@@ -1,8 +1,8 @@
 import { getAllHolders, getHolderBySlug } from "@/lib/data";
-import { formatPercent, formatNumber, formatDate } from "@/lib/utils";
+import { formatPercent, formatNumber, formatDate, formatNOK } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, TrendingDown, Briefcase } from "lucide-react";
+import { ChevronRight, Building2, TrendingDown, Briefcase, Banknote, Home } from "lucide-react";
 import type { Metadata } from "next";
 import { HolderHistoryChart } from "@/components/holder-history-chart";
 
@@ -47,14 +47,20 @@ export default async function HolderPage({ params }: PageProps) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Back link */}
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Tilbake til oversikt
-      </Link>
+      {/* Breadcrumb navigation */}
+      <nav className="flex items-center gap-2 text-sm mb-6">
+        <Link
+          href="/"
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <Home className="w-4 h-4" />
+          <span className="hidden sm:inline">Oversikt</span>
+        </Link>
+        <ChevronRight className="w-4 h-4 text-gray-400" />
+        <span className="px-2 py-1 rounded-md font-medium text-blue-600 dark:text-blue-400 bg-blue-500/10">
+          {holder.name}
+        </span>
+      </nav>
 
       {/* Header */}
       <div className="mb-8">
@@ -76,39 +82,57 @@ export default async function HolderPage({ params }: PageProps) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-          <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-            <Building2 className="w-5 h-5 text-gray-600" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{holder.companies.length}</div>
-            <div className="text-sm text-gray-500">Selskaper</div>
-          </div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-          <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-            <TrendingDown className="w-5 h-5 text-red-500" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-600">
-              {formatPercent(holder.totalShortPct)}
+      {(() => {
+        const totalValue = holder.companies.reduce((sum, c) => sum + (c.positionValue || 0), 0);
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                <Building2 className="w-5 h-5 text-gray-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{holder.companies.length}</div>
+                <div className="text-sm text-gray-500">Selskaper</div>
+              </div>
             </div>
-            <div className="text-sm text-gray-500">Total short (sum)</div>
-          </div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-          <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-            <TrendingDown className="w-5 h-5 text-gray-600" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold">
-              {formatPercent(holder.totalShortPct / holder.companies.length)}
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                <TrendingDown className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-red-600">
+                  {formatPercent(holder.totalShortPct)}
+                </div>
+                <div className="text-sm text-gray-500">Total short (sum)</div>
+              </div>
             </div>
-            <div className="text-sm text-gray-500">Snitt per selskap</div>
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                <TrendingDown className="w-5 h-5 text-gray-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  {formatPercent(holder.totalShortPct / holder.companies.length)}
+                </div>
+                <div className="text-sm text-gray-500">Snitt per selskap</div>
+              </div>
+            </div>
+            {totalValue > 0 && (
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+                <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                  <Banknote className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold font-mono">
+                    {formatNOK(totalValue)}
+                  </div>
+                  <div className="text-sm text-gray-500">Total verdi</div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Historical Chart */}
       <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-8">
@@ -138,6 +162,9 @@ export default async function HolderPage({ params }: PageProps) {
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden sm:table-cell">
                   Antall aksjer
                 </th>
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">
+                  Verdi (NOK)
+                </th>
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden md:table-cell">
                   Dato
                 </th>
@@ -165,6 +192,9 @@ export default async function HolderPage({ params }: PageProps) {
                   </td>
                   <td className="px-4 py-3 text-right text-gray-500 font-mono hidden sm:table-cell">
                     {formatNumber(company.currentShares)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-sm hidden lg:table-cell">
+                    {company.positionValue ? formatNOK(company.positionValue) : "-"}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-500 text-sm hidden md:table-cell">
                     {formatDate(company.latestDate)}

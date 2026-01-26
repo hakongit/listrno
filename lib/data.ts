@@ -108,6 +108,8 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
         currentShares: pos.positionShares,
         latestDate: pos.positionDate,
         history: holderHistory,
+        stockPrice: null,
+        positionValue: null,
       };
 
       const existing = holdersMap.get(pos.positionHolder) || [];
@@ -206,6 +208,25 @@ export async function getShortData(): Promise<ShortDataSummary> {
         company.stockPrice = prices.get(company.ticker) || null;
         if (company.stockPrice) {
           company.shortValue = company.totalShortShares * company.stockPrice;
+        }
+      }
+    }
+
+    // Build a map of ISIN to stock price for holder position values
+    const isinToPriceMap = new Map<string, number>();
+    for (const company of data.companies) {
+      if (company.stockPrice) {
+        isinToPriceMap.set(company.isin, company.stockPrice);
+      }
+    }
+
+    // Update holder positions with stock prices and values
+    for (const holder of data.holders) {
+      for (const pos of holder.companies) {
+        const stockPrice = isinToPriceMap.get(pos.isin);
+        if (stockPrice) {
+          pos.stockPrice = stockPrice;
+          pos.positionValue = pos.currentShares * stockPrice;
         }
       }
     }

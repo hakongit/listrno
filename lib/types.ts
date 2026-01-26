@@ -66,6 +66,8 @@ export interface HolderCompanyPosition {
   currentShares: number;
   latestDate: string;
   history: HolderPositionHistory[];
+  stockPrice: number | null;
+  positionValue: number | null;
 }
 
 export interface PositionHolder {

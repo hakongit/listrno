@@ -1,8 +1,8 @@
 import { getShortData, getCompanyBySlug } from "@/lib/data";
-import { formatPercent, formatNumber, formatDate, slugify } from "@/lib/utils";
+import { formatPercent, formatNumber, formatDate, slugify, formatNOK } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, TrendingDown, Briefcase, Calendar, Users, TrendingUp } from "lucide-react";
+import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home } from "lucide-react";
 import type { Metadata } from "next";
 import { ShortHistoryChart } from "@/components/short-history-chart";
 
@@ -47,14 +47,20 @@ export default async function CompanyPage({ params }: PageProps) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Back link */}
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Tilbake til oversikt
-      </Link>
+      {/* Breadcrumb navigation */}
+      <nav className="flex items-center gap-2 text-sm mb-6">
+        <Link
+          href="/"
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <Home className="w-4 h-4" />
+          <span className="hidden sm:inline">Oversikt</span>
+        </Link>
+        <ChevronRight className="w-4 h-4 text-gray-400" />
+        <span className="px-2 py-1 rounded-md font-medium text-red-600 dark:text-red-400 bg-red-500/10">
+          {company.issuerName}
+        </span>
+      </nav>
 
       {/* Header */}
       <div className="mb-8">
@@ -113,6 +119,19 @@ export default async function CompanyPage({ params }: PageProps) {
                 <div className="text-sm text-gray-500">Aksjer shortet</div>
               </div>
             </div>
+            {company.shortValue && (
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
+                <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                  <Banknote className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold font-mono">
+                    {formatNOK(company.shortValue)}
+                  </div>
+                  <div className="text-sm text-gray-500">Verdi (NOK)</div>
+                </div>
+              </div>
+            )}
             {hasHistory && (
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
                 <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
@@ -174,6 +193,9 @@ export default async function CompanyPage({ params }: PageProps) {
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden sm:table-cell">
                   Antall aksjer
                 </th>
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">
+                  Verdi (NOK)
+                </th>
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden md:table-cell">
                   Dato
                 </th>
@@ -201,6 +223,11 @@ export default async function CompanyPage({ params }: PageProps) {
                   </td>
                   <td className="px-4 py-3 text-right text-gray-500 font-mono hidden sm:table-cell">
                     {formatNumber(position.positionShares)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-sm hidden lg:table-cell">
+                    {company.stockPrice
+                      ? formatNOK(position.positionShares * company.stockPrice)
+                      : "-"}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-500 text-sm hidden md:table-cell">
                     {formatDate(position.positionDate)}

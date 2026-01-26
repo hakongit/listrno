@@ -54,6 +54,12 @@ export default async function HomePage() {
     .sort((a, b) => a.change - b.change)
     .slice(0, 5);
 
+  // Top 5 highest value shorts
+  const highestValue = [...data.companies]
+    .filter((c) => c.shortValue && c.shortValue > 0)
+    .sort((a, b) => (b.shortValue || 0) - (a.shortValue || 0))
+    .slice(0, 5);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Hero */}
@@ -97,15 +103,21 @@ export default async function HomePage() {
       })()}
 
       {/* Highlight Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Highest Shorts */}
         <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950">
-            <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center gap-2">
-              <TrendingDown className="w-4 h-4" />
-              Høyest short
+          <Link
+            href="/topp/hoyest-short"
+            className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+          >
+            <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <TrendingDown className="w-4 h-4" />
+                Høyest short
+              </span>
+              <ArrowRight className="w-4 h-4" />
             </h2>
-          </div>
+          </Link>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {highestShorts.map((company) => (
               <Link
@@ -124,12 +136,18 @@ export default async function HomePage() {
 
         {/* Biggest Increases */}
         <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950">
-            <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Størst økning
+          <Link
+            href="/topp/storst-okning"
+            className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+          >
+            <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Størst økning
+              </span>
+              <ArrowRight className="w-4 h-4" />
             </h2>
-          </div>
+          </Link>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {biggestIncreases.length > 0 ? (
               biggestIncreases.map((company) => (
@@ -152,12 +170,18 @@ export default async function HomePage() {
 
         {/* Biggest Decreases */}
         <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-green-50 dark:bg-green-950">
-            <h2 className="font-semibold text-green-900 dark:text-green-100 flex items-center gap-2">
-              <TrendingDown className="w-4 h-4" />
-              Størst nedgang
+          <Link
+            href="/topp/storst-nedgang"
+            className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors"
+          >
+            <h2 className="font-semibold text-green-900 dark:text-green-100 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <TrendingDown className="w-4 h-4" />
+                Størst nedgang
+              </span>
+              <ArrowRight className="w-4 h-4" />
             </h2>
-          </div>
+          </Link>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {biggestDecreases.length > 0 ? (
               biggestDecreases.map((company) => (
@@ -174,6 +198,40 @@ export default async function HomePage() {
               ))
             ) : (
               <div className="px-4 py-3 text-sm text-gray-500">Ingen nedganger registrert</div>
+            )}
+          </div>
+        </div>
+
+        {/* Highest Value */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          <Link
+            href="/topp/hoyest-verdi"
+            className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+          >
+            <h2 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <TrendingDown className="w-4 h-4" />
+                Høyest verdi
+              </span>
+              <ArrowRight className="w-4 h-4" />
+            </h2>
+          </Link>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {highestValue.length > 0 ? (
+              highestValue.map((company) => (
+                <Link
+                  key={company.isin}
+                  href={`/${company.slug}`}
+                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                >
+                  <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                  <span className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                    {formatNOK(company.shortValue!)}
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-500">Ingen verdier tilgjengelig</div>
             )}
           </div>
         </div>

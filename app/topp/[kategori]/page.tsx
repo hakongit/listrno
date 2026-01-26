@@ -162,9 +162,9 @@ export default async function TopListPage({ params }: PageProps) {
                 <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-500 w-8">#</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Selskap</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Total short</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden sm:table-cell">Endring</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden md:table-cell">Verdi (NOK)</th>
+                  <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>Total short</th>
+                  <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>Endring</th>
+                  <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi (NOK)</th>
                   <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">Sist oppdatert</th>
                 </tr>
               </thead>
@@ -181,7 +181,7 @@ export default async function TopListPage({ params }: PageProps) {
                         <span className="font-medium">{company.issuerName}</span>
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className={`px-4 py-3 text-right ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>
                       <span
                         className={`font-mono font-medium ${
                           company.totalShortPct >= 5
@@ -194,16 +194,16 @@ export default async function TopListPage({ params }: PageProps) {
                         {formatPercent(company.totalShortPct)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right hidden sm:table-cell">
+                    <td className={`px-4 py-3 text-right ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>
                       {company.change > 0.01 ? (
-                        <span className="inline-flex items-center gap-1 text-red-500 text-xs">
+                        <span className="inline-flex items-center gap-1 text-red-500 text-sm font-mono">
                           <TrendingUp className="w-3 h-3" />
-                          <span>+{company.change.toFixed(2)}</span>
+                          <span>+{company.change.toFixed(2)}%</span>
                         </span>
                       ) : company.change < -0.01 ? (
-                        <span className="inline-flex items-center gap-1 text-green-500 text-xs">
+                        <span className="inline-flex items-center gap-1 text-green-500 text-sm font-mono">
                           <TrendingDown className="w-3 h-3" />
-                          <span>{company.change.toFixed(2)}</span>
+                          <span>{company.change.toFixed(2)}%</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center text-gray-400 text-xs">
@@ -211,7 +211,7 @@ export default async function TopListPage({ params }: PageProps) {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-500 font-mono text-sm hidden md:table-cell">
+                    <td className={`px-4 py-3 text-right text-gray-500 font-mono text-sm ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>
                       {company.shortValue ? formatNOK(company.shortValue) : "-"}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-500 text-sm hidden lg:table-cell">

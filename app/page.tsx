@@ -1,7 +1,7 @@
 import { getShortData } from "@/lib/data";
 import { formatPercent, formatDate, formatNOK } from "@/lib/utils";
 import Link from "next/link";
-import { TrendingDown, TrendingUp, ArrowRight, Minus } from "lucide-react";
+import { TrendingDown, TrendingUp, ArrowRight, Minus, Briefcase } from "lucide-react";
 
 export const revalidate = 3600; // Revalidate every hour
 
@@ -58,6 +58,26 @@ export default async function HomePage() {
   const highestValue = [...data.companies]
     .filter((c) => c.shortValue && c.shortValue > 0)
     .sort((a, b) => (b.shortValue || 0) - (a.shortValue || 0))
+    .slice(0, 5);
+
+  // Top 5 holders with most positions
+  const mostPositions = [...data.holders]
+    .sort((a, b) => b.totalPositions - a.totalPositions)
+    .slice(0, 5);
+
+  // Top 5 holders with highest total short %
+  const highestTotalShort = [...data.holders]
+    .sort((a, b) => b.totalShortPct - a.totalShortPct)
+    .slice(0, 5);
+
+  // Top 5 holders with highest value
+  const holdersWithValue = data.holders.map((holder) => ({
+    ...holder,
+    totalValue: holder.companies.reduce((sum, c) => sum + (c.positionValue || 0), 0),
+  }));
+  const highestHolderValue = [...holdersWithValue]
+    .filter((h) => h.totalValue > 0)
+    .sort((a, b) => b.totalValue - a.totalValue)
     .slice(0, 5);
 
   return (
@@ -306,6 +326,109 @@ export default async function HomePage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Holder Highlight Cards */}
+      <div className="mt-8 mb-8">
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Briefcase className="w-5 h-5" />
+          Aktører
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Most Positions */}
+          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+            <Link
+              href="/topp/aktorer/flest-posisjoner"
+              className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors"
+            >
+              <h3 className="font-semibold text-purple-900 dark:text-purple-100 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" />
+                  Flest posisjoner
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </h3>
+            </Link>
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {mostPositions.map((holder) => (
+                <Link
+                  key={holder.slug}
+                  href={`/aktor/${holder.slug}`}
+                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                >
+                  <span className="text-sm truncate mr-2">{holder.name}</span>
+                  <span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400 whitespace-nowrap">
+                    {holder.totalPositions}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Highest Total Short */}
+          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+            <Link
+              href="/topp/aktorer/hoyest-short"
+              className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors"
+            >
+              <h3 className="font-semibold text-purple-900 dark:text-purple-100 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4" />
+                  Høyest total short
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </h3>
+            </Link>
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {highestTotalShort.map((holder) => (
+                <Link
+                  key={holder.slug}
+                  href={`/aktor/${holder.slug}`}
+                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                >
+                  <span className="text-sm truncate mr-2">{holder.name}</span>
+                  <span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400 whitespace-nowrap">
+                    {formatPercent(holder.totalShortPct)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Highest Value */}
+          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+            <Link
+              href="/topp/aktorer/hoyest-verdi"
+              className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors"
+            >
+              <h3 className="font-semibold text-purple-900 dark:text-purple-100 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4" />
+                  Høyest verdi
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </h3>
+            </Link>
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {highestHolderValue.length > 0 ? (
+                highestHolderValue.map((holder) => (
+                  <Link
+                    key={holder.slug}
+                    href={`/aktor/${holder.slug}`}
+                    className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  >
+                    <span className="text-sm truncate mr-2">{holder.name}</span>
+                    <span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400 whitespace-nowrap">
+                      {formatNOK(holder.totalValue)}
+                    </span>
+                  </Link>
+                ))
+              ) : (
+                <div className="px-4 py-3 text-sm text-gray-500">Ingen verdier tilgjengelig</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

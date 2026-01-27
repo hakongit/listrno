@@ -205,12 +205,12 @@ export default async function CompanyPage({ params }: PageProps) {
               {company.positions.map((position, index) => (
                 <tr
                   key={`${position.positionHolder}-${index}`}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors relative isolate cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 >
                   <td className="px-4 py-3">
                     <Link
                       href={`/aktor/${slugify(position.positionHolder)}`}
-                      className="flex items-center gap-2 after:absolute after:inset-0"
+                      className="flex items-center gap-2 hover:underline"
                     >
                       <Briefcase className="w-4 h-4 text-gray-400" />
                       <span className="font-medium">{position.positionHolder}</span>

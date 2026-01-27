@@ -293,11 +293,11 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                   return (
                     <tr
                       key={company.isin}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors relative isolate cursor-pointer"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                     >
                       <td className="px-4 py-3 text-sm text-gray-400">{index + 1}</td>
                       <td className="px-4 py-3">
-                        <Link href={`/${company.slug}`} className="flex items-center gap-2 after:absolute after:inset-0">
+                        <Link href={`/${company.slug}`} className="flex items-center gap-2 hover:underline">
                           <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
                           <span className="font-medium">{company.issuerName}</span>
                         </Link>

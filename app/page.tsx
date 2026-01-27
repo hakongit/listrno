@@ -303,7 +303,7 @@ export default async function HomePage() {
               {data.companies.map((company) => (
                 <tr
                   key={company.isin}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors relative cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors relative isolate cursor-pointer"
                 >
                   <td className="px-4 py-3">
                     <Link href={`/${company.slug}`} className="flex items-center gap-2 after:absolute after:inset-0">

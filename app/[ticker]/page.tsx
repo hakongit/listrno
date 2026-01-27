@@ -205,7 +205,7 @@ export default async function CompanyPage({ params }: PageProps) {
               {company.positions.map((position, index) => (
                 <tr
                   key={`${position.positionHolder}-${index}`}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors relative cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors relative isolate cursor-pointer"
                 >
                   <td className="px-4 py-3">
                     <Link

@@ -134,36 +134,6 @@ export default async function HomePage() {
 
       {/* Highlight Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Highest Shorts */}
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-          <Link
-            href="/topp/hoyest-short"
-            className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
-          >
-            <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <TrendingDown className="w-4 h-4" />
-                Høyest short
-              </span>
-              <ArrowRight className="w-4 h-4" />
-            </h2>
-          </Link>
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {highestShorts.map((company) => (
-              <Link
-                key={company.isin}
-                href={`/${company.slug}`}
-                className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-              >
-                <span className="text-sm truncate mr-2">{company.issuerName}</span>
-                <span className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
-                  {formatPercent(company.totalShortPct)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
         {/* Biggest Increases */}
         <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
           <Link
@@ -235,6 +205,36 @@ export default async function HomePage() {
             ) : (
               <div className="px-4 py-3 text-sm text-gray-500">Ingen nedganger registrert</div>
             )}
+          </div>
+        </div>
+
+        {/* Highest Shorts */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          <Link
+            href="/topp/hoyest-short"
+            className="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+          >
+            <h2 className="font-semibold text-red-900 dark:text-red-100 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <TrendingDown className="w-4 h-4" />
+                Høyest short
+              </span>
+              <ArrowRight className="w-4 h-4" />
+            </h2>
+          </Link>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {highestShorts.map((company) => (
+              <Link
+                key={company.isin}
+                href={`/${company.slug}`}
+                className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+              >
+                <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                <span className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
+                  {formatPercent(company.totalShortPct)}
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
 

@@ -196,7 +196,7 @@ export default async function CompanyPage({ params }: PageProps) {
                 <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">
                   Verdi (NOK)
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden md:table-cell">
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">
                   Dato
                 </th>
               </tr>
@@ -229,7 +229,7 @@ export default async function CompanyPage({ params }: PageProps) {
                       ? formatNOK(position.positionShares * company.stockPrice)
                       : "-"}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 text-sm hidden md:table-cell">
+                  <td className="px-4 py-3 text-right text-gray-500 text-sm">
                     {formatDate(position.positionDate)}
                   </td>
                 </tr>

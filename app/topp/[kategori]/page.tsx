@@ -284,7 +284,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                   <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>Total short</th>
                   <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>Endring</th>
                   <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi (NOK)</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">Sist oppdatert</th>
+                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Dato</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -335,7 +335,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                       <td className={`px-4 py-3 text-right text-gray-500 font-mono text-sm ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>
                         {company.shortValue ? formatNOK(company.shortValue) : "-"}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-500 text-sm hidden lg:table-cell">
+                      <td className="px-4 py-3 text-right text-gray-500 text-sm">
                         {formatDate(company.latestDate)}
                       </td>
                     </tr>

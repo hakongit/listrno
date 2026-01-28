@@ -228,23 +228,6 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
             <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
             <Icon className={`w-4 h-4 ${colors.value} flex-shrink-0`} />
             <span className="font-medium truncate">{category.title}</span>
-            {showPeriodFilter && (
-              <div className="flex gap-1 flex-shrink-0 ml-2">
-                {Object.entries(periods).map(([key, { label }]) => (
-                  <Link
-                    key={key}
-                    href={`/topp/${kategori}${key === defaultPeriod ? "" : `?periode=${key}`}`}
-                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                      selectedPeriod === key
-                        ? `${colors.header} ${colors.text}`
-                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            )}
           </div>
           <nav className="flex items-center gap-4 text-sm flex-shrink-0">
             <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
@@ -257,6 +240,25 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
         </div>
       </header>
       <div className="max-w-6xl mx-auto px-4 py-4">
+
+      {/* Period Filter */}
+      {showPeriodFilter && (
+        <div className="flex gap-1 mb-4">
+          {Object.entries(periods).map(([key, { label }]) => (
+            <Link
+              key={key}
+              href={`/topp/${kategori}${key === defaultPeriod ? "" : `?periode=${key}`}`}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                selectedPeriod === key
+                  ? `${colors.header} ${colors.text}`
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">

@@ -15,11 +15,10 @@ export function formatNumber(value: number): string {
 
 export function formatDate(date: string | Date): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString("nb-NO", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}.${month}.${year}`;
 }
 
 export function slugify(text: string): string {

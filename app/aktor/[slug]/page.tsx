@@ -48,25 +48,28 @@ export default async function HolderPage({ params }: PageProps) {
   const totalValue = holder.companies.reduce((sum, c) => sum + (c.positionValue || 0), 0);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-4">
-      {/* Compact header with breadcrumb */}
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <Link
-            href="/"
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
-          >
-            <Home className="w-4 h-4" />
-          </Link>
-          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-          <Briefcase className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          <h1 className="text-xl font-bold truncate">{holder.name}</h1>
-        </div>
-        <div className="text-2xl font-bold font-mono text-gray-900 dark:text-gray-100 flex-shrink-0">
-          {holder.totalPositions} <span className="text-sm font-normal text-gray-500">pos.</span>
+    <div>
+      {/* Page header - merges with site header */}
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link
+              href="/"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+            >
+              <Home className="w-4 h-4" />
+            </Link>
+            <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+            <Briefcase className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <h1 className="text-lg font-semibold truncate">{holder.name}</h1>
+          </div>
+          <div className="text-xl font-bold font-mono text-gray-900 dark:text-gray-100 flex-shrink-0">
+            {holder.totalPositions} <span className="text-sm font-normal text-gray-500">pos.</span>
+          </div>
         </div>
       </div>
 
+      <div className="max-w-6xl mx-auto px-4 py-4">
       {/* Compact Stats */}
       <div className="flex flex-wrap gap-4 text-sm mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2">
@@ -161,6 +164,7 @@ export default async function HolderPage({ params }: PageProps) {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

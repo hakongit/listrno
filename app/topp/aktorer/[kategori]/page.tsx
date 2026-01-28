@@ -91,20 +91,23 @@ export default async function ActorTopListPage({ params }: PageProps) {
   const Icon = category.icon;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-4">
-      {/* Compact header with breadcrumb */}
-      <div className="flex items-center gap-2 mb-4">
-        <Link
-          href="/"
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
-        >
-          <Home className="w-4 h-4" />
-        </Link>
-        <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-        <Icon className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-        <h1 className="text-xl font-bold truncate">{category.title}</h1>
+    <div>
+      {/* Page header - merges with site header */}
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-2">
+          <Link
+            href="/"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+          >
+            <Home className="w-4 h-4" />
+          </Link>
+          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+          <Icon className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <h1 className="text-lg font-semibold truncate">{category.title}</h1>
+        </div>
       </div>
 
+      <div className="max-w-6xl mx-auto px-4 py-4">
       {/* Table */}
       <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
         {holders.length > 0 ? (
@@ -153,6 +156,7 @@ export default async function ActorTopListPage({ params }: PageProps) {
             Ingen aktører i denne kategorien
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -45,24 +45,31 @@ export default async function CompanyPage({ params }: PageProps) {
     notFound();
   }
 
+  const history = company.history;
+  const hasHistory = history.length >= 2;
+  const firstPoint = history[0];
+  const lastPoint = history[history.length - 1];
+  const change = hasHistory ? lastPoint.totalShortPct - firstPoint.totalShortPct : 0;
+  const changePositive = change > 0;
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-4">
-      {/* Compact header with breadcrumb */}
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <Link
-            href="/"
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
-          >
-            <Home className="w-4 h-4" />
-          </Link>
-          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-          <h1 className="text-xl font-bold truncate">{company.issuerName}</h1>
-          <span className="text-xs text-gray-400 hidden sm:inline flex-shrink-0">({company.isin})</span>
-        </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
+    <div>
+      {/* Page header - merges with site header */}
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link
+              href="/"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+            >
+              <Home className="w-4 h-4" />
+            </Link>
+            <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+            <h1 className="text-lg font-semibold truncate">{company.issuerName}</h1>
+            <span className="text-xs text-gray-400 hidden sm:inline flex-shrink-0">({company.isin})</span>
+          </div>
           <div
-            className={`text-2xl font-bold font-mono ${
+            className={`text-xl font-bold font-mono flex-shrink-0 ${
               company.totalShortPct >= 5
                 ? "text-red-600 dark:text-red-400"
                 : company.totalShortPct >= 2
@@ -75,17 +82,9 @@ export default async function CompanyPage({ params }: PageProps) {
         </div>
       </div>
 
+      <div className="max-w-6xl mx-auto px-4 py-4">
       {/* Compact Stats */}
-      {(() => {
-        const history = company.history;
-        const hasHistory = history.length >= 2;
-        const firstPoint = history[0];
-        const lastPoint = history[history.length - 1];
-        const change = hasHistory ? lastPoint.totalShortPct - firstPoint.totalShortPct : 0;
-        const changePositive = change > 0;
-
-        return (
-          <div className="flex flex-wrap gap-4 text-sm mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex flex-wrap gap-4 text-sm mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-gray-400" />
               <span className="font-medium">{company.positions.length}</span>
@@ -122,8 +121,6 @@ export default async function CompanyPage({ params }: PageProps) {
               <span className="text-gray-500">{formatDate(company.latestDate)}</span>
             </div>
           </div>
-        );
-      })()}
 
       {/* Historical Chart */}
       {company.history.length > 1 && (
@@ -200,6 +197,7 @@ export default async function CompanyPage({ params }: PageProps) {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

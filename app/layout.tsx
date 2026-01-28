@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="nb">
       <body className="antialiased min-h-screen flex flex-col">
-        <header className="border-b border-gray-200 dark:border-gray-800">
+        <header>
           <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
             <Link href="/" className="text-lg font-bold tracking-tight">
               Listr<span className="text-gray-400">.no</span>

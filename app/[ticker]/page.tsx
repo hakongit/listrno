@@ -54,33 +54,41 @@ export default async function CompanyPage({ params }: PageProps) {
 
   return (
     <div>
-      {/* Page header - merges with site header */}
-      <div className="border-b border-gray-200 dark:border-gray-800">
+      {/* Header */}
+      <header className="border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <Link
-              href="/"
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
-            >
+          <Link href="/" className="text-lg font-bold tracking-tight flex-shrink-0">
+            Listr<span className="text-gray-400">.no</span>
+          </Link>
+          <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
+            <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
               <Home className="w-4 h-4" />
             </Link>
-            <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-            <h1 className="text-lg font-semibold truncate">{company.issuerName}</h1>
-            <span className="text-xs text-gray-400 hidden sm:inline flex-shrink-0">({company.isin})</span>
+            <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
+            <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <span className="font-medium truncate">{company.issuerName}</span>
+            <span
+              className={`font-mono font-bold ml-2 ${
+                company.totalShortPct >= 5
+                  ? "text-red-600 dark:text-red-400"
+                  : company.totalShortPct >= 2
+                  ? "text-orange-600 dark:text-orange-400"
+                  : "text-gray-900 dark:text-gray-100"
+              }`}
+            >
+              {formatPercent(company.totalShortPct)}
+            </span>
           </div>
-          <div
-            className={`text-xl font-bold font-mono flex-shrink-0 ${
-              company.totalShortPct >= 5
-                ? "text-red-600 dark:text-red-400"
-                : company.totalShortPct >= 2
-                ? "text-orange-600 dark:text-orange-400"
-                : "text-gray-900 dark:text-gray-100"
-            }`}
-          >
-            {formatPercent(company.totalShortPct)}
-          </div>
+          <nav className="flex items-center gap-4 text-sm flex-shrink-0">
+            <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Oversikt
+            </Link>
+            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Om
+            </Link>
+          </nav>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-6xl mx-auto px-4 py-4">
       {/* Compact Stats */}

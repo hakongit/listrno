@@ -91,12 +91,30 @@ export default async function HomePage() {
     .slice(0, 5);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div>
+      {/* Header */}
+      <header className="border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+          <Link href="/" className="text-lg font-bold tracking-tight">
+            Listr<span className="text-gray-400">.no</span>
+          </Link>
+          <nav className="flex items-center gap-4 text-sm">
+            <Link href="/" className="text-gray-900 dark:text-gray-100 font-medium">
+              Oversikt
+            </Link>
+            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Om
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto px-4 py-6">
       {/* Hero */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Shortposisjoner i Norge</h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Alle offentliggjorte shortposisjoner i norske aksjer. Data fra Finanstilsynet.
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-1">Shortposisjoner i Norge</h1>
+        <p className="text-gray-600 dark:text-gray-400 text-sm">
+          Offentliggjorte shortposisjoner i norske aksjer. Data fra Finanstilsynet.
         </p>
       </div>
 
@@ -460,6 +478,7 @@ export default async function HomePage() {
           Finanstilsynet
         </a>
       </p>
+      </div>
     </div>
   );
 }

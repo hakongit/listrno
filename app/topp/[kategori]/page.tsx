@@ -215,40 +215,47 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
 
   return (
     <div>
-      {/* Page header - merges with site header */}
-      <div className="border-b border-gray-200 dark:border-gray-800">
+      {/* Header */}
+      <header className="border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <Link
-              href="/"
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
-            >
+          <Link href="/" className="text-lg font-bold tracking-tight flex-shrink-0">
+            Listr<span className="text-gray-400">.no</span>
+          </Link>
+          <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
+            <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
               <Home className="w-4 h-4" />
             </Link>
-            <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+            <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
             <Icon className={`w-4 h-4 ${colors.value} flex-shrink-0`} />
-            <h1 className="text-lg font-semibold truncate">{category.title}</h1>
+            <span className="font-medium truncate">{category.title}</span>
+            {showPeriodFilter && (
+              <div className="flex gap-1 flex-shrink-0 ml-2">
+                {Object.entries(periods).map(([key, { label }]) => (
+                  <Link
+                    key={key}
+                    href={`/topp/${kategori}${key === defaultPeriod ? "" : `?periode=${key}`}`}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                      selectedPeriod === key
+                        ? `${colors.header} ${colors.text}`
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-          {/* Period Filter - inline */}
-          {showPeriodFilter && (
-            <div className="flex gap-1 flex-shrink-0">
-              {Object.entries(periods).map(([key, { label }]) => (
-                <Link
-                  key={key}
-                  href={`/topp/${kategori}${key === defaultPeriod ? "" : `?periode=${key}`}`}
-                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                    selectedPeriod === key
-                      ? `${colors.header} ${colors.text}`
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  }`}
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-          )}
+          <nav className="flex items-center gap-4 text-sm flex-shrink-0">
+            <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Oversikt
+            </Link>
+            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Om
+            </Link>
+          </nav>
         </div>
-      </div>
+      </header>
       <div className="max-w-6xl mx-auto px-4 py-4">
 
       {/* Table */}

@@ -73,40 +73,6 @@ export async function generateStaticParams() {
   return Object.keys(categories).map((kategori) => ({ kategori }));
 }
 
-function calculatePeriodChange(company: CompanyShortData, cutoffDate: Date): number | null {
-  const history = company.history;
-  if (history.length < 2) return null;
-
-  // Find the data point closest to but not after the cutoff date
-  const sortedHistory = [...history].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  const latestPoint = sortedHistory[0];
-  const latestPct = latestPoint.totalShortPct;
-
-  // Find the point closest to cutoff date
-  let previousPoint = null;
-  for (const point of sortedHistory) {
-    const pointDate = new Date(point.date);
-    if (pointDate <= cutoffDate) {
-      previousPoint = point;
-      break;
-    }
-  }
-
-  if (!previousPoint || previousPoint === latestPoint) {
-    // Try to get the previous point in history
-    if (sortedHistory.length >= 2) {
-      previousPoint = sortedHistory[1];
-    } else {
-      return null;
-    }
-  }
-
-  return Math.round((latestPct - previousPoint.totalShortPct) * 100) / 100;
-}
-
 export default async function TopListPage({ params, searchParams }: PageProps) {
   const { kategori } = await params;
   const { periode: periodeParam } = await searchParams;
@@ -131,7 +97,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
   const periodConfig = periods[selectedPeriod];
   const showPeriodFilter = category.hasPeriodFilter;
 
-  let companies: (CompanyShortData & { periodChange?: number })[];
+  let companies: CompanyShortData[];
 
   switch (kategori) {
     case "hoyest-short":
@@ -141,43 +107,24 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
       break;
     case "storst-okning":
     case "storst-nedgang": {
-      type CompanyWithPeriodChange = CompanyShortData & { periodChange?: number };
-      let filtered: CompanyWithPeriodChange[] = [...data.companies];
+      let filtered = [...data.companies];
 
+      // Filter by period (when was the company last updated)
       if (periodConfig.days !== null) {
-        // Calculate cutoff date
         const cutoffDate = new Date(mostRecentDate);
         cutoffDate.setDate(cutoffDate.getDate() - periodConfig.days);
-
-        // Filter to only companies updated since cutoff
         filtered = filtered.filter(c => new Date(c.latestDate) >= cutoffDate);
+      }
 
-        // Calculate period-specific change
-        filtered = filtered.map(c => ({
-          ...c,
-          periodChange: calculatePeriodChange(c, cutoffDate) ?? c.change,
-        }));
-
-        if (kategori === "storst-okning") {
-          filtered = filtered
-            .filter(c => (c.periodChange ?? c.change) > 0)
-            .sort((a, b) => (b.periodChange ?? b.change) - (a.periodChange ?? a.change));
-        } else {
-          filtered = filtered
-            .filter(c => (c.periodChange ?? c.change) < 0)
-            .sort((a, b) => (a.periodChange ?? a.change) - (b.periodChange ?? b.change));
-        }
+      // Sort by most recent change (same for all periods)
+      if (kategori === "storst-okning") {
+        filtered = filtered
+          .filter(c => c.change > 0)
+          .sort((a, b) => b.change - a.change);
       } else {
-        // No period filter - use default change
-        if (kategori === "storst-okning") {
-          filtered = filtered
-            .filter(c => c.change > 0)
-            .sort((a, b) => b.change - a.change);
-        } else {
-          filtered = filtered
-            .filter(c => c.change < 0)
-            .sort((a, b) => a.change - b.change);
-        }
+        filtered = filtered
+          .filter(c => c.change < 0)
+          .sort((a, b) => a.change - b.change);
       }
 
       companies = filtered.slice(0, 20);
@@ -277,7 +224,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {companies.map((company, index) => {
-                  const displayChange = (company as { periodChange?: number }).periodChange ?? company.change;
+                  const displayChange = company.change;
                   return (
                     <tr
                       key={company.isin}

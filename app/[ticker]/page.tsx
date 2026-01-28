@@ -46,47 +46,36 @@ export default async function CompanyPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Breadcrumb navigation */}
-      <nav className="flex items-center gap-2 text-sm mb-6">
-        <Link
-          href="/"
-          className="flex items-center gap-1 px-2 py-1 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-800 transition-colors"
-        >
-          <Home className="w-4 h-4" />
-          <span className="hidden sm:inline">Oversikt</span>
-        </Link>
-        <ChevronRight className="w-4 h-4 text-gray-400" />
-        <span className="px-2 py-1 rounded-md font-medium text-red-600 dark:text-red-400 bg-red-500/10">
-          {company.issuerName}
-        </span>
-      </nav>
-
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{company.issuerName}</h1>
-            <p className="text-gray-500">ISIN: {company.isin}</p>
-          </div>
-          <div className="text-right">
-            <div
-              className={`text-4xl font-bold font-mono ${
-                company.totalShortPct >= 5
-                  ? "text-red-600 dark:text-red-400"
-                  : company.totalShortPct >= 2
-                  ? "text-orange-600 dark:text-orange-400"
-                  : "text-gray-900 dark:text-gray-100"
-              }`}
-            >
-              {formatPercent(company.totalShortPct)}
-            </div>
-            <div className="text-sm text-gray-500">Total short</div>
+    <div className="max-w-6xl mx-auto px-4 py-4">
+      {/* Compact header with breadcrumb */}
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <Link
+            href="/"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+          >
+            <Home className="w-4 h-4" />
+          </Link>
+          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+          <h1 className="text-xl font-bold truncate">{company.issuerName}</h1>
+          <span className="text-xs text-gray-400 hidden sm:inline flex-shrink-0">({company.isin})</span>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div
+            className={`text-2xl font-bold font-mono ${
+              company.totalShortPct >= 5
+                ? "text-red-600 dark:text-red-400"
+                : company.totalShortPct >= 2
+                ? "text-orange-600 dark:text-orange-400"
+                : "text-gray-900 dark:text-gray-100"
+            }`}
+          >
+            {formatPercent(company.totalShortPct)}
           </div>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Compact Stats */}
       {(() => {
         const history = company.history;
         const hasHistory = history.length >= 2;
@@ -96,67 +85,41 @@ export default async function CompanyPage({ params }: PageProps) {
         const changePositive = change > 0;
 
         return (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-                <Users className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{company.positions.length}</div>
-                <div className="text-sm text-gray-500">Aktører</div>
-              </div>
+          <div className="flex flex-wrap gap-4 text-sm mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-gray-400" />
+              <span className="font-medium">{company.positions.length}</span>
+              <span className="text-gray-500">aktører</span>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-                <TrendingDown className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">
-                  {formatNumber(
-                    company.positions.reduce((sum, p) => sum + p.positionShares, 0)
-                  )}
-                </div>
-                <div className="text-sm text-gray-500">Aksjer shortet</div>
-              </div>
+            <div className="flex items-center gap-2">
+              <TrendingDown className="w-4 h-4 text-red-500" />
+              <span className="font-medium font-mono">
+                {formatNumber(company.positions.reduce((sum, p) => sum + p.positionShares, 0))}
+              </span>
+              <span className="text-gray-500">aksjer</span>
             </div>
             {company.shortValue && (
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-                <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-                  <Banknote className="w-5 h-5 text-blue-500" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold font-mono">
-                    {formatNOK(company.shortValue)}
-                  </div>
-                  <div className="text-sm text-gray-500">Verdi (NOK)</div>
-                </div>
+              <div className="flex items-center gap-2">
+                <Banknote className="w-4 h-4 text-blue-500" />
+                <span className="font-medium font-mono">{formatNOK(company.shortValue)}</span>
               </div>
             )}
             {hasHistory && (
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-                <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-                  {changePositive ? (
-                    <TrendingUp className="w-5 h-5 text-red-500" />
-                  ) : (
-                    <TrendingDown className="w-5 h-5 text-green-500" />
-                  )}
-                </div>
-                <div>
-                  <div className={`text-2xl font-bold ${changePositive ? "text-red-600" : "text-green-600"}`}>
-                    {changePositive ? "+" : ""}{change.toFixed(2)}%
-                  </div>
-                  <div className="text-sm text-gray-500">Endring totalt</div>
-                </div>
+              <div className="flex items-center gap-2">
+                {changePositive ? (
+                  <TrendingUp className="w-4 h-4 text-red-500" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 text-green-500" />
+                )}
+                <span className={`font-medium font-mono ${changePositive ? "text-red-600" : "text-green-600"}`}>
+                  {changePositive ? "+" : ""}{change.toFixed(2)}%
+                </span>
+                <span className="text-gray-500">totalt</span>
               </div>
             )}
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-center gap-4">
-              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-                <Calendar className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{formatDate(company.latestDate)}</div>
-                <div className="text-sm text-gray-500">Sist oppdatert</div>
-              </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span className="text-gray-500">{formatDate(company.latestDate)}</span>
             </div>
           </div>
         );
@@ -164,12 +127,12 @@ export default async function CompanyPage({ params }: PageProps) {
 
       {/* Historical Chart */}
       {company.history.length > 1 && (
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-8">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
-            <h2 className="font-semibold">Historikk</h2>
-            <span className="text-sm text-gray-500">{company.history.length} datapunkter</span>
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-4">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
+            <h2 className="font-semibold text-sm">Historikk</h2>
+            <span className="text-xs text-gray-500">{company.history.length} datapunkter</span>
           </div>
-          <div className="p-4">
+          <div className="p-3">
             <ShortHistoryChart history={company.history} companyName={company.issuerName} />
           </div>
         </div>
@@ -177,26 +140,26 @@ export default async function CompanyPage({ params }: PageProps) {
 
       {/* Positions table */}
       <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-          <h2 className="font-semibold">Posisjoner</h2>
+        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+          <h2 className="font-semibold text-sm">Posisjoner</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-800">
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">
+                <th className="text-left px-3 py-2 font-medium text-gray-500">
                   Posisjonsholder
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">
+                <th className="text-right px-3 py-2 font-medium text-gray-500">
                   Posisjon
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden sm:table-cell">
-                  Antall aksjer
+                <th className="text-right px-3 py-2 font-medium text-gray-500 hidden sm:table-cell">
+                  Aksjer
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">
-                  Verdi (NOK)
+                <th className="text-right px-3 py-2 font-medium text-gray-500 hidden lg:table-cell">
+                  Verdi
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">
+                <th className="text-right px-3 py-2 font-medium text-gray-500">
                   Dato
                 </th>
               </tr>
@@ -207,29 +170,29 @@ export default async function CompanyPage({ params }: PageProps) {
                   key={`${position.positionHolder}-${index}`}
                   className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <Link
                       href={`/aktor/${slugify(position.positionHolder)}`}
                       className="flex items-center gap-2 hover:underline"
                     >
-                      <Briefcase className="w-4 h-4 text-gray-400" />
-                      <span className="font-medium">{position.positionHolder}</span>
+                      <Briefcase className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                      <span className="font-medium truncate">{position.positionHolder}</span>
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2 text-right">
                     <span className="font-mono font-medium text-red-600 dark:text-red-400">
                       {formatPercent(position.positionPct)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono hidden sm:table-cell">
+                  <td className="px-3 py-2 text-right text-gray-500 font-mono hidden sm:table-cell">
                     {formatNumber(position.positionShares)}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-sm hidden lg:table-cell">
+                  <td className="px-3 py-2 text-right text-gray-500 font-mono hidden lg:table-cell">
                     {company.stockPrice
                       ? formatNOK(position.positionShares * company.stockPrice)
                       : "-"}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500 text-sm">
+                  <td className="px-3 py-2 text-right text-gray-500">
                     {formatDate(position.positionDate)}
                   </td>
                 </tr>
@@ -237,18 +200,6 @@ export default async function CompanyPage({ params }: PageProps) {
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* Info box */}
-      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-          Hva betyr dette?
-        </h3>
-        <p className="text-sm text-blue-800 dark:text-blue-200">
-          Shortposisjoner over 0,5% av utstedte aksjer må rapporteres til Finanstilsynet.
-          En høy total shortposisjon kan indikere at mange investorer tror aksjen vil
-          falle i verdi. Dette er kun informasjon og ikke investeringsråd.
-        </p>
       </div>
     </div>
   );

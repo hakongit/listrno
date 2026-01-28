@@ -214,77 +214,53 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
   const colors = colorClasses[category.color];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Breadcrumb navigation */}
-      <nav className="flex items-center gap-2 text-sm mb-6">
-        <Link
-          href="/"
-          className="flex items-center gap-1 px-2 py-1 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-800 transition-colors"
-        >
-          <Home className="w-4 h-4" />
-          <span className="hidden sm:inline">Oversikt</span>
-        </Link>
-        <ChevronRight className="w-4 h-4 text-gray-400" />
-        <span className={`px-2 py-1 rounded-md font-medium ${colors.value} bg-opacity-10 ${
-          category.color === 'red' ? 'bg-red-500/10' :
-          category.color === 'green' ? 'bg-green-500/10' : 'bg-blue-500/10'
-        }`}>
-          {category.title}
-        </span>
-      </nav>
-
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Icon className={`w-8 h-8 ${colors.value}`} />
-          <h1 className="text-3xl font-bold">{category.title}</h1>
+    <div className="max-w-6xl mx-auto px-4 py-4">
+      {/* Compact header with breadcrumb */}
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <Link
+            href="/"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+          >
+            <Home className="w-4 h-4" />
+          </Link>
+          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+          <Icon className={`w-5 h-5 ${colors.value} flex-shrink-0`} />
+          <h1 className="text-xl font-bold truncate">{category.title}</h1>
         </div>
-        <p className="text-gray-500">{category.description}</p>
+        {/* Period Filter - inline */}
+        {showPeriodFilter && (
+          <div className="flex gap-1 flex-shrink-0">
+            {Object.entries(periods).map(([key, { label }]) => (
+              <Link
+                key={key}
+                href={`/topp/${kategori}${key === defaultPeriod ? "" : `?periode=${key}`}`}
+                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  selectedPeriod === key
+                    ? `${colors.header} ${colors.text}`
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Period Filter */}
-      {showPeriodFilter && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {Object.entries(periods).map(([key, { label }]) => (
-            <Link
-              key={key}
-              href={`/topp/${kategori}${key === defaultPeriod ? "" : `?periode=${key}`}`}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedPeriod === key
-                  ? `${colors.header} ${colors.text}`
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-      )}
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-        <div className={`px-4 py-3 border-b border-gray-200 dark:border-gray-800 ${colors.header}`}>
-          <h2 className={`font-semibold ${colors.text} flex items-center gap-2`}>
-            <Icon className="w-4 h-4" />
-            Top 20
-            {showPeriodFilter && selectedPeriod !== "alle" && (
-              <span className="text-sm font-normal opacity-75">
-                ({periods[selectedPeriod].label.toLowerCase()})
-              </span>
-            )}
-          </h2>
-        </div>
         {companies.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-500 w-8">#</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Selskap</th>
-                  <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>Total short</th>
-                  <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>Endring</th>
-                  <th className={`text-right px-4 py-3 text-sm font-medium text-gray-500 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi (NOK)</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Dato</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-500 w-8">#</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-500">Selskap</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>Short</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>Endring</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-500">Dato</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -295,14 +271,14 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                       key={company.isin}
                       className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                     >
-                      <td className="px-4 py-3 text-sm text-gray-400">{index + 1}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2 text-gray-400">{index + 1}</td>
+                      <td className="px-3 py-2">
                         <Link href={`/${company.slug}`} className="flex items-center gap-2 hover:underline">
-                          <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
-                          <span className="font-medium">{company.issuerName}</span>
+                          <TrendingDown className="w-3 h-3 text-red-500 flex-shrink-0" />
+                          <span className="font-medium truncate">{company.issuerName}</span>
                         </Link>
                       </td>
-                      <td className={`px-4 py-3 text-right ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>
+                      <td className={`px-3 py-2 text-right ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>
                         <span
                           className={`font-mono font-medium ${
                             company.totalShortPct >= 5
@@ -315,27 +291,27 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                           {formatPercent(company.totalShortPct)}
                         </span>
                       </td>
-                      <td className={`px-4 py-3 text-right ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>
+                      <td className={`px-3 py-2 text-right ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>
                         {displayChange > 0.01 ? (
-                          <span className="inline-flex items-center gap-1 text-red-500 text-sm font-mono">
+                          <span className="inline-flex items-center gap-1 text-red-500 font-mono">
                             <TrendingUp className="w-3 h-3" />
                             <span>+{displayChange.toFixed(2)}%</span>
                           </span>
                         ) : displayChange < -0.01 ? (
-                          <span className="inline-flex items-center gap-1 text-green-500 text-sm font-mono">
+                          <span className="inline-flex items-center gap-1 text-green-500 font-mono">
                             <TrendingDown className="w-3 h-3" />
                             <span>{displayChange.toFixed(2)}%</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center text-gray-400 text-xs">
+                          <span className="inline-flex items-center text-gray-400">
                             <Minus className="w-3 h-3" />
                           </span>
                         )}
                       </td>
-                      <td className={`px-4 py-3 text-right text-gray-500 font-mono text-sm ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>
+                      <td className={`px-3 py-2 text-right text-gray-500 font-mono ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>
                         {company.shortValue ? formatNOK(company.shortValue) : "-"}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-500 text-sm">
+                      <td className="px-3 py-2 text-right text-gray-500">
                         {formatDate(company.latestDate)}
                       </td>
                     </tr>

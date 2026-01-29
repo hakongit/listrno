@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { getDb } from "./db";
 import { ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint, PositionHolder, HolderCompanyPosition } from "./types";
 import { slugify } from "./utils";
 import { getTicker } from "./tickers";
@@ -20,11 +20,11 @@ interface DBCompany {
 
 export async function getShortDataFromDB(): Promise<ShortDataSummary> {
   // Get all companies
-  const companiesResult = await db.execute("SELECT isin, issuer_name, slug FROM companies");
+  const companiesResult = await getDb().execute("SELECT isin, issuer_name, slug FROM companies");
   const companies = companiesResult.rows as unknown as DBCompany[];
 
   // Get all positions ordered by date
-  const positionsResult = await db.execute(`
+  const positionsResult = await getDb().execute(`
     SELECT isin, holder_name, position_pct, position_shares, position_date
     FROM positions
     ORDER BY position_date ASC

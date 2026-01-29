@@ -1,4 +1,4 @@
-import { db, initializeDatabase, resetDatabase } from "../lib/db";
+import { getDb, initializeDatabase, resetDatabase } from "../lib/db";
 import { slugify } from "../lib/utils";
 
 const FINANSTILSYNET_API = "https://ssr.finanstilsynet.no/api/v2/instruments/export-json";
@@ -53,7 +53,7 @@ async function syncData() {
     args: [instrument.isin, instrument.issuerName, slugify(instrument.issuerName)],
   }));
 
-  await db.batch(companyStatements);
+  await getDb().batch(companyStatements);
   console.log(`Processed ${instruments.length} companies`);
 
   // Collect all positions
@@ -85,7 +85,7 @@ async function syncData() {
 
   for (let i = 0; i < positionStatements.length; i += BATCH_SIZE) {
     const batch = positionStatements.slice(i, i + BATCH_SIZE);
-    await db.batch(batch);
+    await getDb().batch(batch);
     positionsInserted += batch.length;
     if (positionsInserted % 500 === 0 || positionsInserted === positionStatements.length) {
       console.log(`Inserted ${positionsInserted}/${positionStatements.length} positions...`);
@@ -93,9 +93,9 @@ async function syncData() {
   }
 
   // Get stats
-  const companyCount = await db.execute("SELECT COUNT(*) as count FROM companies");
-  const positionCount = await db.execute("SELECT COUNT(*) as count FROM positions");
-  const dateRange = await db.execute("SELECT MIN(position_date) as min_date, MAX(position_date) as max_date FROM positions");
+  const companyCount = await getDb().execute("SELECT COUNT(*) as count FROM companies");
+  const positionCount = await getDb().execute("SELECT COUNT(*) as count FROM positions");
+  const dateRange = await getDb().execute("SELECT MIN(position_date) as min_date, MAX(position_date) as max_date FROM positions");
 
   console.log("\nDatabase stats:");
   console.log(`- Companies: ${companyCount.rows[0].count}`);

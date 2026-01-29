@@ -1,19 +1,30 @@
-import { createClient } from "@libsql/client";
+import { createClient, Client } from "@libsql/client";
 
-export const db = createClient({
-  url: process.env.TURSO_DATABASE_URL!,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+let _db: Client | null = null;
+
+export function getDb(): Client {
+  if (!_db) {
+    const url = process.env.TURSO_DATABASE_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+
+    if (!url) {
+      throw new Error("TURSO_DATABASE_URL is not set");
+    }
+
+    _db = createClient({ url, authToken });
+  }
+  return _db;
+}
 
 export async function resetDatabase() {
-  await db.execute(`DROP TABLE IF EXISTS positions`);
-  await db.execute(`DROP TABLE IF EXISTS stock_prices`);
-  await db.execute(`DROP TABLE IF EXISTS companies`);
+  await getDb().execute(`DROP TABLE IF EXISTS positions`);
+  await getDb().execute(`DROP TABLE IF EXISTS stock_prices`);
+  await getDb().execute(`DROP TABLE IF EXISTS companies`);
 }
 
 export async function initializeDatabase() {
   // Companies table
-  await db.execute(`
+  await getDb().execute(`
     CREATE TABLE IF NOT EXISTS companies (
       isin TEXT PRIMARY KEY,
       issuer_name TEXT NOT NULL,
@@ -23,7 +34,7 @@ export async function initializeDatabase() {
   `);
 
   // Short positions table (historical data)
-  await db.execute(`
+  await getDb().execute(`
     CREATE TABLE IF NOT EXISTS positions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       isin TEXT NOT NULL,
@@ -37,7 +48,7 @@ export async function initializeDatabase() {
   `);
 
   // Stock prices table (for calculating market values)
-  await db.execute(`
+  await getDb().execute(`
     CREATE TABLE IF NOT EXISTS stock_prices (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       isin TEXT NOT NULL,
@@ -48,8 +59,8 @@ export async function initializeDatabase() {
   `);
 
   // Create indexes for common queries
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_positions_isin ON positions(isin)`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_positions_holder ON positions(holder_name)`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_positions_date ON positions(position_date)`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_stock_prices_isin ON stock_prices(isin)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_isin ON positions(isin)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_holder ON positions(holder_name)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_date ON positions(position_date)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_stock_prices_isin ON stock_prices(isin)`);
 }

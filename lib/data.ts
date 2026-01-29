@@ -192,7 +192,51 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
 }
 
 export async function getShortData(): Promise<ShortDataSummary> {
-  return getShortDataFromDB();
+  // Try database first, fall back to API if it fails (e.g., during build)
+  try {
+    return await getShortDataFromDB();
+  } catch (error) {
+    console.warn("Database query failed, falling back to API:", error);
+    const rawData = await fetchShortPositions();
+    const data = parseShortPositions(rawData);
+
+    // Fetch stock prices
+    const tickers = data.companies
+      .map((c) => c.ticker)
+      .filter((t): t is string => t !== null);
+
+    if (tickers.length > 0) {
+      const prices = await fetchStockPrices(tickers);
+
+      for (const company of data.companies) {
+        if (company.ticker && prices.has(company.ticker)) {
+          company.stockPrice = prices.get(company.ticker) || null;
+          if (company.stockPrice) {
+            company.shortValue = company.totalShortShares * company.stockPrice;
+          }
+        }
+      }
+
+      const isinToPriceMap = new Map<string, number>();
+      for (const company of data.companies) {
+        if (company.stockPrice) {
+          isinToPriceMap.set(company.isin, company.stockPrice);
+        }
+      }
+
+      for (const holder of data.holders) {
+        for (const pos of holder.companies) {
+          const stockPrice = isinToPriceMap.get(pos.isin);
+          if (stockPrice) {
+            pos.stockPrice = stockPrice;
+            pos.positionValue = pos.currentShares * stockPrice;
+          }
+        }
+      }
+    }
+
+    return data;
+  }
 }
 
 export async function getCompanyBySlug(slug: string): Promise<CompanyShortData | null> {

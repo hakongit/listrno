@@ -31,10 +31,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export async function generateStaticParams() {
-  const holders = await getAllHolders();
-  return holders.map((holder) => ({
-    slug: holder.slug,
-  }));
+  // Pages are generated on-demand and cached (ISR)
+  return [];
 }
 
 export default async function HolderPage({ params }: PageProps) {

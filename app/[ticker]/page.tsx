@@ -31,10 +31,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export async function generateStaticParams() {
-  const data = await getShortData();
-  return data.companies.map((company) => ({
-    ticker: company.slug,
-  }));
+  // Pages are generated on-demand and cached (ISR)
+  return [];
 }
 
 export default async function CompanyPage({ params }: PageProps) {

@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { ShortHistoryChart } from "@/components/short-history-chart";
 
 export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ ticker: string }>;

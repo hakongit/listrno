@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import type { CompanyShortData } from "@/lib/types";
 
 export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 const categories = {
   "hoyest-short": {

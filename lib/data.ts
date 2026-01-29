@@ -2,8 +2,10 @@ import { RawInstrument, ShortPosition, CompanyShortData, ShortDataSummary, Histo
 import { slugify } from "./utils";
 import { getTicker } from "./tickers";
 import { fetchStockPrices } from "./prices";
+import { getShortDataFromDB } from "./data-db";
 
 const API_URL = "https://ssr.finanstilsynet.no/api/v2/instruments/export-json";
+const USE_DATABASE = true;
 
 export async function fetchShortPositions(): Promise<RawInstrument[]> {
   const res = await fetch(API_URL, {
@@ -191,6 +193,12 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
 }
 
 export async function getShortData(): Promise<ShortDataSummary> {
+  // Use database for data (synced every 8 hours)
+  if (USE_DATABASE) {
+    return getShortDataFromDB();
+  }
+
+  // Fallback to API
   const rawData = await fetchShortPositions();
   const data = parseShortPositions(rawData);
 

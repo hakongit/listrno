@@ -5,7 +5,6 @@ import { fetchStockPrices } from "./prices";
 import { getShortDataFromDB } from "./data-db";
 
 const API_URL = "https://ssr.finanstilsynet.no/api/v2/instruments/export-json";
-const USE_DATABASE = true;
 
 export async function fetchShortPositions(): Promise<RawInstrument[]> {
   const res = await fetch(API_URL, {
@@ -193,54 +192,7 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
 }
 
 export async function getShortData(): Promise<ShortDataSummary> {
-  // Use database for data (synced every 8 hours)
-  if (USE_DATABASE) {
-    return getShortDataFromDB();
-  }
-
-  // Fallback to API
-  const rawData = await fetchShortPositions();
-  const data = parseShortPositions(rawData);
-
-  // Fetch stock prices for companies with tickers
-  const tickers = data.companies
-    .map((c) => c.ticker)
-    .filter((t): t is string => t !== null);
-
-  if (tickers.length > 0) {
-    const prices = await fetchStockPrices(tickers);
-
-    // Update companies with prices and calculate short values
-    for (const company of data.companies) {
-      if (company.ticker && prices.has(company.ticker)) {
-        company.stockPrice = prices.get(company.ticker) || null;
-        if (company.stockPrice) {
-          company.shortValue = company.totalShortShares * company.stockPrice;
-        }
-      }
-    }
-
-    // Build a map of ISIN to stock price for holder position values
-    const isinToPriceMap = new Map<string, number>();
-    for (const company of data.companies) {
-      if (company.stockPrice) {
-        isinToPriceMap.set(company.isin, company.stockPrice);
-      }
-    }
-
-    // Update holder positions with stock prices and values
-    for (const holder of data.holders) {
-      for (const pos of holder.companies) {
-        const stockPrice = isinToPriceMap.get(pos.isin);
-        if (stockPrice) {
-          pos.stockPrice = stockPrice;
-          pos.positionValue = pos.currentShares * stockPrice;
-        }
-      }
-    }
-  }
-
-  return data;
+  return getShortDataFromDB();
 }
 
 export async function getCompanyBySlug(slug: string): Promise<CompanyShortData | null> {

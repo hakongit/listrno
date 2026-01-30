@@ -20,6 +20,12 @@
     "recharts": "^3.7.0",
     "tailwind-merge": "^2.6.0"
   },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions"
+  ],
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",

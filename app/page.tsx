@@ -134,11 +134,11 @@ export default async function HomePage() {
           <div className="hidden md:grid grid-cols-4 gap-4 mb-8">
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
               <div className="text-2xl font-bold">{data.totalCompanies}</div>
-              <div className="text-sm text-gray-500">Selskaper</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Selskaper</div>
             </div>
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
               <div className="text-2xl font-bold">{data.totalPositions}</div>
-              <div className="text-sm text-gray-500">Posisjoner</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Posisjoner</div>
             </div>
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
               <div className="text-2xl font-bold">
@@ -147,13 +147,13 @@ export default async function HomePage() {
                     data.companies.length
                 )}
               </div>
-              <div className="text-sm text-gray-500">Snitt short</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Snitt short</div>
             </div>
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
               <div className="text-2xl font-bold font-mono">
                 {totalShortValue > 0 ? formatNOK(totalShortValue) : "-"}
               </div>
-              <div className="text-sm text-gray-500">Total verdi</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Total verdi</div>
             </div>
           </div>
         );
@@ -193,7 +193,7 @@ export default async function HomePage() {
                 </Link>
               ))
             ) : (
-              <div className="px-4 py-3 text-sm text-gray-500">Ingen økninger registrert</div>
+              <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Ingen økninger registrert</div>
             )}
           </div>
         </div>
@@ -230,7 +230,7 @@ export default async function HomePage() {
                 </Link>
               ))
             ) : (
-              <div className="px-4 py-3 text-sm text-gray-500">Ingen nedganger registrert</div>
+              <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Ingen nedganger registrert</div>
             )}
           </div>
         </div>
@@ -294,7 +294,7 @@ export default async function HomePage() {
                 </Link>
               ))
             ) : (
-              <div className="px-4 py-3 text-sm text-gray-500">Ingen verdier tilgjengelig</div>
+              <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Ingen verdier tilgjengelig</div>
             )}
           </div>
         </div>
@@ -309,19 +309,19 @@ export default async function HomePage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                   Selskap
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                   Total short
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden sm:table-cell">
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                   Endring
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden md:table-cell">
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">
                   Verdi (NOK)
                 </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-500 hidden lg:table-cell">
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                   Sist oppdatert
                 </th>
               </tr>
@@ -468,7 +468,7 @@ export default async function HomePage() {
                   </Link>
                 ))
               ) : (
-                <div className="px-4 py-3 text-sm text-gray-500">Ingen verdier tilgjengelig</div>
+                <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Ingen verdier tilgjengelig</div>
               )}
             </div>
           </div>

@@ -122,11 +122,11 @@ export default async function ActorTopListPage({ params }: PageProps) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left px-3 py-2 font-medium text-gray-500 w-8">#</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-500">Aktør</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori !== "flest-posisjoner" ? "hidden sm:table-cell" : ""}`}>Pos.</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori === "hoyest-short" ? "" : "hidden sm:table-cell"}`}>Short</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400 w-8">#</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">Aktør</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori !== "flest-posisjoner" ? "hidden sm:table-cell" : ""}`}>Pos.</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori === "hoyest-short" ? "" : "hidden sm:table-cell"}`}>Short</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -159,7 +159,7 @@ export default async function ActorTopListPage({ params }: PageProps) {
             </table>
           </div>
         ) : (
-          <div className="px-4 py-8 text-center text-gray-500">
+          <div className="px-4 py-8 text-center text-gray-600 dark:text-gray-400">
             Ingen aktører i denne kategorien
           </div>
         )}

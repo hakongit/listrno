@@ -27,7 +27,7 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
 
         <footer className="border-t border-gray-200 dark:border-gray-800 mt-auto">
-          <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between text-sm text-gray-500">
+          <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
             <p>
               Data fra{" "}
               <a

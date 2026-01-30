@@ -211,12 +211,12 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left px-3 py-2 font-medium text-gray-500 w-8">#</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-500">Selskap</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>Short</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>Endring</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-500 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi</th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-500">Dato</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400 w-8">#</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">Selskap</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>Short</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>Endring</th>
+                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">Dato</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -277,7 +277,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
             </table>
           </div>
         ) : (
-          <div className="px-4 py-8 text-center text-gray-500">
+          <div className="px-4 py-8 text-center text-gray-600 dark:text-gray-400">
             Ingen selskaper i denne kategorien
             {showPeriodFilter && selectedPeriod !== "alle" && (
               <span> for {periods[selectedPeriod].label.toLowerCase()}</span>

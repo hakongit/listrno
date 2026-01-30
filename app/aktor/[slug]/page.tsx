@@ -115,19 +115,19 @@ export default async function HolderPage({ params }: PageProps) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-800">
-                <th className="text-left px-3 py-2 font-medium text-gray-500">
+                <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
                   Selskap
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-500">
+                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
                   Posisjon
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-500 hidden sm:table-cell">
+                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                   Aksjer
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-500 hidden lg:table-cell">
+                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                   Verdi
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-500">
+                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
                   Dato
                 </th>
               </tr>

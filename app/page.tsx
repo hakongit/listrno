@@ -40,28 +40,37 @@ export default async function HomePage() {
   // Find the most recent date in the dataset
   const allDates = data.companies.map(c => new Date(c.latestDate).getTime());
   const mostRecentDate = new Date(Math.max(...allDates));
-  const mostRecentDateStr = mostRecentDate.toISOString().split('T')[0];
 
-  // Filter to only companies updated on the most recent date
-  const recentCompanies = data.companies.filter(c =>
-    c.latestDate.startsWith(mostRecentDateStr)
-  );
+  // Get unique dates sorted by most recent first
+  const uniqueDates = [...new Set(data.companies.map(c => c.latestDate))].sort().reverse();
+
+  // Find the most recent date with increases
+  let increasesDate = mostRecentDate;
+  let biggestIncreases: typeof data.companies = [];
+  for (const dateStr of uniqueDates) {
+    const companiesOnDate = data.companies.filter(c => c.latestDate === dateStr && c.change > 0);
+    if (companiesOnDate.length > 0) {
+      biggestIncreases = companiesOnDate.sort((a, b) => b.change - a.change).slice(0, 5);
+      increasesDate = new Date(dateStr);
+      break;
+    }
+  }
+
+  // Find the most recent date with decreases
+  let decreasesDate = mostRecentDate;
+  let biggestDecreases: typeof data.companies = [];
+  for (const dateStr of uniqueDates) {
+    const companiesOnDate = data.companies.filter(c => c.latestDate === dateStr && c.change < 0);
+    if (companiesOnDate.length > 0) {
+      biggestDecreases = companiesOnDate.sort((a, b) => a.change - b.change).slice(0, 5);
+      decreasesDate = new Date(dateStr);
+      break;
+    }
+  }
 
   // Top 5 highest shorts
   const highestShorts = [...data.companies]
     .sort((a, b) => b.totalShortPct - a.totalShortPct)
-    .slice(0, 5);
-
-  // Top 5 biggest increases (only from most recent date)
-  const biggestIncreases = [...recentCompanies]
-    .filter((c) => c.change > 0)
-    .sort((a, b) => b.change - a.change)
-    .slice(0, 5);
-
-  // Top 5 biggest decreases (only from most recent date)
-  const biggestDecreases = [...recentCompanies]
-    .filter((c) => c.change < 0)
-    .sort((a, b) => a.change - b.change)
     .slice(0, 5);
 
   // Top 5 highest value shorts
@@ -163,7 +172,7 @@ export default async function HomePage() {
                 <TrendingUp className="w-4 h-4" />
                 <span>
                   Størst økning
-                  <span className="font-normal text-xs opacity-75 ml-1">({mostRecentDate.toLocaleDateString("nb-NO", { day: "2-digit", month: "2-digit", year: "2-digit" })})</span>
+                  <span className="font-normal text-xs opacity-75 ml-1">({increasesDate.toLocaleDateString("nb-NO", { day: "2-digit", month: "2-digit", year: "2-digit" })})</span>
                 </span>
               </span>
               <ArrowRight className="w-4 h-4" />
@@ -200,7 +209,7 @@ export default async function HomePage() {
                 <TrendingDown className="w-4 h-4" />
                 <span>
                   Størst nedgang
-                  <span className="font-normal text-xs opacity-75 ml-1">({mostRecentDate.toLocaleDateString("nb-NO", { day: "2-digit", month: "2-digit", year: "2-digit" })})</span>
+                  <span className="font-normal text-xs opacity-75 ml-1">({decreasesDate.toLocaleDateString("nb-NO", { day: "2-digit", month: "2-digit", year: "2-digit" })})</span>
                 </span>
               </span>
               <ArrowRight className="w-4 h-4" />

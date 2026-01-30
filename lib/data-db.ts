@@ -20,7 +20,15 @@ interface DBCompany {
 
 export async function getShortDataFromDB(): Promise<ShortDataSummary> {
   // Get all companies
-  const companiesResult = await getDb().execute("SELECT isin, issuer_name, slug FROM companies");
+  let companiesResult;
+  try {
+    companiesResult = await getDb().execute("SELECT isin, issuer_name, slug FROM companies");
+  } catch (error: unknown) {
+    const url = process.env.TURSO_DATABASE_URL || 'NOT_SET';
+    const tokenLen = process.env.TURSO_AUTH_TOKEN?.length || 0;
+    const errMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(`DB Error: ${errMsg} | URL: ${url} | Token length: ${tokenLen}`);
+  }
   const companies = companiesResult.rows as unknown as DBCompany[];
 
   // Get all positions ordered by date

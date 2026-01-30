@@ -2,7 +2,7 @@ import { RawInstrument, ShortPosition, CompanyShortData, ShortDataSummary, Histo
 import { slugify } from "./utils";
 import { getTicker } from "./tickers";
 import { fetchStockPrices } from "./prices";
-import { getShortDataFromDB } from "./data-db";
+import { getCachedShortData } from "./data-db";
 
 const API_URL = "https://ssr.finanstilsynet.no/api/v2/instruments/export-json";
 
@@ -192,7 +192,7 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
 }
 
 export async function getShortData(): Promise<ShortDataSummary> {
-  return getShortDataFromDB();
+  return getCachedShortData();
 }
 
 export async function getCompanyBySlug(slug: string): Promise<CompanyShortData | null> {

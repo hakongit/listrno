@@ -3,7 +3,7 @@ import { formatPercent, formatDate, formatNOK } from "@/lib/utils";
 import Link from "next/link";
 import { TrendingDown, TrendingUp, ArrowRight, Minus, Briefcase } from "lucide-react";
 
-export const dynamic = 'force-dynamic'; // Render on each request
+export const revalidate = 300; // Cache for 5 minutes
 
 function ChangeIndicator({ change, previousDate }: { change: number; previousDate: string | null }) {
   const dateStr = previousDate

@@ -3,6 +3,7 @@ import { ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint,
 import { slugify } from "./utils";
 import { getTicker } from "./tickers";
 import { fetchStockPrices } from "./prices";
+import { unstable_cache } from "next/cache";
 
 interface DBPosition {
   isin: string;
@@ -229,3 +230,10 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
     holders,
   };
 }
+
+// Cached version - revalidates every 5 minutes
+export const getCachedShortData = unstable_cache(
+  getShortDataFromDB,
+  ["short-data"],
+  { revalidate: 300 }
+);

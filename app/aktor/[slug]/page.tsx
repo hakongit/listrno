@@ -6,7 +6,7 @@ import { ChevronRight, Building2, TrendingDown, Briefcase, Banknote, Home } from
 import type { Metadata } from "next";
 import { HolderHistoryChart } from "@/components/holder-history-chart";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // Cache for 5 minutes
 
 interface PageProps {
   params: Promise<{ slug: string }>;

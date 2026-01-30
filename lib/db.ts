@@ -7,15 +7,15 @@ export function getDb(): Client {
     const url = process.env.TURSO_DATABASE_URL;
     const authToken = process.env.TURSO_AUTH_TOKEN;
 
+    console.log(`[DB] TURSO_DATABASE_URL: "${url}"`);
+    console.log(`[DB] TURSO_AUTH_TOKEN set: ${!!authToken}, length: ${authToken?.length || 0}`);
+
     if (!url) {
       throw new Error("TURSO_DATABASE_URL is not set");
     }
     if (!authToken) {
       throw new Error("TURSO_AUTH_TOKEN is not set");
     }
-
-    console.log(`[DB] URL length: ${url.length}, Token length: ${authToken.length}`);
-    console.log(`[DB] URL starts with: ${url.substring(0, 40)}`);
 
     _db = createClient({ url: url.trim(), authToken: authToken.trim() });
   }

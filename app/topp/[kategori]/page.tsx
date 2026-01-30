@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { CompanyShortData } from "@/lib/types";
 
-export const revalidate = 3600;
 export const dynamic = 'force-dynamic';
 
 const categories = {
@@ -70,9 +69,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export async function generateStaticParams() {
-  return Object.keys(categories).map((kategori) => ({ kategori }));
-}
 
 export default async function TopListPage({ params, searchParams }: PageProps) {
   const { kategori } = await params;

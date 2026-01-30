@@ -8,10 +8,11 @@ export function getDb(): Client {
     const authToken = process.env.TURSO_AUTH_TOKEN;
 
     if (!url) {
-      throw new Error("TURSO_DATABASE_URL is not set");
+      throw new Error("TURSO_DATABASE_URL is not set. Available env vars: " + Object.keys(process.env).filter(k => k.includes('TURSO')).join(', '));
     }
 
-    _db = createClient({ url, authToken });
+    console.log(`[DB] Connecting to: ${url.substring(0, 30)}...`);
+    _db = createClient({ url: url.trim(), authToken: authToken?.trim() });
   }
   return _db;
 }

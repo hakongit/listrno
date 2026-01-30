@@ -6,7 +6,6 @@ import { ChevronRight, Building2, TrendingDown, Briefcase, Banknote, Home } from
 import type { Metadata } from "next";
 import { HolderHistoryChart } from "@/components/holder-history-chart";
 
-export const revalidate = 3600;
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
@@ -31,10 +30,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export async function generateStaticParams() {
-  // Pages are generated on-demand and cached (ISR)
-  return [];
-}
 
 export default async function HolderPage({ params }: PageProps) {
   const { slug } = await params;

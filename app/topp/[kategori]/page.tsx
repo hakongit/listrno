@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { CompanyShortData } from "@/lib/types";
 
-export const revalidate = 300; // Cache for 5 minutes
+export const revalidate = 3600; // Cache for 1 hour
 
 const categories = {
   "hoyest-short": {

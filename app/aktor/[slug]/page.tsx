@@ -6,7 +6,7 @@ import { ChevronRight, Building2, TrendingDown, Briefcase, Banknote, Home } from
 import type { Metadata } from "next";
 import { HolderHistoryChart } from "@/components/holder-history-chart";
 
-export const revalidate = 300; // Cache for 5 minutes
+export const revalidate = 3600; // Cache for 1 hour
 
 interface PageProps {
   params: Promise<{ slug: string }>;

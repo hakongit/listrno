@@ -6,7 +6,7 @@ import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Ban
 import type { Metadata } from "next";
 import { ShortHistoryChart } from "@/components/short-history-chart";
 
-export const revalidate = 300; // Cache for 5 minutes
+export const revalidate = 3600; // Cache for 1 hour
 
 interface PageProps {
   params: Promise<{ ticker: string }>;

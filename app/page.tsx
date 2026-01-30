@@ -3,7 +3,7 @@ import { formatPercent, formatDate, formatNOK } from "@/lib/utils";
 import Link from "next/link";
 import { TrendingDown, TrendingUp, ArrowRight, Minus, Briefcase } from "lucide-react";
 
-export const revalidate = 300; // Cache for 5 minutes
+export const revalidate = 3600; // Cache for 1 hour
 
 function ChangeIndicator({ change, previousDate }: { change: number; previousDate: string | null }) {
   const dateStr = previousDate

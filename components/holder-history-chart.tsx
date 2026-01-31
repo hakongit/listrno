@@ -42,7 +42,7 @@ const periods = [
 type PeriodKey = typeof periods[number]["key"];
 
 export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("ALL");
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("1M");
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

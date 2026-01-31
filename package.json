@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx tsx scripts/sync-data.ts --reset && next build",
     "start": "next start",
     "lint": "next lint",
     "db:sync": "node --env-file=.env.local --import tsx scripts/sync-data.ts"
@@ -21,10 +21,10 @@
     "tailwind-merge": "^2.6.0"
   },
   "browserslist": [
-    "last 2 Chrome versions",
-    "last 2 Firefox versions",
-    "last 2 Safari versions",
-    "last 2 Edge versions"
+    "Chrome >= 109",
+    "Firefox >= 115",
+    "Safari >= 16.4",
+    "Edge >= 109"
   ],
   "devDependencies": {
     "@types/node": "^22.10.0",

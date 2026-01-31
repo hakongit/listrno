@@ -56,7 +56,22 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
     const positions = positionsByIsin.get(company.isin) || [];
     if (positions.length === 0) continue;
 
-    // Group positions by date to create events
+    // Group positions by holder to get latest position per holder
+    const latestByHolder = new Map<string, DBPosition>();
+    for (const pos of positions) {
+      const existing = latestByHolder.get(pos.holder_name);
+      if (!existing || pos.position_date > existing.position_date) {
+        latestByHolder.set(pos.holder_name, pos);
+      }
+    }
+
+    // Filter out closed positions (0% or null)
+    const currentPositions = Array.from(latestByHolder.values())
+      .filter(p => p.position_pct > 0);
+
+    if (currentPositions.length === 0) continue;
+
+    // Group all positions by date for history
     const positionsByDate = new Map<string, DBPosition[]>();
     for (const pos of positions) {
       const existing = positionsByDate.get(pos.position_date) || [];
@@ -66,28 +81,37 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
 
     // Sort dates chronologically
     const dates = Array.from(positionsByDate.keys()).sort();
-    if (dates.length === 0) continue;
 
-    // Build history
-    const history: HistoricalDataPoint[] = dates.map(date => {
+    // Build history - for each date, sum up active positions at that point in time
+    const history: HistoricalDataPoint[] = [];
+    const activeAtDate = new Map<string, DBPosition>();
+    for (const date of dates) {
       const datePositions = positionsByDate.get(date)!;
-      const totalShortPct = datePositions.reduce((sum, p) => sum + p.position_pct, 0);
-      return {
+      // Update active positions with this date's data
+      for (const pos of datePositions) {
+        if (pos.position_pct > 0) {
+          activeAtDate.set(pos.holder_name, pos);
+        } else {
+          activeAtDate.delete(pos.holder_name);
+        }
+      }
+      const activeList = Array.from(activeAtDate.values());
+      const totalShortPct = activeList.reduce((sum, p) => sum + p.position_pct, 0);
+      history.push({
         date,
         totalShortPct: Math.round(totalShortPct * 100) / 100,
-        positions: datePositions.map(p => ({
+        positions: activeList.map(p => ({
           holder: p.holder_name,
           pct: p.position_pct,
         })),
-      };
-    });
+      });
+    }
 
-    // Latest date and positions
+    // Latest date is the most recent position update
     const latestDate = dates[dates.length - 1];
-    const latestPositions = positionsByDate.get(latestDate)!;
 
-    // Active positions
-    const activePositions: ShortPosition[] = latestPositions.map(pos => ({
+    // Active positions are the latest position per holder
+    const activePositions: ShortPosition[] = currentPositions.map(pos => ({
       positionHolder: pos.holder_name,
       isin: company.isin,
       issuerName: company.issuer_name,

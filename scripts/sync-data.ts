@@ -56,14 +56,25 @@ async function syncData() {
   await getDb().batch(companyStatements);
   console.log(`Processed ${instruments.length} companies`);
 
-  // Collect all positions
+  // Collect all positions, including closings (0%) when holders exit
   const positionStatements: { sql: string; args: (string | number)[] }[] = [];
 
   for (const instrument of instruments) {
-    for (const event of instrument.events) {
+    // Sort events by date (oldest first) to track position changes
+    const sortedEvents = [...instrument.events].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    // Track active holders to detect closings
+    const activeHolders = new Set<string>();
+
+    for (const event of sortedEvents) {
+      const currentHolders = new Set(event.activePositions.map((p) => p.positionHolder));
+
+      // Insert positions for all holders in this event
       for (const position of event.activePositions) {
         positionStatements.push({
-          sql: `INSERT OR IGNORE INTO positions (isin, holder_name, position_pct, position_shares, position_date)
+          sql: `INSERT OR REPLACE INTO positions (isin, holder_name, position_pct, position_shares, position_date)
                 VALUES (?, ?, ?, ?, ?)`,
           args: [
             instrument.isin,
@@ -73,6 +84,29 @@ async function syncData() {
             position.date,
           ],
         });
+      }
+
+      // Insert 0% closing records for holders who exited
+      for (const holder of activeHolders) {
+        if (!currentHolders.has(holder)) {
+          positionStatements.push({
+            sql: `INSERT OR REPLACE INTO positions (isin, holder_name, position_pct, position_shares, position_date)
+                  VALUES (?, ?, ?, ?, ?)`,
+            args: [
+              instrument.isin,
+              holder,
+              0, // Position closed
+              0,
+              event.date, // Use event date as closing date
+            ],
+          });
+        }
+      }
+
+      // Update active holders for next iteration
+      activeHolders.clear();
+      for (const h of currentHolders) {
+        activeHolders.add(h);
       }
     }
   }

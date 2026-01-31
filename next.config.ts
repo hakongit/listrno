@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
       transform: "lucide-react/dist/esm/icons/{{kebabCase member}}",
     },
   },
+  experimental: {
+    // Inline critical CSS to eliminate render-blocking
+    optimizeCss: true,
+  },
 };
 
 export default nextConfig;

@@ -50,6 +50,9 @@ export interface CompanyShortData {
   history: HistoricalDataPoint[];
   stockPrice: number | null;
   shortValue: number | null;
+  regularMarketVolume: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyTwoWeekLow: number | null;
 }
 
 export interface HolderPositionHistory {

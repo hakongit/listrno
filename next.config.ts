@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
     // Optimize imports for large libraries
     optimizePackageImports: ["recharts", "lucide-react"],
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "unavatar.io",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

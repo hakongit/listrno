@@ -1,10 +1,18 @@
-// Fetch stock prices from Yahoo Finance using v8 chart API
-export async function fetchStockPrices(tickers: string[]): Promise<Map<string, number>> {
-  const prices = new Map<string, number>();
+// Stock quote data from Yahoo Finance
+export interface StockQuote {
+  price: number;
+  regularMarketVolume: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyTwoWeekLow: number | null;
+}
 
-  if (tickers.length === 0) return prices;
+// Fetch stock quotes from Yahoo Finance using v8 chart API
+export async function fetchStockQuotes(tickers: string[]): Promise<Map<string, StockQuote>> {
+  const quotes = new Map<string, StockQuote>();
 
-  // Fetch prices in parallel for all tickers
+  if (tickers.length === 0) return quotes;
+
+  // Fetch quotes in parallel for all tickers
   const fetchPromises = tickers.map(async (ticker) => {
     try {
       // Use v8 chart API which is more accessible
@@ -26,12 +34,19 @@ export async function fetchStockPrices(tickers: string[]): Promise<Map<string, n
       const result = data.chart?.result?.[0];
 
       if (result) {
-        // Get the previous close or latest price
         const meta = result.meta;
         const price = meta?.chartPreviousClose || meta?.previousClose || meta?.regularMarketPrice;
 
         if (price) {
-          return { ticker, price };
+          return {
+            ticker,
+            quote: {
+              price,
+              regularMarketVolume: meta?.regularMarketVolume || null,
+              fiftyTwoWeekHigh: meta?.fiftyTwoWeekHigh || null,
+              fiftyTwoWeekLow: meta?.fiftyTwoWeekLow || null,
+            } as StockQuote,
+          };
         }
       }
     } catch {
@@ -44,8 +59,20 @@ export async function fetchStockPrices(tickers: string[]): Promise<Map<string, n
 
   for (const result of results) {
     if (result) {
-      prices.set(result.ticker, result.price);
+      quotes.set(result.ticker, result.quote);
     }
+  }
+
+  return quotes;
+}
+
+// Legacy function for backwards compatibility
+export async function fetchStockPrices(tickers: string[]): Promise<Map<string, number>> {
+  const quotes = await fetchStockQuotes(tickers);
+  const prices = new Map<string, number>();
+
+  for (const [ticker, quote] of quotes) {
+    prices.set(ticker, quote.price);
   }
 
   return prices;

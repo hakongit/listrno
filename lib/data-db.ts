@@ -2,7 +2,7 @@ import { getDb } from "./db";
 import { ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint, PositionHolder, HolderCompanyPosition } from "./types";
 import { slugify } from "./utils";
 import { getTicker } from "./tickers";
-import { fetchStockPrices } from "./prices";
+import { fetchStockQuotes } from "./prices";
 import { unstable_cache } from "next/cache";
 
 interface DBPosition {
@@ -186,6 +186,9 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
       history,
       stockPrice: null,
       shortValue: null,
+      regularMarketVolume: null,
+      fiftyTwoWeekHigh: null,
+      fiftyTwoWeekLow: null,
     });
   }
 
@@ -209,20 +212,22 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
   // Sort holders by number of positions
   holders.sort((a, b) => b.totalPositions - a.totalPositions);
 
-  // Fetch stock prices
+  // Fetch stock quotes (prices + additional metrics)
   const tickers = companyDataList
     .map(c => c.ticker)
     .filter((t): t is string => t !== null);
 
   if (tickers.length > 0) {
-    const prices = await fetchStockPrices(tickers);
+    const quotes = await fetchStockQuotes(tickers);
 
     for (const company of companyDataList) {
-      if (company.ticker && prices.has(company.ticker)) {
-        company.stockPrice = prices.get(company.ticker) || null;
-        if (company.stockPrice) {
-          company.shortValue = company.totalShortShares * company.stockPrice;
-        }
+      if (company.ticker && quotes.has(company.ticker)) {
+        const quote = quotes.get(company.ticker)!;
+        company.stockPrice = quote.price;
+        company.shortValue = company.totalShortShares * quote.price;
+        company.regularMarketVolume = quote.regularMarketVolume;
+        company.fiftyTwoWeekHigh = quote.fiftyTwoWeekHigh;
+        company.fiftyTwoWeekLow = quote.fiftyTwoWeekLow;
       }
     }
 

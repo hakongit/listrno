@@ -1,5 +1,6 @@
 import { getDb } from "./db";
 import { InsiderTrade, InsiderTradeRow, InsiderDataSummary, InsiderTradeFilters, InsiderSummary } from "./insider-types";
+import { getInsiderProfile, getTwitterAvatarUrl } from "./insider-profiles";
 import { unstable_cache } from "next/cache";
 
 function rowToTrade(row: InsiderTradeRow): InsiderTrade {
@@ -171,14 +172,20 @@ export async function getInsiderBySlug(insiderSlug: string): Promise<InsiderSumm
   if (result.rows.length === 0) return null;
 
   const row = result.rows[0];
+  const slug = String(row.insider_slug);
+  const profile = getInsiderProfile(slug);
+
   return {
     name: String(row.insider_name),
-    slug: String(row.insider_slug),
+    slug,
     totalTrades: Number(row.total_trades),
     buyCount: Number(row.buy_count),
     sellCount: Number(row.sell_count),
     companies: String(row.companies || "").split(",").filter(Boolean),
     latestTrade: String(row.latest_trade),
+    twitterHandle: profile?.twitterHandle,
+    twitterAvatarUrl: profile?.twitterHandle ? getTwitterAvatarUrl(profile.twitterHandle) : undefined,
+    bio: profile?.bio,
   };
 }
 

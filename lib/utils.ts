@@ -41,3 +41,12 @@ export function formatNOK(value: number): string {
   }
   return Math.round(value).toString();
 }
+
+export function formatVolume(value: number): string {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}M`;
+  } else if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(0)}k`;
+  }
+  return value.toString();
+}

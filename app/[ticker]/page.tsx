@@ -1,9 +1,9 @@
 import { getShortData, getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
-import { formatPercent, formatNumber, formatDate, slugify, formatNOK } from "@/lib/utils";
+import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home, ArrowUpRight, ArrowDownRight, ExternalLink } from "lucide-react";
+import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home, ArrowUpRight, ArrowDownRight, ExternalLink, BarChart2, Activity } from "lucide-react";
 import type { Metadata } from "next";
 import { LazyShortChart } from "@/components/lazy-short-chart";
 
@@ -110,6 +110,22 @@ export default async function CompanyPage({ params }: PageProps) {
               <div className="flex items-center gap-2">
                 <Banknote className="w-4 h-4 text-blue-500" />
                 <span className="font-medium font-mono">{formatNOK(company.shortValue)}</span>
+              </div>
+            )}
+            {company.regularMarketVolume && (
+              <div className="flex items-center gap-2">
+                <BarChart2 className="w-4 h-4 text-purple-500" />
+                <span className="font-medium font-mono">{formatVolume(company.regularMarketVolume)}</span>
+                <span className="text-gray-500">volum</span>
+              </div>
+            )}
+            {company.fiftyTwoWeekLow !== null && company.fiftyTwoWeekHigh !== null && (
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-orange-500" />
+                <span className="font-medium font-mono">
+                  {company.fiftyTwoWeekLow.toFixed(2)} - {company.fiftyTwoWeekHigh.toFixed(2)}
+                </span>
+                <span className="text-gray-500">52-uke</span>
               </div>
             )}
             {hasHistory && (

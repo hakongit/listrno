@@ -50,6 +50,9 @@ export interface InsiderSummary {
   sellCount: number;
   companies: string[];
   latestTrade: string;
+  twitterHandle?: string;
+  twitterAvatarUrl?: string;
+  bio?: string;
 }
 
 export interface InsiderDataSummary {

@@ -2,6 +2,7 @@ import { getInsiderPerson, getInsiderTradesByPerson } from "@/lib/insider-data";
 import { formatDate, formatNumber, formatNOK } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -14,6 +15,7 @@ import {
   ChevronRight,
   Building2,
   Calendar,
+  Twitter,
 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -115,12 +117,43 @@ export default async function InsiderDetailPage({ params }: PageProps) {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Title */}
+        {/* Profile Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-1">{insider.name}</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
-            Innsidehandler i {insider.companies.length} selskap{insider.companies.length !== 1 ? "er" : ""}
-          </p>
+          <div className="flex items-start gap-4">
+            {insider.twitterAvatarUrl && (
+              <Image
+                src={insider.twitterAvatarUrl}
+                alt={insider.name}
+                width={64}
+                height={64}
+                className="rounded-full bg-gray-200 dark:bg-gray-800"
+              />
+            )}
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold mb-1">{insider.name}</h1>
+              <div className="flex items-center gap-3">
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Innsidehandler i {insider.companies.length} selskap{insider.companies.length !== 1 ? "er" : ""}
+                </p>
+                {insider.twitterHandle && (
+                  <a
+                    href={`https://x.com/${insider.twitterHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    <Twitter className="w-4 h-4" />
+                    @{insider.twitterHandle}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+          {insider.bio && (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              <p className="text-sm text-gray-700 dark:text-gray-300">{insider.bio}</p>
+            </div>
+          )}
         </div>
 
         {/* Stats */}
@@ -274,6 +307,13 @@ export default async function InsiderDetailPage({ params }: PageProps) {
             Euronext Oslo
           </a>
         </p>
+
+        {/* AI disclaimer - only show if bio is present */}
+        {insider.bio && (
+          <p className="mt-2 text-xs text-gray-400 text-center">
+            Biografier er AI-generert og kan inneholde feil.
+          </p>
+        )}
       </div>
     </div>
   );

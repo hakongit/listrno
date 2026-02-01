@@ -256,21 +256,50 @@ export default async function CompanyPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Insider Trades Section */}
-        {insiderTrades.length > 0 && (
+        {/* Company Info */}
+        {company.ticker && (
           <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
-            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950 flex items-center justify-between">
-              <h2 className="font-semibold text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Innsidehandel
-              </h2>
-              <Link
-                href="/innsidehandel"
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Se alle
-              </Link>
+            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+              <h2 className="font-semibold text-sm">Selskapsinfo</h2>
             </div>
+            <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <div className="text-gray-500 dark:text-gray-400">Ticker</div>
+                <div className="font-mono font-medium">{company.ticker.replace(".OL", "")}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 dark:text-gray-400">Markedsplass</div>
+                <div className="font-medium">Oslo Børs</div>
+              </div>
+              {company.stockPrice && (
+                <div>
+                  <div className="text-gray-500 dark:text-gray-400">Aksjekurs</div>
+                  <div className="font-mono font-medium">{company.stockPrice.toFixed(2)} NOK</div>
+                </div>
+              )}
+              <div>
+                <div className="text-gray-500 dark:text-gray-400">ISIN</div>
+                <div className="font-mono text-xs">{company.isin}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Insider Trades Section */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950 flex items-center justify-between">
+            <h2 className="font-semibold text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Innsidehandel
+            </h2>
+            <Link
+              href="/innsidehandel"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Se alle
+            </Link>
+          </div>
+          {insiderTrades.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -351,8 +380,13 @@ export default async function CompanyPage({ params }: PageProps) {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+              <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Ingen innsidehandler registrert</p>
+            </div>
+          )}
+        </div>
         </div>
       </div>
     );

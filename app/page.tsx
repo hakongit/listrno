@@ -157,9 +157,12 @@ export default async function DashboardPage() {
                     className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                   >
                     <span className="text-sm truncate mr-2">{company.issuerName}</span>
-                    <span className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
-                      {formatPercent(company.totalShortPct)}
-                    </span>
+                    <div className="text-right flex-shrink-0">
+                      <div className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
+                        {formatPercent(company.totalShortPct)}
+                      </div>
+                      <div className="text-xs text-gray-400">{formatDate(company.latestDate)}</div>
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -182,9 +185,12 @@ export default async function DashboardPage() {
                       className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                     >
                       <span className="text-sm truncate mr-2">{company.issuerName}</span>
-                      <span className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
-                        +{company.change.toFixed(2)}%
-                      </span>
+                      <div className="text-right flex-shrink-0">
+                        <div className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
+                          +{company.change.toFixed(2)}%
+                        </div>
+                        <div className="text-xs text-gray-400">{formatDate(company.latestDate)}</div>
+                      </div>
                     </Link>
                   ))}
                 </div>
@@ -286,13 +292,16 @@ export default async function DashboardPage() {
                         <TradeTypeIcon type={trade.tradeType} />
                         <span className="text-sm truncate">{trade.issuerName}</span>
                       </div>
-                      <span className={`font-mono text-sm font-medium whitespace-nowrap ${
-                        trade.tradeType === "buy"
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-red-600 dark:text-red-400"
-                      }`}>
-                        {formatNOK(trade.totalValue!)}
-                      </span>
+                      <div className="text-right flex-shrink-0">
+                        <div className={`font-mono text-sm font-medium whitespace-nowrap ${
+                          trade.tradeType === "buy"
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}>
+                          {formatNOK(trade.totalValue!)}
+                        </div>
+                        <div className="text-xs text-gray-400">{formatDate(trade.tradeDate)}</div>
+                      </div>
                     </Link>
                   ))}
                 </div>
@@ -321,11 +330,14 @@ export default async function DashboardPage() {
                           {insider.companies.slice(0, 2).join(", ")}
                         </div>
                       </div>
-                      <span className="text-sm flex-shrink-0 ml-2">
-                        <span className="text-green-600 dark:text-green-400">{insider.buyCount}</span>
-                        <span className="text-gray-400 mx-1">/</span>
-                        <span className="text-red-600 dark:text-red-400">{insider.sellCount}</span>
-                      </span>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <div className="text-sm">
+                          <span className="text-green-600 dark:text-green-400">{insider.buyCount}</span>
+                          <span className="text-gray-400 mx-1">/</span>
+                          <span className="text-red-600 dark:text-red-400">{insider.sellCount}</span>
+                        </div>
+                        <div className="text-xs text-gray-400">{formatDate(insider.latestTrade)}</div>
+                      </div>
                     </Link>
                   ))}
                 </div>

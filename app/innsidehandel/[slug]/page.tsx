@@ -1,5 +1,5 @@
 import { getInsiderPerson, getInsiderTradesByPerson } from "@/lib/insider-data";
-import { formatDate, formatNumber, formatNOK } from "@/lib/utils";
+import { formatDate, formatNumber, formatNOK, slugify } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -96,10 +96,11 @@ export default async function InsiderDetailPage({ params }: PageProps) {
     .reduce((sum, t) => sum + (t.totalValue || 0), 0);
 
   // Build map of company name -> slug for linking
+  // Use companySlug if available, otherwise generate from issuer name
   const companySlugMap = new Map<string, string>();
   for (const trade of trades) {
-    if (trade.companySlug && !companySlugMap.has(trade.issuerName)) {
-      companySlugMap.set(trade.issuerName, trade.companySlug);
+    if (!companySlugMap.has(trade.issuerName)) {
+      companySlugMap.set(trade.issuerName, trade.companySlug || slugify(trade.issuerName));
     }
   }
 
@@ -223,25 +224,15 @@ export default async function InsiderDetailPage({ params }: PageProps) {
           </div>
           <div className="p-4 flex flex-wrap gap-2">
             {insider.companies.map((company) => {
-              const slug = companySlugMap.get(company);
-              if (slug) {
-                return (
-                  <Link
-                    key={company}
-                    href={`/${slug}`}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                  >
-                    {company}
-                  </Link>
-                );
-              }
+              const slug = companySlugMap.get(company) || slugify(company);
               return (
-                <span
+                <Link
                   key={company}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                  href={`/${slug}`}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                 >
                   {company}
-                </span>
+                </Link>
               );
             })}
           </div>

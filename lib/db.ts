@@ -28,6 +28,10 @@ export async function resetDatabase() {
   await getDb().execute(`DROP TABLE IF EXISTS companies`);
 }
 
+export async function resetInsiderDatabase() {
+  await getDb().execute(`DROP TABLE IF EXISTS insider_trades`);
+}
+
 export async function initializeDatabase() {
   // Companies table
   await getDb().execute(`
@@ -69,4 +73,42 @@ export async function initializeDatabase() {
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_holder ON positions(holder_name)`);
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_date ON positions(position_date)`);
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_stock_prices_isin ON stock_prices(isin)`);
+}
+
+export async function initializeInsiderDatabase() {
+  // Insider trades table
+  await getDb().execute(`
+    CREATE TABLE IF NOT EXISTS insider_trades (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id TEXT UNIQUE NOT NULL,
+      isin TEXT,
+      issuer_name TEXT NOT NULL,
+      ticker TEXT,
+      insider_name TEXT NOT NULL,
+      insider_slug TEXT,
+      insider_role TEXT,
+      trade_type TEXT NOT NULL,
+      shares INTEGER,
+      price REAL,
+      total_value REAL,
+      currency TEXT DEFAULT 'NOK',
+      trade_date TEXT NOT NULL,
+      published_date TEXT NOT NULL,
+      shares_after INTEGER,
+      related_party TEXT,
+      source_url TEXT NOT NULL,
+      company_slug TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Create indexes for common queries
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_isin ON insider_trades(isin)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_date ON insider_trades(trade_date)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_published ON insider_trades(published_date)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_insider ON insider_trades(insider_name)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_insider_slug ON insider_trades(insider_slug)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_issuer ON insider_trades(issuer_name)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_company_slug ON insider_trades(company_slug)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_type ON insider_trades(trade_type)`);
 }

@@ -1,10 +1,11 @@
 import { getShortData, getCompanyBySlug } from "@/lib/data";
+import { getCompanyInsiderTrades } from "@/lib/insider-data";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home } from "lucide-react";
+import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home, ArrowUpRight, ArrowDownRight, ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
-import { ShortHistoryChart } from "@/components/short-history-chart";
+import { LazyShortChart } from "@/components/lazy-short-chart";
 
 export const revalidate = 3600; // Cache for 1 hour
 
@@ -33,7 +34,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CompanyPage({ params }: PageProps) {
   const { ticker } = await params;
-  const company = await getCompanyBySlug(ticker);
+  const [company, insiderTrades] = await Promise.all([
+    getCompanyBySlug(ticker),
+    getCompanyInsiderTrades(ticker),
+  ]);
 
   if (!company) {
     notFound();
@@ -76,6 +80,9 @@ export default async function CompanyPage({ params }: PageProps) {
           <nav className="flex items-center gap-4 text-sm flex-shrink-0">
             <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Oversikt
+            </Link>
+            <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Innsidehandel
             </Link>
             <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Om
@@ -132,7 +139,7 @@ export default async function CompanyPage({ params }: PageProps) {
             <span className="text-xs text-gray-500">{company.history.length} datapunkter</span>
           </div>
           <div className="p-3">
-            <ShortHistoryChart history={company.history} companyName={company.issuerName} />
+            <LazyShortChart history={company.history} companyName={company.issuerName} />
           </div>
         </div>
       )}
@@ -200,6 +207,104 @@ export default async function CompanyPage({ params }: PageProps) {
           </table>
         </div>
       </div>
+
+      {/* Insider Trades Section */}
+      {insiderTrades.length > 0 && (
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950 flex items-center justify-between">
+            <h2 className="font-semibold text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Innsidehandel
+            </h2>
+            <Link
+              href="/innsidehandel"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Se alle
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-800">
+                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                    Dato
+                  </th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                    Innsider
+                  </th>
+                  <th className="text-center px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                    Type
+                  </th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                    Aksjer
+                  </th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                    Kilde
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                {insiderTrades.slice(0, 5).map((trade) => (
+                  <tr
+                    key={trade.messageId}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  >
+                    <td className="px-3 py-2 text-gray-500">
+                      {formatDate(trade.tradeDate)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {trade.insiderName !== trade.issuerName ? (
+                        <Link
+                          href={`/innsidehandel/${trade.insiderSlug}`}
+                          className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline truncate block max-w-[150px]"
+                        >
+                          {trade.insiderName}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                      {trade.insiderRole && (
+                        <div className="text-xs text-gray-400">{trade.insiderRole}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {trade.tradeType === "buy" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          <ArrowUpRight className="w-3 h-3" />
+                          Kjøp
+                        </span>
+                      ) : trade.tradeType === "sell" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                          <ArrowDownRight className="w-3 h-3" />
+                          Salg
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                          Annet
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-gray-500 hidden sm:table-cell">
+                      {trade.shares ? formatNumber(trade.shares) : "-"}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <a
+                        href={trade.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

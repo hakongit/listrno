@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   experimental: {
     // Inline critical CSS to eliminate render-blocking
     optimizeCss: true,
+    // Optimize imports for large libraries
+    optimizePackageImports: ["recharts", "lucide-react"],
   },
 };
 

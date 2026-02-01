@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Building2, TrendingDown, Briefcase, Banknote, Home } from "lucide-react";
 import type { Metadata } from "next";
-import { HolderHistoryChart } from "@/components/holder-history-chart";
+import { LazyHolderChart } from "@/components/lazy-holder-chart";
 
 export const revalidate = 3600; // Cache for 1 hour
 
@@ -64,6 +64,9 @@ export default async function HolderPage({ params }: PageProps) {
             <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Oversikt
             </Link>
+            <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Innsidehandel
+            </Link>
             <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Om
             </Link>
@@ -102,7 +105,7 @@ export default async function HolderPage({ params }: PageProps) {
           <h2 className="font-semibold text-sm">Historikk per selskap</h2>
         </div>
         <div className="p-3">
-          <HolderHistoryChart companies={holder.companies} />
+          <LazyHolderChart companies={holder.companies} />
         </div>
       </div>
 

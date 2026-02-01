@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx tsx scripts/sync-data.ts --reset && next build",
+    "build": "npx tsx scripts/sync-data.ts --reset && npx tsx scripts/sync-insider-data.ts --reset --skip-details && next build",
     "start": "next start",
     "lint": "next lint",
-    "db:sync": "node --env-file=.env.local --import tsx scripts/sync-data.ts"
+    "db:sync": "node --env-file=.env.local --import tsx scripts/sync-data.ts",
+    "db:sync-insider": "node --env-file=.env.local --import tsx scripts/sync-insider-data.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",
@@ -15,6 +16,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",
     "next": "^15.1.0",
+    "pdfjs-dist": "^4.0.379",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.7.0",

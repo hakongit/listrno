@@ -1,5 +1,7 @@
 import { getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
+import { getTicker } from "@/lib/tickers";
+import { fetchStockQuotes, StockQuote } from "@/lib/prices";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -394,6 +396,23 @@ export default async function CompanyPage({ params }: PageProps) {
 
   // Company with only insider trades (no short positions)
   const companyName = insiderTrades[0].issuerName;
+  const isin = insiderTrades[0].isin;
+
+  // Try to get ticker from trades or look it up
+  let tickerSymbol = insiderTrades[0].ticker;
+  if (!tickerSymbol && isin) {
+    tickerSymbol = getTicker(isin, companyName);
+  }
+  if (!tickerSymbol) {
+    tickerSymbol = getTicker("", companyName);
+  }
+
+  // Fetch stock data if we have a ticker
+  let stockQuote: StockQuote | null = null;
+  if (tickerSymbol) {
+    const quotes = await fetchStockQuotes([tickerSymbol]);
+    stockQuote = quotes.get(tickerSymbol) || null;
+  }
 
   return (
     <div>
@@ -432,6 +451,50 @@ export default async function CompanyPage({ params }: PageProps) {
           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
             Ingen aktive shortposisjoner registrert
           </p>
+        </div>
+
+        {/* Company Info */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-4">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <h2 className="font-semibold text-sm">Selskapsinfo</h2>
+          </div>
+          <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            {tickerSymbol && (
+              <>
+                <div>
+                  <div className="text-gray-500 dark:text-gray-400">Ticker</div>
+                  <div className="font-mono font-medium">{tickerSymbol.replace(".OL", "")}</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 dark:text-gray-400">Markedsplass</div>
+                  <div className="font-medium">Oslo Børs</div>
+                </div>
+              </>
+            )}
+            {stockQuote?.price && (
+              <div>
+                <div className="text-gray-500 dark:text-gray-400">Aksjekurs</div>
+                <div className="font-mono font-medium">{stockQuote.price.toFixed(2)} NOK</div>
+              </div>
+            )}
+            {stockQuote?.fiftyTwoWeekLow && stockQuote?.fiftyTwoWeekHigh && (
+              <div>
+                <div className="text-gray-500 dark:text-gray-400">52-uke</div>
+                <div className="font-mono font-medium">{stockQuote.fiftyTwoWeekLow.toFixed(2)} - {stockQuote.fiftyTwoWeekHigh.toFixed(2)}</div>
+              </div>
+            )}
+            {isin && (
+              <div>
+                <div className="text-gray-500 dark:text-gray-400">ISIN</div>
+                <div className="font-mono text-xs">{isin}</div>
+              </div>
+            )}
+            {!tickerSymbol && !isin && (
+              <div className="col-span-2 text-gray-400">
+                Ingen markedsdata tilgjengelig
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Insider Trades Section */}

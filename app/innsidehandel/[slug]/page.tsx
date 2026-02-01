@@ -95,6 +95,14 @@ export default async function InsiderDetailPage({ params }: PageProps) {
     .filter(t => t.tradeType === "sell" && t.totalValue)
     .reduce((sum, t) => sum + (t.totalValue || 0), 0);
 
+  // Build map of company name -> slug for linking
+  const companySlugMap = new Map<string, string>();
+  for (const trade of trades) {
+    if (trade.companySlug && !companySlugMap.has(trade.issuerName)) {
+      companySlugMap.set(trade.issuerName, trade.companySlug);
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -214,14 +222,28 @@ export default async function InsiderDetailPage({ params }: PageProps) {
             <h2 className="font-semibold">Selskaper</h2>
           </div>
           <div className="p-4 flex flex-wrap gap-2">
-            {insider.companies.map((company) => (
-              <span
-                key={company}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-              >
-                {company}
-              </span>
-            ))}
+            {insider.companies.map((company) => {
+              const slug = companySlugMap.get(company);
+              if (slug) {
+                return (
+                  <Link
+                    key={company}
+                    href={`/${slug}`}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                  >
+                    {company}
+                  </Link>
+                );
+              }
+              return (
+                <span
+                  key={company}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                >
+                  {company}
+                </span>
+              );
+            })}
           </div>
         </div>
 

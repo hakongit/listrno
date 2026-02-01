@@ -276,7 +276,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                     key={trade.messageId}
                     className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                   >
-                    <td className="px-2 sm:px-4 py-2 text-sm whitespace-nowrap">
+                    <td className="px-2 sm:px-4 py-2 text-sm">
                       {formatDate(trade.tradeDate)}
                     </td>
                     <td className="px-2 sm:px-4 py-2">
@@ -285,19 +285,19 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                         {trade.companySlug ? (
                           <Link
                             href={`/${trade.companySlug}`}
-                            className="font-medium truncate max-w-[100px] sm:max-w-[200px] hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-sm"
+                            className="font-medium truncate max-w-[120px] sm:max-w-[200px] hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-sm"
                           >
                             {trade.issuerName}
                           </Link>
                         ) : (
-                          <span className="font-medium truncate max-w-[100px] sm:max-w-[200px] text-sm">
+                          <span className="font-medium truncate max-w-[120px] sm:max-w-[200px] text-sm">
                             {trade.issuerName}
                           </span>
                         )}
                       </div>
-                      {trade.insiderRole && (
-                        <div className="text-xs text-gray-400 ml-5">{trade.insiderRole}</div>
-                      )}
+                      <div className="text-xs text-gray-500 ml-5 font-mono">
+                        {trade.shares ? formatNumber(trade.shares) : "?"} @ {trade.price ? trade.price.toFixed(2) : "?"}
+                      </div>
                     </td>
                     <td className="px-2 sm:px-4 py-2 text-center hidden sm:table-cell">
                       <TradeTypeBadge type={trade.tradeType} />
@@ -309,7 +309,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                       {trade.price ? `${trade.currency} ${trade.price.toFixed(2)}` : "-"}
                     </td>
                     <td className="px-2 sm:px-4 py-2 text-right font-mono text-sm whitespace-nowrap">
-                      {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
+                      {trade.totalValue ? `${trade.currency} ${formatNOK(trade.totalValue)}` : "-"}
                     </td>
                     <td className="px-2 sm:px-4 py-2 text-right hidden sm:table-cell">
                       <a

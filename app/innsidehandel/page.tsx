@@ -214,9 +214,18 @@ export default async function InsiderTradesPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <TradeTypeIcon type={trade.tradeType} />
-                        <span className="font-medium truncate max-w-[200px]">
-                          {trade.issuerName}
-                        </span>
+                        {trade.companySlug ? (
+                          <Link
+                            href={`/${trade.companySlug}`}
+                            className="font-medium truncate max-w-[200px] hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                          >
+                            {trade.issuerName}
+                          </Link>
+                        ) : (
+                          <span className="font-medium truncate max-w-[200px]">
+                            {trade.issuerName}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">

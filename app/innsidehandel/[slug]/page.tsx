@@ -16,6 +16,7 @@ import {
   Building2,
   Calendar,
   Twitter,
+  Banknote,
 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -85,6 +86,14 @@ export default async function InsiderDetailPage({ params }: PageProps) {
   if (!insider) {
     notFound();
   }
+
+  // Calculate total buy and sell values
+  const totalBuyValue = trades
+    .filter(t => t.tradeType === "buy" && t.totalValue)
+    .reduce((sum, t) => sum + (t.totalValue || 0), 0);
+  const totalSellValue = trades
+    .filter(t => t.tradeType === "sell" && t.totalValue)
+    .reduce((sum, t) => sum + (t.totalValue || 0), 0);
 
   return (
     <div>
@@ -157,7 +166,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
             <div className="text-2xl font-bold">{insider.totalTrades}</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Handler</div>
@@ -183,6 +192,24 @@ export default async function InsiderDetailPage({ params }: PageProps) {
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Selskaper</div>
           </div>
+          {totalBuyValue > 0 && (
+            <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4">
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400 flex items-center gap-2">
+                <Banknote className="w-5 h-5" />
+                {formatNOK(totalBuyValue)}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Kjøpt for</div>
+            </div>
+          )}
+          {totalSellValue > 0 && (
+            <div className="bg-red-50 dark:bg-red-950 rounded-lg p-4">
+              <div className="text-2xl font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                <Banknote className="w-5 h-5" />
+                {formatNOK(totalSellValue)}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Solgt for</div>
+            </div>
+          )}
         </div>
 
         {/* Companies */}
@@ -226,7 +253,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                   <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                     Pris
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
+                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                     Verdi
                   </th>
                   <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -275,7 +302,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                     <td className="px-4 py-3 text-right font-mono text-sm hidden lg:table-cell">
                       {trade.price ? `${trade.currency} ${trade.price.toFixed(2)}` : "-"}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm hidden lg:table-cell">
+                    <td className="px-4 py-3 text-right font-mono text-sm">
                       {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
                     </td>
                     <td className="px-4 py-3 text-right">

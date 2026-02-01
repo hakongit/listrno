@@ -247,25 +247,25 @@ export default async function InsiderDetailPage({ params }: PageProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-2 sm:px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400">
                     Dato
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-2 sm:px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400">
                     Selskap
                   </th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-center px-2 sm:px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                     Type
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                  <th className="text-right px-2 sm:px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">
                     Aksjer
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
+                  <th className="text-right px-2 sm:px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                     Pris
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-right px-2 sm:px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400">
                     Verdi
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                  <th className="text-right px-2 sm:px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                     Kilde
                   </th>
                 </tr>
@@ -276,45 +276,42 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                     key={trade.messageId}
                     className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                   >
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3 h-3 text-gray-400" />
-                        {formatDate(trade.tradeDate)}
-                      </div>
+                    <td className="px-2 sm:px-4 py-2 text-sm whitespace-nowrap">
+                      {formatDate(trade.tradeDate)}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    <td className="px-2 sm:px-4 py-2">
+                      <div className="flex items-center gap-1">
                         <TradeTypeIcon type={trade.tradeType} />
                         {trade.companySlug ? (
                           <Link
                             href={`/${trade.companySlug}`}
-                            className="font-medium truncate max-w-[200px] hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                            className="font-medium truncate max-w-[100px] sm:max-w-[200px] hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-sm"
                           >
                             {trade.issuerName}
                           </Link>
                         ) : (
-                          <span className="font-medium truncate max-w-[200px]">
+                          <span className="font-medium truncate max-w-[100px] sm:max-w-[200px] text-sm">
                             {trade.issuerName}
                           </span>
                         )}
                       </div>
                       {trade.insiderRole && (
-                        <div className="text-xs text-gray-400 ml-6">{trade.insiderRole}</div>
+                        <div className="text-xs text-gray-400 ml-5">{trade.insiderRole}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 sm:px-4 py-2 text-center hidden sm:table-cell">
                       <TradeTypeBadge type={trade.tradeType} />
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm hidden md:table-cell">
+                    <td className="px-2 sm:px-4 py-2 text-right font-mono text-sm hidden md:table-cell">
                       {trade.shares ? formatNumber(trade.shares) : "-"}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm hidden lg:table-cell">
+                    <td className="px-2 sm:px-4 py-2 text-right font-mono text-sm hidden lg:table-cell">
                       {trade.price ? `${trade.currency} ${trade.price.toFixed(2)}` : "-"}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm">
+                    <td className="px-2 sm:px-4 py-2 text-right font-mono text-sm whitespace-nowrap">
                       {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
                     </td>
-                    <td className="px-4 py-3 text-right hidden sm:table-cell">
+                    <td className="px-2 sm:px-4 py-2 text-right hidden sm:table-cell">
                       <a
                         href={trade.sourceUrl}
                         target="_blank"

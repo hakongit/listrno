@@ -166,7 +166,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
             <div className="text-2xl font-bold">{insider.totalTrades}</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Handler</div>
@@ -176,14 +176,18 @@ export default async function InsiderDetailPage({ params }: PageProps) {
               <TrendingUp className="w-5 h-5" />
               {insider.buyCount}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Kjøp</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Kjøp{totalBuyValue > 0 && <span className="ml-1">· {formatNOK(totalBuyValue)}</span>}
+            </div>
           </div>
           <div className="bg-red-50 dark:bg-red-950 rounded-lg p-4">
             <div className="text-2xl font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
               <TrendingDown className="w-5 h-5" />
               {insider.sellCount}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Salg</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Salg{totalSellValue > 0 && <span className="ml-1">· {formatNOK(totalSellValue)}</span>}
+            </div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
             <div className="text-2xl font-bold flex items-center gap-2">
@@ -192,24 +196,6 @@ export default async function InsiderDetailPage({ params }: PageProps) {
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Selskaper</div>
           </div>
-          {totalBuyValue > 0 && (
-            <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400 flex items-center gap-2">
-                <Banknote className="w-5 h-5" />
-                {formatNOK(totalBuyValue)}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Kjøpt for</div>
-            </div>
-          )}
-          {totalSellValue > 0 && (
-            <div className="bg-red-50 dark:bg-red-950 rounded-lg p-4">
-              <div className="text-2xl font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
-                <Banknote className="w-5 h-5" />
-                {formatNOK(totalSellValue)}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Solgt for</div>
-            </div>
-          )}
         </div>
 
         {/* Companies */}
@@ -256,7 +242,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                   <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                     Verdi
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                     Kilde
                   </th>
                 </tr>
@@ -305,7 +291,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                     <td className="px-4 py-3 text-right font-mono text-sm">
                       {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right hidden sm:table-cell">
                       <a
                         href={trade.sourceUrl}
                         target="_blank"

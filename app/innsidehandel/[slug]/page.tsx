@@ -125,10 +125,10 @@ export default async function InsiderDetailPage({ params }: PageProps) {
           </div>
           <nav className="flex items-center gap-4 text-sm flex-shrink-0">
             <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Oversikt
+              Dashboard
             </Link>
-            <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Innsidehandel
+            <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Shortposisjoner
             </Link>
           </nav>
         </div>

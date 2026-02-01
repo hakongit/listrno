@@ -89,10 +89,10 @@ export default async function InsiderTradesPage() {
           </div>
           <nav className="flex items-center gap-4 text-sm flex-shrink-0">
             <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Oversikt
+              Dashboard
             </Link>
-            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Om
+            <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Shortposisjoner
             </Link>
           </nav>
         </div>

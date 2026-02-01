@@ -165,8 +165,18 @@ export default async function InsiderDetailPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Stats - compact on mobile, grid on desktop */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mb-6 md:hidden">
+          <span><strong>{insider.totalTrades}</strong> handler</span>
+          <span className="text-green-600 dark:text-green-400">
+            <strong>{insider.buyCount}</strong> kjøp{totalBuyValue > 0 && ` · ${formatNOK(totalBuyValue)}`}
+          </span>
+          <span className="text-red-600 dark:text-red-400">
+            <strong>{insider.sellCount}</strong> salg{totalSellValue > 0 && ` · ${formatNOK(totalSellValue)}`}
+          </span>
+          <span><strong>{insider.companies.length}</strong> selskap{insider.companies.length !== 1 ? "er" : ""}</span>
+        </div>
+        <div className="hidden md:grid md:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
             <div className="text-2xl font-bold">{insider.totalTrades}</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Handler</div>

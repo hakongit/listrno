@@ -1,9 +1,9 @@
-import { getShortData, getCompanyBySlug } from "@/lib/data";
+import { getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home, ArrowUpRight, ArrowDownRight, ExternalLink, BarChart2, Activity } from "lucide-react";
+import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home, ArrowUpRight, ArrowDownRight, ExternalLink, BarChart2, Activity, Building2 } from "lucide-react";
 import type { Metadata } from "next";
 import { LazyShortChart } from "@/components/lazy-short-chart";
 
@@ -15,20 +15,37 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { ticker } = await params;
-  const company = await getCompanyBySlug(ticker);
+  const [company, insiderTrades] = await Promise.all([
+    getCompanyBySlug(ticker),
+    getCompanyInsiderTrades(ticker),
+  ]);
 
-  if (!company) {
-    return { title: "Ikke funnet - Listr" };
+  // Company with short positions
+  if (company) {
+    return {
+      title: `${company.issuerName} - Shortposisjoner | Listr`,
+      description: `Se alle shortposisjoner i ${company.issuerName}. Total short: ${formatPercent(company.totalShortPct)}. ${company.positions.length} aktive posisjoner.`,
+      openGraph: {
+        title: `${company.issuerName} - Shortposisjoner`,
+        description: `Total short: ${formatPercent(company.totalShortPct)} fra ${company.positions.length} aktører`,
+      },
+    };
   }
 
-  return {
-    title: `${company.issuerName} - Shortposisjoner | Listr`,
-    description: `Se alle shortposisjoner i ${company.issuerName}. Total short: ${formatPercent(company.totalShortPct)}. ${company.positions.length} aktive posisjoner.`,
-    openGraph: {
-      title: `${company.issuerName} - Shortposisjoner`,
-      description: `Total short: ${formatPercent(company.totalShortPct)} fra ${company.positions.length} aktører`,
-    },
-  };
+  // Company with only insider trades
+  if (insiderTrades.length > 0) {
+    const companyName = insiderTrades[0].issuerName;
+    return {
+      title: `${companyName} - Innsidehandel | Listr`,
+      description: `Se innsidehandler i ${companyName}. ${insiderTrades.length} handler registrert.`,
+      openGraph: {
+        title: `${companyName} - Innsidehandel`,
+        description: `${insiderTrades.length} innsidehandler registrert`,
+      },
+    };
+  }
+
+  return { title: "Ikke funnet - Listr" };
 }
 
 
@@ -39,16 +56,298 @@ export default async function CompanyPage({ params }: PageProps) {
     getCompanyInsiderTrades(ticker),
   ]);
 
-  if (!company) {
+  // No data at all - 404
+  if (!company && insiderTrades.length === 0) {
     notFound();
   }
 
-  const history = company.history;
-  const hasHistory = history.length >= 2;
-  const firstPoint = history[0];
-  const lastPoint = history[history.length - 1];
-  const change = hasHistory ? lastPoint.totalShortPct - firstPoint.totalShortPct : 0;
-  const changePositive = change > 0;
+  // Company with short positions data
+  if (company) {
+    const history = company.history;
+    const hasHistory = history.length >= 2;
+    const firstPoint = history[0];
+    const lastPoint = history[history.length - 1];
+    const change = hasHistory ? lastPoint.totalShortPct - firstPoint.totalShortPct : 0;
+    const changePositive = change > 0;
+
+    return (
+      <div>
+        {/* Header */}
+        <header className="border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
+            <Link href="/" className="text-lg font-bold tracking-tight flex-shrink-0">
+              Listr<span className="text-gray-400">.no</span>
+            </Link>
+            <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
+              <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
+                <Home className="w-4 h-4" />
+              </Link>
+              <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
+              <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <span className="font-medium truncate">{company.issuerName}</span>
+              <span
+                className={`font-mono font-bold ml-2 ${
+                  company.totalShortPct >= 5
+                    ? "text-red-600 dark:text-red-400"
+                    : company.totalShortPct >= 2
+                    ? "text-orange-600 dark:text-orange-400"
+                    : "text-gray-900 dark:text-gray-100"
+                }`}
+              >
+                {formatPercent(company.totalShortPct)}
+              </span>
+            </div>
+            <nav className="flex items-center gap-4 text-sm flex-shrink-0">
+              <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+                Oversikt
+              </Link>
+              <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+                Innsidehandel
+              </Link>
+              <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+                Om
+              </Link>
+            </nav>
+          </div>
+        </header>
+
+        <div className="max-w-6xl mx-auto px-4 py-4">
+        {/* Compact Stats */}
+        <div className="flex flex-wrap gap-4 text-sm mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-gray-400" />
+                <span className="font-medium">{company.positions.length}</span>
+                <span className="text-gray-500">aktører</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <TrendingDown className="w-4 h-4 text-red-500" />
+                <span className="font-medium font-mono">
+                  {formatNumber(company.positions.reduce((sum, p) => sum + p.positionShares, 0))}
+                </span>
+                <span className="text-gray-500">aksjer</span>
+              </div>
+              {company.shortValue && (
+                <div className="flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-blue-500" />
+                  <span className="font-medium font-mono">{formatNOK(company.shortValue)}</span>
+                </div>
+              )}
+              {company.regularMarketVolume && (
+                <div className="flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4 text-purple-500" />
+                  <span className="font-medium font-mono">{formatVolume(company.regularMarketVolume)}</span>
+                  <span className="text-gray-500">volum</span>
+                </div>
+              )}
+              {company.fiftyTwoWeekLow !== null && company.fiftyTwoWeekHigh !== null && (
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-orange-500" />
+                  <span className="font-medium font-mono">
+                    {company.fiftyTwoWeekLow.toFixed(2)} - {company.fiftyTwoWeekHigh.toFixed(2)}
+                  </span>
+                  <span className="text-gray-500">52-uke</span>
+                </div>
+              )}
+              {hasHistory && (
+                <div className="flex items-center gap-2">
+                  {changePositive ? (
+                    <TrendingUp className="w-4 h-4 text-red-500" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-green-500" />
+                  )}
+                  <span className={`font-medium font-mono ${changePositive ? "text-red-600" : "text-green-600"}`}>
+                    {changePositive ? "+" : ""}{change.toFixed(2)}%
+                  </span>
+                  <span className="text-gray-500">totalt</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <span className="text-gray-500">{formatDate(company.latestDate)}</span>
+              </div>
+            </div>
+
+        {/* Historical Chart */}
+        {company.history.length > 1 && (
+          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-4">
+            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
+              <h2 className="font-semibold text-sm">Historikk</h2>
+              <span className="text-xs text-gray-500">{company.history.length} datapunkter</span>
+            </div>
+            <div className="p-3">
+              <LazyShortChart history={company.history} companyName={company.issuerName} />
+            </div>
+          </div>
+        )}
+
+        {/* Positions table */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <h2 className="font-semibold text-sm">Posisjoner</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-800">
+                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                    Posisjonsholder
+                  </th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                    Posisjon
+                  </th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                    Aksjer
+                  </th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
+                    Verdi
+                  </th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                    Dato
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                {company.positions.map((position, index) => (
+                  <tr
+                    key={`${position.positionHolder}-${index}`}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  >
+                    <td className="px-3 py-2">
+                      <Link
+                        href={`/aktor/${slugify(position.positionHolder)}`}
+                        className="flex items-center gap-2 hover:underline"
+                      >
+                        <Briefcase className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                        <span className="font-medium truncate">{position.positionHolder}</span>
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <span className="font-mono font-medium text-red-600 dark:text-red-400">
+                        {formatPercent(position.positionPct)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-500 font-mono hidden sm:table-cell">
+                      {formatNumber(position.positionShares)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-500 font-mono hidden lg:table-cell">
+                      {company.stockPrice
+                        ? formatNOK(position.positionShares * company.stockPrice)
+                        : "-"}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-500">
+                      {formatDate(position.positionDate)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Insider Trades Section */}
+        {insiderTrades.length > 0 && (
+          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
+            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950 flex items-center justify-between">
+              <h2 className="font-semibold text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Innsidehandel
+              </h2>
+              <Link
+                href="/innsidehandel"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Se alle
+              </Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-800">
+                    <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                      Dato
+                    </th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                      Innsider
+                    </th>
+                    <th className="text-center px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                      Type
+                    </th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                      Aksjer
+                    </th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                      Kilde
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {insiderTrades.slice(0, 5).map((trade) => (
+                    <tr
+                      key={trade.messageId}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                    >
+                      <td className="px-3 py-2 text-gray-500">
+                        {formatDate(trade.tradeDate)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {trade.insiderName !== trade.issuerName ? (
+                          <Link
+                            href={`/innsidehandel/${trade.insiderSlug}`}
+                            className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline truncate block max-w-[150px]"
+                          >
+                            {trade.insiderName}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                        {trade.insiderRole && (
+                          <div className="text-xs text-gray-400">{trade.insiderRole}</div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {trade.tradeType === "buy" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            <ArrowUpRight className="w-3 h-3" />
+                            Kjøp
+                          </span>
+                        ) : trade.tradeType === "sell" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                            <ArrowDownRight className="w-3 h-3" />
+                            Salg
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                            Annet
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-500 hidden sm:table-cell">
+                        {trade.shares ? formatNumber(trade.shares) : "-"}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <a
+                          href={trade.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        </div>
+      </div>
+    );
+  }
+
+  // Company with only insider trades (no short positions)
+  const companyName = insiderTrades[0].issuerName;
 
   return (
     <div>
@@ -63,19 +362,8 @@ export default async function CompanyPage({ params }: PageProps) {
               <Home className="w-4 h-4" />
             </Link>
             <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
-            <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
-            <span className="font-medium truncate">{company.issuerName}</span>
-            <span
-              className={`font-mono font-bold ml-2 ${
-                company.totalShortPct >= 5
-                  ? "text-red-600 dark:text-red-400"
-                  : company.totalShortPct >= 2
-                  ? "text-orange-600 dark:text-orange-400"
-                  : "text-gray-900 dark:text-gray-100"
-              }`}
-            >
-              {formatPercent(company.totalShortPct)}
-            </span>
+            <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <span className="font-medium truncate">{companyName}</span>
           </div>
           <nav className="flex items-center gap-4 text-sm flex-shrink-0">
             <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
@@ -92,145 +380,20 @@ export default async function CompanyPage({ params }: PageProps) {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-4">
-      {/* Compact Stats */}
-      <div className="flex flex-wrap gap-4 text-sm mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-gray-400" />
-              <span className="font-medium">{company.positions.length}</span>
-              <span className="text-gray-500">aktører</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <TrendingDown className="w-4 h-4 text-red-500" />
-              <span className="font-medium font-mono">
-                {formatNumber(company.positions.reduce((sum, p) => sum + p.positionShares, 0))}
-              </span>
-              <span className="text-gray-500">aksjer</span>
-            </div>
-            {company.shortValue && (
-              <div className="flex items-center gap-2">
-                <Banknote className="w-4 h-4 text-blue-500" />
-                <span className="font-medium font-mono">{formatNOK(company.shortValue)}</span>
-              </div>
-            )}
-            {company.regularMarketVolume && (
-              <div className="flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-purple-500" />
-                <span className="font-medium font-mono">{formatVolume(company.regularMarketVolume)}</span>
-                <span className="text-gray-500">volum</span>
-              </div>
-            )}
-            {company.fiftyTwoWeekLow !== null && company.fiftyTwoWeekHigh !== null && (
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-orange-500" />
-                <span className="font-medium font-mono">
-                  {company.fiftyTwoWeekLow.toFixed(2)} - {company.fiftyTwoWeekHigh.toFixed(2)}
-                </span>
-                <span className="text-gray-500">52-uke</span>
-              </div>
-            )}
-            {hasHistory && (
-              <div className="flex items-center gap-2">
-                {changePositive ? (
-                  <TrendingUp className="w-4 h-4 text-red-500" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-green-500" />
-                )}
-                <span className={`font-medium font-mono ${changePositive ? "text-red-600" : "text-green-600"}`}>
-                  {changePositive ? "+" : ""}{change.toFixed(2)}%
-                </span>
-                <span className="text-gray-500">totalt</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-500">{formatDate(company.latestDate)}</span>
-            </div>
-          </div>
-
-      {/* Historical Chart */}
-      {company.history.length > 1 && (
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-4">
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
-            <h2 className="font-semibold text-sm">Historikk</h2>
-            <span className="text-xs text-gray-500">{company.history.length} datapunkter</span>
-          </div>
-          <div className="p-3">
-            <LazyShortChart history={company.history} companyName={company.issuerName} />
-          </div>
+        {/* Company title */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">{companyName}</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+            Ingen aktive shortposisjoner registrert
+          </p>
         </div>
-      )}
 
-      {/* Positions table */}
-      <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-          <h2 className="font-semibold text-sm">Posisjoner</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-800">
-                <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                  Posisjonsholder
-                </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                  Posisjon
-                </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
-                  Aksjer
-                </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
-                  Verdi
-                </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                  Dato
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {company.positions.map((position, index) => (
-                <tr
-                  key={`${position.positionHolder}-${index}`}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                >
-                  <td className="px-3 py-2">
-                    <Link
-                      href={`/aktor/${slugify(position.positionHolder)}`}
-                      className="flex items-center gap-2 hover:underline"
-                    >
-                      <Briefcase className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                      <span className="font-medium truncate">{position.positionHolder}</span>
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <span className="font-mono font-medium text-red-600 dark:text-red-400">
-                      {formatPercent(position.positionPct)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right text-gray-500 font-mono hidden sm:table-cell">
-                    {formatNumber(position.positionShares)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-gray-500 font-mono hidden lg:table-cell">
-                    {company.stockPrice
-                      ? formatNOK(position.positionShares * company.stockPrice)
-                      : "-"}
-                  </td>
-                  <td className="px-3 py-2 text-right text-gray-500">
-                    {formatDate(position.positionDate)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Insider Trades Section */}
-      {insiderTrades.length > 0 && (
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
+        {/* Insider Trades Section */}
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
           <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950 flex items-center justify-between">
             <h2 className="font-semibold text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Innsidehandel
+              Innsidehandel ({insiderTrades.length} handler)
             </h2>
             <Link
               href="/innsidehandel"
@@ -252,16 +415,16 @@ export default async function CompanyPage({ params }: PageProps) {
                   <th className="text-center px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
                     Type
                   </th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
-                    Aksjer
-                  </th>
                   <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                    Verdi
+                  </th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                     Kilde
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {insiderTrades.slice(0, 5).map((trade) => (
+                {insiderTrades.map((trade) => (
                   <tr
                     key={trade.messageId}
                     className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
@@ -301,10 +464,10 @@ export default async function CompanyPage({ params }: PageProps) {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-gray-500 hidden sm:table-cell">
-                      {trade.shares ? formatNumber(trade.shares) : "-"}
+                    <td className="px-3 py-2 text-right font-mono text-sm">
+                      {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right hidden sm:table-cell">
                       <a
                         href={trade.sourceUrl}
                         target="_blank"
@@ -320,7 +483,6 @@ export default async function CompanyPage({ params }: PageProps) {
             </table>
           </div>
         </div>
-      )}
       </div>
     </div>
   );

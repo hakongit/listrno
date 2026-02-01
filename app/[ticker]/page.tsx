@@ -85,8 +85,13 @@ export default async function CompanyPage({ params }: PageProps) {
               <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
               <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
               <span className="font-medium truncate">{company.issuerName}</span>
+              {company.ticker && (
+                <span className="text-xs text-gray-500 font-mono">
+                  {company.ticker.replace(".OL", "")}
+                </span>
+              )}
               <span
-                className={`font-mono font-bold ml-2 ${
+                className={`font-mono font-bold ${
                   company.totalShortPct >= 5
                     ? "text-red-600 dark:text-red-400"
                     : company.totalShortPct >= 2
@@ -165,6 +170,13 @@ export default async function CompanyPage({ params }: PageProps) {
                 <Calendar className="w-4 h-4 text-gray-400" />
                 <span className="text-gray-500">{formatDate(company.latestDate)}</span>
               </div>
+              {company.ticker && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-gray-400" />
+                  <span className="font-mono text-gray-500">{company.ticker.replace(".OL", "")}</span>
+                  <span className="text-gray-400">Oslo Børs</span>
+                </div>
+              )}
             </div>
 
         {/* Historical Chart */}

@@ -57,6 +57,8 @@ export default function AdminDashboardClient({
   const [domains, setDomains] = useState(initialDomains);
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState("");
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [importing, setImporting] = useState<string | null>(null);
   const [showDomainForm, setShowDomainForm] = useState(false);
   const [newDomain, setNewDomain] = useState("");
@@ -70,7 +72,24 @@ export default function AdminDashboardClient({
 
   async function fetchEmails() {
     setLoadingEmails(true);
+    setLoadingSeconds(0);
+    setLoadingStatus("Kobler til Gmail POP3...");
     setError("");
+
+    // Start timer
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setLoadingSeconds(elapsed);
+      if (elapsed > 2 && elapsed <= 5) {
+        setLoadingStatus("Henter meldingsliste...");
+      } else if (elapsed > 5 && elapsed <= 15) {
+        setLoadingStatus("Laster ned e-poster...");
+      } else if (elapsed > 15) {
+        setLoadingStatus("Behandler innhold (dette kan ta litt tid)...");
+      }
+    }, 1000);
+
     try {
       const response = await fetch("/api/admin/gmail/emails");
       if (!response.ok) {
@@ -79,10 +98,13 @@ export default function AdminDashboardClient({
       }
       const data = await response.json();
       setEmails(data.emails || []);
+      setLoadingStatus("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch emails");
     } finally {
+      clearInterval(timer);
       setLoadingEmails(false);
+      setLoadingSeconds(0);
     }
   }
 
@@ -405,11 +427,22 @@ export default function AdminDashboardClient({
                 GMAIL_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
               </code>
             </div>
+          ) : loadingEmails ? (
+            <div className="p-8 text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+              <p className="text-gray-700 dark:text-gray-300 font-medium">{loadingStatus}</p>
+              <p className="text-sm text-gray-500 mt-2">
+                {loadingSeconds > 0 && `${loadingSeconds}s`}
+              </p>
+              {loadingSeconds > 10 && (
+                <p className="text-xs text-gray-400 mt-2">
+                  POP3 kan være tregt. Vennligst vent...
+                </p>
+              )}
+            </div>
           ) : emails.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
-              {loadingEmails
-                ? "Henter e-poster..."
-                : "Klikk 'Hent e-poster' for å laste inn"}
+              Klikk &apos;Hent e-poster&apos; for å laste inn
             </div>
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-800">

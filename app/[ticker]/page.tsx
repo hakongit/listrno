@@ -1,6 +1,6 @@
 import { getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
-import { getCachedPublicAnalystReports } from "@/lib/analyst-db";
+import { getCachedPublicAnalystReports, initializeAnalystDatabase } from "@/lib/analyst-db";
 import { getTicker } from "@/lib/tickers";
 import { fetchStockQuotes, StockQuote } from "@/lib/prices";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume } from "@/lib/utils";
@@ -64,7 +64,8 @@ export default async function CompanyPage({ params }: PageProps) {
     notFound();
   }
 
-  // Get analyst reports for this company (by name since we may not have ISIN)
+  // Ensure analyst tables exist and get reports for this company
+  await initializeAnalystDatabase();
   const companyName = company?.issuerName || insiderTrades[0]?.issuerName;
   const companyIsin = company?.isin || insiderTrades[0]?.isin;
   const analystReports = await getCachedPublicAnalystReports({

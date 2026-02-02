@@ -1,4 +1,4 @@
-import { getCachedPublicAnalystReports, getCachedAnalystReportCount } from "@/lib/analyst-db";
+import { getCachedPublicAnalystReports, getCachedAnalystReportCount, initializeAnalystDatabase } from "@/lib/analyst-db";
 import { formatDate, formatNumber } from "@/lib/utils";
 import Link from "next/link";
 import {
@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 
-export const revalidate = 300; // 5 minutes
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Analytikerrapporter - Listr",
@@ -65,6 +65,9 @@ function formatTargetPrice(price?: number, currency?: string): string {
 }
 
 export default async function AnalystReportsPage() {
+  // Ensure tables exist
+  await initializeAnalystDatabase();
+
   const [reports, totalCount] = await Promise.all([
     getCachedPublicAnalystReports({ limit: 50 }),
     getCachedAnalystReportCount(),

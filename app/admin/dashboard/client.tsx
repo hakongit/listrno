@@ -58,7 +58,11 @@ export default function AdminDashboardClient({
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
-  const [loadingSeconds, setLoadingSeconds] = useState(0);
+  const [progressDetails, setProgressDetails] = useState<{
+    current: number;
+    total: number;
+    email?: { from: string; subject: string; date: string };
+  } | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
   const [showDomainForm, setShowDomainForm] = useState(false);
   const [newDomain, setNewDomain] = useState("");
@@ -72,39 +76,56 @@ export default function AdminDashboardClient({
 
   async function fetchEmails() {
     setLoadingEmails(true);
-    setLoadingSeconds(0);
-    setLoadingStatus("Kobler til Gmail POP3...");
+    setLoadingStatus("Starter...");
+    setProgressDetails(null);
     setError("");
 
-    // Start timer
-    const startTime = Date.now();
-    const timer = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      setLoadingSeconds(elapsed);
-      if (elapsed > 2 && elapsed <= 5) {
-        setLoadingStatus("Henter meldingsliste...");
-      } else if (elapsed > 5 && elapsed <= 15) {
-        setLoadingStatus("Laster ned e-poster...");
-      } else if (elapsed > 15) {
-        setLoadingStatus("Behandler innhold (dette kan ta litt tid)...");
-      }
-    }, 1000);
-
     try {
-      const response = await fetch("/api/admin/gmail/emails");
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to fetch emails");
-      }
-      const data = await response.json();
-      setEmails(data.emails || []);
-      setLoadingStatus("");
+      const eventSource = new EventSource("/api/admin/gmail/emails?stream=true");
+
+      eventSource.addEventListener("status", (e) => {
+        const data = JSON.parse(e.data);
+        setLoadingStatus(data.message);
+      });
+
+      eventSource.addEventListener("progress", (e) => {
+        const data = JSON.parse(e.data);
+        setLoadingStatus(data.message);
+        setProgressDetails({
+          current: data.current,
+          total: data.total,
+          email: data.email,
+        });
+      });
+
+      eventSource.addEventListener("complete", (e) => {
+        const data = JSON.parse(e.data);
+        setEmails(data.emails || []);
+        setLoadingStatus("");
+        setProgressDetails(null);
+        setLoadingEmails(false);
+        eventSource.close();
+      });
+
+      eventSource.addEventListener("error", (e) => {
+        if (e instanceof MessageEvent) {
+          const data = JSON.parse(e.data);
+          setError(data.message || "Failed to fetch emails");
+        } else {
+          setError("Connection error");
+        }
+        setLoadingEmails(false);
+        eventSource.close();
+      });
+
+      eventSource.onerror = () => {
+        setError("Connection lost");
+        setLoadingEmails(false);
+        eventSource.close();
+      };
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch emails");
-    } finally {
-      clearInterval(timer);
       setLoadingEmails(false);
-      setLoadingSeconds(0);
     }
   }
 
@@ -428,16 +449,30 @@ export default function AdminDashboardClient({
               </code>
             </div>
           ) : loadingEmails ? (
-            <div className="p-8 text-center">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
-              <p className="text-gray-700 dark:text-gray-300 font-medium">{loadingStatus}</p>
-              <p className="text-sm text-gray-500 mt-2">
-                {loadingSeconds > 0 && `${loadingSeconds}s`}
-              </p>
-              {loadingSeconds > 10 && (
-                <p className="text-xs text-gray-400 mt-2">
-                  POP3 kan være tregt. Vennligst vent...
-                </p>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                <span className="text-gray-700 dark:text-gray-300 font-medium">{loadingStatus}</span>
+              </div>
+              {progressDetails && progressDetails.total > 0 && (
+                <div className="mb-4">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${(progressDetails.current / progressDetails.total) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">{progressDetails.current} av {progressDetails.total}</p>
+                </div>
+              )}
+              {progressDetails?.email && (
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                  <p className="text-xs text-gray-500 mb-1">Siste hentet:</p>
+                  <p className="text-sm font-medium truncate">{progressDetails.email.subject}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Fra: {progressDetails.email.from} - {progressDetails.email.date}
+                  </p>
+                </div>
               )}
             </div>
           ) : emails.length === 0 ? (

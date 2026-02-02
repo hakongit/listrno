@@ -186,13 +186,34 @@ function parseBody(raw: string): string {
   return body;
 }
 
-// Fetch emails from Gmail via POP3
-export async function fetchEmails(options: {
-  maxResults?: number;
-  afterDate?: Date;
-} = {}): Promise<EmailMessage[]> {
+export interface FetchProgress {
+  stage: string;
+  current: number;
+  total: number;
+  message: string;
+  email?: {
+    from: string;
+    subject: string;
+    date: string;
+  };
+}
+
+// Fetch emails from Gmail via POP3 with progress callback
+export async function fetchEmailsWithProgress(
+  options: {
+    maxResults?: number;
+    afterDate?: Date;
+  } = {},
+  onProgress?: (progress: FetchProgress) => void
+): Promise<EmailMessage[]> {
   const { email, password } = getCredentials();
   const maxResults = options.maxResults || 20;
+
+  const report = (progress: FetchProgress) => {
+    if (onProgress) onProgress(progress);
+  };
+
+  report({ stage: "connect", current: 0, total: 0, message: "Kobler til pop.gmail.com..." });
 
   const pop3 = new Pop3Command({
     host: "pop.gmail.com",
@@ -204,6 +225,7 @@ export async function fetchEmails(options: {
 
   try {
     await pop3.connect();
+    report({ stage: "connected", current: 0, total: 0, message: "Tilkoblet! Henter meldingsliste..." });
 
     // Get list of messages - returns [[msgNum, size], ...]
     const listResult = await pop3.LIST();
@@ -216,8 +238,19 @@ export async function fetchEmails(options: {
       .sort((a, b) => b - a)
       .slice(0, maxResults * 2); // Fetch extra in case we filter some out
 
-    for (const msgNum of messageIds) {
+    const totalToFetch = Math.min(messageIds.length, maxResults);
+    report({ stage: "list", current: 0, total: totalToFetch, message: `Fant ${list.length} meldinger, henter ${totalToFetch}...` });
+
+    for (let i = 0; i < messageIds.length; i++) {
+      const msgNum = messageIds[i];
       if (messages.length >= maxResults) break;
+
+      report({
+        stage: "fetching",
+        current: i + 1,
+        total: totalToFetch,
+        message: `Laster melding ${i + 1}/${totalToFetch}...`
+      });
 
       try {
         const raw = await pop3.RETR(msgNum);
@@ -244,7 +277,7 @@ export async function fetchEmails(options: {
 
         const body = parseBody(raw);
 
-        messages.push({
+        const emailMsg: EmailMessage = {
           id: messageId.replace(/[<>]/g, ""),
           from,
           fromEmail,
@@ -252,12 +285,28 @@ export async function fetchEmails(options: {
           subject,
           date: date.toISOString(),
           body,
-          attachments: [], // POP3 attachment parsing is complex, skip for now
+          attachments: [],
+        };
+
+        messages.push(emailMsg);
+
+        report({
+          stage: "fetched",
+          current: messages.length,
+          total: totalToFetch,
+          message: `Hentet ${messages.length}/${totalToFetch}`,
+          email: {
+            from: fromEmail,
+            subject: subject.substring(0, 60) + (subject.length > 60 ? "..." : ""),
+            date: date.toLocaleDateString("nb-NO"),
+          }
         });
       } catch (err) {
         console.error(`Error fetching message ${msgNum}:`, err);
       }
     }
+
+    report({ stage: "done", current: messages.length, total: messages.length, message: `Ferdig! Hentet ${messages.length} e-poster.` });
 
     await pop3.QUIT();
     return messages;
@@ -269,6 +318,14 @@ export async function fetchEmails(options: {
     }
     throw error;
   }
+}
+
+// Fetch emails (simple version without progress)
+export async function fetchEmails(options: {
+  maxResults?: number;
+  afterDate?: Date;
+} = {}): Promise<EmailMessage[]> {
+  return fetchEmailsWithProgress(options);
 }
 
 // Get a single email by message-id (searches through recent emails)

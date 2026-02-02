@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/admin-auth";
 import {
-  fetchEmails,
+  fetchEmailsWithProgress,
   filterByDomains,
   isGmailConfigured,
 } from "@/lib/gmail";
 import { getAllAnalystDomains, getAnalystReportByGmailId } from "@/lib/analyst-db";
 
-// GET: List emails from whitelisted domains
+// GET: List emails from whitelisted domains with streaming progress
 export async function GET(request: NextRequest) {
   const authenticated = await isAuthenticated();
   if (!authenticated) {
@@ -21,31 +21,94 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const searchParams = request.nextUrl.searchParams;
+  const maxResults = parseInt(searchParams.get("maxResults") || "1", 10);
+  const filterDomain = searchParams.get("domain") || undefined;
+  const stream = searchParams.get("stream") === "true";
+
+  // Get whitelisted domains
+  const domains = await getAllAnalystDomains();
+
+  if (domains.length === 0) {
+    return NextResponse.json({
+      emails: [],
+      message: "No whitelisted domains. Add analyst domains first.",
+    });
+  }
+
+  const domainList = filterDomain
+    ? [filterDomain]
+    : domains.map(d => d.domain);
+
+  // Stream mode - return Server-Sent Events
+  if (stream) {
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        const send = (event: string, data: unknown) => {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        };
+
+        try {
+          send("status", { message: "Kobler til Gmail POP3..." });
+
+          const allEmails = await fetchEmailsWithProgress(
+            { maxResults: maxResults * 3 },
+            (progress) => {
+              send("progress", progress);
+            }
+          );
+
+          send("status", { message: "Filtrerer etter domener..." });
+
+          const filteredEmails = filterByDomains(allEmails, domainList).slice(0, maxResults);
+
+          send("status", { message: "Sjekker importstatus..." });
+
+          // Check import status for each email
+          const emailsWithStatus = await Promise.all(
+            filteredEmails.map(async (email) => {
+              const existingReport = await getAnalystReportByGmailId(email.id);
+              return {
+                id: email.id,
+                from: { email: email.fromEmail, name: email.from },
+                domain: email.fromDomain,
+                subject: email.subject,
+                date: email.date,
+                snippet: email.body.substring(0, 200) + (email.body.length > 200 ? "..." : ""),
+                attachmentCount: email.attachments.length,
+                imported: !!existingReport,
+                reportId: existingReport?.id,
+              };
+            })
+          );
+
+          send("complete", {
+            emails: emailsWithStatus,
+            domains: domains.map((d) => ({ domain: d.domain, bankName: d.bankName })),
+          });
+        } catch (error) {
+          send("error", { message: error instanceof Error ? error.message : "Failed to fetch emails" });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
+  }
+
+  // Non-stream mode (fallback)
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const maxResults = parseInt(searchParams.get("maxResults") || "1", 10); // Limited to 1 while testing
-    const filterDomain = searchParams.get("domain") || undefined;
-
-    // Get whitelisted domains
-    const domains = await getAllAnalystDomains();
-
-    if (domains.length === 0) {
-      return NextResponse.json({
-        emails: [],
-        message: "No whitelisted domains. Add analyst domains first.",
-      });
-    }
-
-    // Fetch emails via POP3
-    const allEmails = await fetchEmails({ maxResults: maxResults * 3 });
-
-    // Filter by domains
-    const domainList = filterDomain
-      ? [filterDomain]
-      : domains.map(d => d.domain);
+    const allEmails = await fetchEmailsWithProgress({ maxResults: maxResults * 3 });
     const filteredEmails = filterByDomains(allEmails, domainList).slice(0, maxResults);
 
-    // Check import status for each email
     const emailsWithStatus = await Promise.all(
       filteredEmails.map(async (email) => {
         const existingReport = await getAnalystReportByGmailId(email.id);
@@ -101,7 +164,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch all recent emails and find the one we want
-    const emails = await fetchEmails({ maxResults: 100 });
+    const emails = await fetchEmailsWithProgress({ maxResults: 100 });
     const email = emails.find(e => e.id === messageId);
 
     if (!email) {

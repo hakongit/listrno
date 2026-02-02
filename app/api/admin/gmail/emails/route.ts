@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const searchParams = request.nextUrl.searchParams;
-    const maxResults = parseInt(searchParams.get("maxResults") || "20", 10);
+    const maxResults = parseInt(searchParams.get("maxResults") || "1", 10); // Limited to 1 while testing
     const filterDomain = searchParams.get("domain") || undefined;
 
     // Get whitelisted domains

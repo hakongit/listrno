@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   const searchParams = request.nextUrl.searchParams;
-  const maxResults = parseInt(searchParams.get("maxResults") || "1", 10);
+  const maxResults = parseInt(searchParams.get("maxResults") || "50", 10);
   const filterDomain = searchParams.get("domain") || undefined;
   const stream = searchParams.get("stream") === "true";
 

@@ -58,12 +58,14 @@ export default function AdminDashboardClient({
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
+  const [collectedCount, setCollectedCount] = useState(0);
   const [progressDetails, setProgressDetails] = useState<{
     current: number;
     total: number;
     email?: { from: string; subject: string; date: string };
   } | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<string | null>(null);
   const [showDomainForm, setShowDomainForm] = useState(false);
   const [newDomain, setNewDomain] = useState("");
   const [newBankName, setNewBankName] = useState("");
@@ -78,6 +80,7 @@ export default function AdminDashboardClient({
     setLoadingEmails(true);
     setLoadingStatus("Starter...");
     setProgressDetails(null);
+    setCollectedCount(0);
     setError("");
 
     try {
@@ -91,6 +94,7 @@ export default function AdminDashboardClient({
       eventSource.addEventListener("progress", (e) => {
         const data = JSON.parse(e.data);
         setLoadingStatus(data.message);
+        setCollectedCount(data.current);
         setProgressDetails({
           current: data.current,
           total: data.total,
@@ -101,6 +105,7 @@ export default function AdminDashboardClient({
       eventSource.addEventListener("complete", (e) => {
         const data = JSON.parse(e.data);
         setEmails(data.emails || []);
+        setCollectedCount(data.emails?.length || 0);
         setLoadingStatus("");
         setProgressDetails(null);
         setLoadingEmails(false);
@@ -129,26 +134,59 @@ export default function AdminDashboardClient({
     }
   }
 
-  async function importEmail(messageId: string) {
+  async function importEmail(messageId: string, autoProcess: boolean = false) {
     setImporting(messageId);
     setError("");
     try {
       const response = await fetch("/api/admin/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageId }),
+        body: JSON.stringify({ messageId, autoProcess }),
       });
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to import");
       }
-      // Refresh emails and stats
-      fetchEmails();
+      // Mark as imported in local state
+      setEmails(prev => prev.map(e =>
+        e.id === messageId ? { ...e, imported: true } : e
+      ));
       refreshStats();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to import");
     } finally {
       setImporting(null);
+    }
+  }
+
+  async function processEmail(messageId: string) {
+    setProcessing(messageId);
+    setError("");
+    try {
+      // First import if not already imported
+      const email = emails.find(e => e.id === messageId);
+      if (!email?.imported) {
+        await importEmail(messageId, true);
+      } else {
+        // Re-process existing report
+        const response = await fetch("/api/admin/reports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageId, autoProcess: true }),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          // If already imported, that's fine
+          if (!data.error?.includes("already imported")) {
+            throw new Error(data.error || "Failed to process");
+          }
+        }
+        refreshStats();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process");
+    } finally {
+      setProcessing(null);
     }
   }
 
@@ -425,7 +463,14 @@ export default function AdminDashboardClient({
         {/* Emails from Gmail */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-            <h2 className="font-semibold">E-poster fra Gmail</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="font-semibold">E-poster fra Gmail</h2>
+              {emails.length > 0 && (
+                <span className="text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                  {emails.length} funnet
+                </span>
+              )}
+            </div>
             <button
               onClick={fetchEmails}
               disabled={loadingEmails || !config.gmailConfigured}
@@ -450,9 +495,12 @@ export default function AdminDashboardClient({
             </div>
           ) : loadingEmails ? (
             <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                <span className="text-gray-700 dark:text-gray-300 font-medium">{loadingStatus}</span>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">{loadingStatus}</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-600">{collectedCount}</div>
               </div>
               {progressDetails && progressDetails.total > 0 && (
                 <div className="mb-4">
@@ -462,7 +510,7 @@ export default function AdminDashboardClient({
                       style={{ width: `${(progressDetails.current / progressDetails.total) * 100}%` }}
                     />
                   </div>
-                  <p className="text-xs text-gray-500">{progressDetails.current} av {progressDetails.total}</p>
+                  <p className="text-xs text-gray-500">{progressDetails.current} av {progressDetails.total} skannet</p>
                 </div>
               )}
               {progressDetails?.email && (
@@ -514,22 +562,35 @@ export default function AdminDashboardClient({
                         )}
                       </div>
                     </div>
-                    <div>
-                      {email.imported ? (
-                        <span className="text-sm text-gray-400">Importert</span>
-                      ) : (
+                    <div className="flex items-center gap-2">
+                      {!email.imported && (
                         <button
-                          onClick={() => importEmail(email.id)}
+                          onClick={() => importEmail(email.id, false)}
                           disabled={importing === email.id}
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400"
+                          className="flex items-center gap-1 text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
                         >
                           {importing === email.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="w-3 h-3 animate-spin" />
                           ) : (
-                            <Download className="w-4 h-4" />
+                            <Download className="w-3 h-3" />
                           )}
-                          Importer
+                          Lagre
                         </button>
+                      )}
+                      <button
+                        onClick={() => processEmail(email.id)}
+                        disabled={processing === email.id || importing === email.id}
+                        className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {processing === email.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Settings className="w-3 h-3" />
+                        )}
+                        Behandle
+                      </button>
+                      {email.imported && (
+                        <span className="text-xs text-green-600">Lagret</span>
                       )}
                     </div>
                   </div>

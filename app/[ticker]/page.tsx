@@ -1,11 +1,12 @@
 import { getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
+import { getCachedPublicAnalystReports } from "@/lib/analyst-db";
 import { getTicker } from "@/lib/tickers";
 import { fetchStockQuotes, StockQuote } from "@/lib/prices";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home, ArrowUpRight, ArrowDownRight, ExternalLink, BarChart2, Activity, Building2 } from "lucide-react";
+import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home, ArrowUpRight, ArrowDownRight, ExternalLink, BarChart2, Activity, Building2, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import { LazyShortChart } from "@/components/lazy-short-chart";
 
@@ -62,6 +63,14 @@ export default async function CompanyPage({ params }: PageProps) {
   if (!company && insiderTrades.length === 0) {
     notFound();
   }
+
+  // Get analyst reports for this company (by name since we may not have ISIN)
+  const companyName = company?.issuerName || insiderTrades[0]?.issuerName;
+  const companyIsin = company?.isin || insiderTrades[0]?.isin;
+  const analystReports = await getCachedPublicAnalystReports({
+    limit: 5,
+    companyIsin: companyIsin || undefined,
+  });
 
   // Company with short positions data
   if (company) {
@@ -389,22 +398,78 @@ export default async function CompanyPage({ params }: PageProps) {
             </div>
           )}
         </div>
+
+        {/* Analyst Reports Section */}
+        {analystReports.length > 0 && (
+          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
+            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-purple-50 dark:bg-purple-950 flex items-center justify-between">
+              <h2 className="font-semibold text-sm text-purple-900 dark:text-purple-100 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Analytikerrapporter
+              </h2>
+              <Link
+                href="/analyser"
+                className="text-xs text-purple-600 dark:text-purple-400 hover:underline"
+              >
+                Se alle
+              </Link>
+            </div>
+            <div className="divide-y divide-gray-200 dark:divide-gray-800">
+              {analystReports.map((report) => (
+                <div
+                  key={report.id}
+                  className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{report.investmentBank || "Ukjent bank"}</div>
+                      {report.summary && (
+                        <div className="text-xs text-gray-500 truncate max-w-sm mt-0.5">{report.summary}</div>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-4">
+                      {report.recommendation && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          report.recommendation === "buy" || report.recommendation === "overweight" || report.recommendation === "outperform"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : report.recommendation === "sell" || report.recommendation === "underweight" || report.recommendation === "underperform"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                        }`}>
+                          {report.recommendation === "buy" ? "Kjøp" :
+                           report.recommendation === "sell" ? "Selg" :
+                           report.recommendation === "hold" ? "Hold" :
+                           report.recommendation}
+                        </span>
+                      )}
+                      {report.targetPrice && (
+                        <div className="font-mono text-sm mt-0.5">
+                          {formatNumber(report.targetPrice)} {report.targetCurrency}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         </div>
       </div>
     );
   }
 
   // Company with only insider trades (no short positions)
-  const companyName = insiderTrades[0].issuerName;
+  const insiderOnlyCompanyName = insiderTrades[0].issuerName;
   const isin = insiderTrades[0].isin;
 
   // Try to get ticker from trades or look it up
   let tickerSymbol = insiderTrades[0].ticker;
   if (!tickerSymbol && isin) {
-    tickerSymbol = getTicker(isin, companyName);
+    tickerSymbol = getTicker(isin, insiderOnlyCompanyName);
   }
   if (!tickerSymbol) {
-    tickerSymbol = getTicker("", companyName);
+    tickerSymbol = getTicker("", insiderOnlyCompanyName);
   }
 
   // Fetch stock data if we have a ticker
@@ -428,7 +493,7 @@ export default async function CompanyPage({ params }: PageProps) {
             </Link>
             <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
             <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
-            <span className="font-medium truncate">{companyName}</span>
+            <span className="font-medium truncate">{insiderOnlyCompanyName}</span>
           </div>
           <nav className="flex items-center gap-4 text-sm flex-shrink-0">
             <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
@@ -447,7 +512,7 @@ export default async function CompanyPage({ params }: PageProps) {
       <div className="max-w-6xl mx-auto px-4 py-4">
         {/* Company title */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">{companyName}</h1>
+          <h1 className="text-2xl font-bold">{insiderOnlyCompanyName}</h1>
           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
             Ingen aktive shortposisjoner registrert
           </p>

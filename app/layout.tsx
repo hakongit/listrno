@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
-import Link from "next/link";
+
+const GA_MEASUREMENT_ID = "G-VH4R20P5L2";
 
 export const metadata: Metadata = {
   title: "Listr - Norske shortposisjoner",
@@ -22,8 +24,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="nb">
+      <head>
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_MEASUREMENT_ID}');
+          `}
+        </Script>
+      </head>
       <body className="antialiased min-h-screen flex flex-col">
-
         <main className="flex-1">{children}</main>
 
         <footer className="border-t border-gray-200 dark:border-gray-800 mt-auto">

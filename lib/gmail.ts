@@ -239,7 +239,7 @@ export async function fetchEmailsWithProgress(
 
     // First get mailbox stats (faster than LIST for large mailboxes)
     const statResult = await withTimeout(pop3.STAT(), 10000, "POP3 STAT");
-    const [totalMessages] = statResult as [number, number];
+    const [totalMessages] = (statResult as unknown) as [number, number];
     report({ stage: "stat", current: 0, total: 0, message: `Postboks: ${totalMessages} meldinger. Henter liste...` });
 
     // Get list of messages - returns [[msgNum, size], ...]

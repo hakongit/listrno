@@ -44,6 +44,7 @@ interface EmailItem {
   attachmentCount: number;
   imported: boolean;
   reportId?: number;
+  isWhitelisted?: boolean;
 }
 
 export default function AdminDashboardClient({
@@ -532,7 +533,9 @@ export default function AdminDashboardClient({
               {emails.map((email) => (
                 <div
                   key={email.id}
-                  className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-950"
+                  className={`px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-950 ${
+                    email.isWhitelisted ? "border-l-4 border-l-green-500" : ""
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
@@ -540,12 +543,16 @@ export default function AdminDashboardClient({
                         <span className="font-medium truncate">
                           {email.from.name || email.from.email}
                         </span>
-                        <span className="text-xs text-gray-500 font-mono">
+                        <span className={`text-xs font-mono px-1 rounded ${
+                          email.isWhitelisted
+                            ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
+                            : "text-gray-500"
+                        }`}>
                           @{email.domain}
                         </span>
                         {email.imported && (
-                          <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
-                            Importert
+                          <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                            Lagret
                           </span>
                         )}
                       </div>

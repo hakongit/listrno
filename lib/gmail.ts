@@ -1,5 +1,15 @@
 import Pop3Command from "node-pop3";
 
+// Timeout wrapper for POP3 operations
+function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${operation} timed out after ${ms / 1000}s`)), ms)
+    ),
+  ]);
+}
+
 interface EmailMessage {
   id: string;
   from: string;
@@ -224,11 +234,17 @@ export async function fetchEmailsWithProgress(
   });
 
   try {
-    await pop3.connect();
-    report({ stage: "connected", current: 0, total: 0, message: "Tilkoblet! Henter meldingsliste..." });
+    await withTimeout(pop3.connect(), 15000, "POP3 connect");
+    report({ stage: "connected", current: 0, total: 0, message: "Tilkoblet! Henter postboksstatus..." });
+
+    // First get mailbox stats (faster than LIST for large mailboxes)
+    const statResult = await withTimeout(pop3.STAT(), 10000, "POP3 STAT");
+    const [totalMessages] = statResult as [number, number];
+    report({ stage: "stat", current: 0, total: 0, message: `Postboks: ${totalMessages} meldinger. Henter liste...` });
 
     // Get list of messages - returns [[msgNum, size], ...]
-    const listResult = await pop3.LIST();
+    // Use longer timeout for LIST as it can be slow with large mailboxes
+    const listResult = await withTimeout(pop3.LIST(), 45000, "POP3 LIST");
     const list = (listResult as unknown) as Array<[number, number]>;
     const messages: EmailMessage[] = [];
 
@@ -253,7 +269,7 @@ export async function fetchEmailsWithProgress(
       });
 
       try {
-        const raw = await pop3.RETR(msgNum);
+        const raw = await withTimeout(pop3.RETR(msgNum), 20000, `Fetch message ${msgNum}`);
         const headers = parseHeaders(raw);
 
         const from = decodeMimeWord(headers["from"] || "");
@@ -308,13 +324,19 @@ export async function fetchEmailsWithProgress(
 
     report({ stage: "done", current: messages.length, total: messages.length, message: `Ferdig! Hentet ${messages.length} e-poster.` });
 
-    await pop3.QUIT();
+    await withTimeout(pop3.QUIT(), 5000, "POP3 QUIT").catch(() => {});
     return messages;
   } catch (error) {
     try {
-      await pop3.QUIT();
+      await withTimeout(pop3.QUIT(), 5000, "POP3 QUIT").catch(() => {});
     } catch {
       // Ignore quit errors
+    }
+
+    // Provide more helpful error messages
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("timed out")) {
+      throw new Error(`POP3-operasjon tok for lang tid. Prøv igjen eller reduser antall e-poster. (${errorMessage})`);
     }
     throw error;
   }

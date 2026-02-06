@@ -2,8 +2,8 @@ name: Sync Insider Trade Data
 
 on:
   schedule:
-    # Run every 8 hours: at 00:00, 08:00, and 16:00 UTC
-    - cron: '0 0,8,16 * * *'
+    # Run daily at 01:05 UTC (02:05 CET / 03:05 CEST), 5 min after short sync
+    - cron: '5 1 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:

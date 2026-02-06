@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyPassword, createSession } from "@/lib/admin-auth";
+import { checkRateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rateLimitResult = checkRateLimit(ip, "login");
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: "For mange forsøk. Prøv igjen senere." },
+        { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
+      );
+    }
+
     const body = await request.json();
     const { password } = body;
 
@@ -14,11 +25,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!verifyPassword(password)) {
-      // Add small delay to slow down brute force attempts
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return NextResponse.json(
         { error: "Invalid password" },
-        { status: 401 }
+        { status: 401, headers: getRateLimitHeaders(rateLimitResult) }
       );
     }
 

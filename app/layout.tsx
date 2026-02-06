@@ -39,7 +39,13 @@ export default function RootLayout({
         </Script>
       </head>
       <body className="antialiased min-h-screen flex flex-col">
-        <main className="flex-1">{children}</main>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:dark:bg-gray-900 focus:border focus:border-gray-300 focus:dark:border-gray-700 focus:rounded-lg focus:text-sm focus:font-medium"
+        >
+          Hopp til hovedinnhold
+        </a>
+        <main id="main-content" className="flex-1">{children}</main>
 
         <footer className="border-t border-gray-200 dark:border-gray-800 mt-auto">
           <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">

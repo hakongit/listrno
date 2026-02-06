@@ -1,7 +1,6 @@
 import { RawInstrument, ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint, PositionHolder, HolderCompanyPosition } from "./types";
 import { slugify } from "./utils";
 import { getTicker } from "./tickers";
-import { fetchStockPrices } from "./prices";
 import { getCachedShortData } from "./data-db";
 
 const API_URL = "https://ssr.finanstilsynet.no/api/v2/instruments/export-json";

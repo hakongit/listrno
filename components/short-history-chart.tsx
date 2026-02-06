@@ -86,12 +86,14 @@ export function ShortHistoryChart({ history, companyName }: ShortHistoryChartPro
   return (
     <div>
       {/* Period selector */}
-      <div className="flex gap-1 mb-3">
+      <div className="flex gap-1 mb-3" role="group" aria-label="Velg tidsperiode">
         {periods.map((period) => (
           <button
             key={period.key}
             onClick={() => setSelectedPeriod(period.key)}
-            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+            aria-pressed={selectedPeriod === period.key}
+            aria-label={`Vis ${period.label === "Alle" ? "all historikk" : `siste ${period.label}`}`}
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
               selectedPeriod === period.key
                 ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"

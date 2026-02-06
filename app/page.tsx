@@ -75,10 +75,10 @@ export default async function DashboardPage() {
       {/* Header */}
       <header className="border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight">
+          <Link href="/" className="text-lg font-bold tracking-tight" aria-label="Listr.no - Til forsiden">
             Listr<span className="text-gray-400">.no</span>
           </Link>
-          <nav className="flex items-center gap-4 text-sm">
+          <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
             <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Shortposisjoner
             </Link>
@@ -157,14 +157,14 @@ export default async function DashboardPage() {
                   <Link
                     key={company.isin}
                     href={`/${company.slug}`}
-                    className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                   >
-                    <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                    <span className="text-sm truncate mr-2" title={company.issuerName}>{company.issuerName}</span>
                     <div className="text-right flex-shrink-0">
                       <div className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
                         {formatPercent(company.totalShortPct)}
                       </div>
-                      <div className="text-xs text-gray-400">{formatDate(company.latestDate)}</div>
+                      <div className="text-xs text-gray-500">{formatDate(company.latestDate)}</div>
                     </div>
                   </Link>
                 ))}
@@ -176,7 +176,7 @@ export default async function DashboardPage() {
               <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
                 <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-950">
                   <h3 className="font-semibold text-red-900 dark:text-red-100 text-sm flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
+                    <TrendingUp className="w-4 h-4" aria-hidden="true" />
                     Siste økninger
                   </h3>
                 </div>
@@ -185,14 +185,14 @@ export default async function DashboardPage() {
                     <Link
                       key={company.isin}
                       href={`/${company.slug}`}
-                      className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                      className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                     >
-                      <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                      <span className="text-sm truncate mr-2" title={company.issuerName}>{company.issuerName}</span>
                       <div className="text-right flex-shrink-0">
                         <div className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
                           +{company.change.toFixed(2)}%
                         </div>
-                        <div className="text-xs text-gray-400">{formatDate(company.latestDate)}</div>
+                        <div className="text-xs text-gray-500">{formatDate(company.latestDate)}</div>
                       </div>
                     </Link>
                   ))}
@@ -213,9 +213,9 @@ export default async function DashboardPage() {
                   <Link
                     key={holder.slug}
                     href={`/aktor/${holder.slug}`}
-                    className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                   >
-                    <span className="text-sm truncate mr-2">{holder.name}</span>
+                    <span className="text-sm truncate mr-2" title={holder.name}>{holder.name}</span>
                     <span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400 whitespace-nowrap">
                       {holder.totalPositions} pos
                     </span>
@@ -268,7 +268,7 @@ export default async function DashboardPage() {
                       }`}>
                         {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
                       </div>
-                      <div className="text-xs text-gray-400">{formatDate(trade.tradeDate)}</div>
+                      <div className="text-xs text-gray-500">{formatDate(trade.tradeDate)}</div>
                     </div>
                   </Link>
                 ))}
@@ -303,7 +303,7 @@ export default async function DashboardPage() {
                         }`}>
                           {formatNOK(trade.totalValue!)}
                         </div>
-                        <div className="text-xs text-gray-400">{formatDate(trade.tradeDate)}</div>
+                        <div className="text-xs text-gray-500">{formatDate(trade.tradeDate)}</div>
                       </div>
                     </Link>
                   ))}
@@ -339,7 +339,7 @@ export default async function DashboardPage() {
                           <span className="text-gray-400 mx-1">/</span>
                           <span className="text-red-600 dark:text-red-400">{insider.sellCount}</span>
                         </div>
-                        <div className="text-xs text-gray-400">{formatDate(insider.latestTrade)}</div>
+                        <div className="text-xs text-gray-500">{formatDate(insider.latestTrade)}</div>
                       </div>
                     </Link>
                   ))}

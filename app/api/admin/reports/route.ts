@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/admin-auth";
+import { checkRateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
 import {
   createAnalystReport,
   getAllAnalystReports,
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100);
+    const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10), 0);
     const status = searchParams.get("status") as "pending" | "processed" | "failed" | undefined;
 
     const [reports, total, pendingCount, processedCount, failedCount] = await Promise.all([
@@ -55,6 +56,12 @@ export async function GET(request: NextRequest) {
 
 // POST: Import and process an email by message ID
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = checkRateLimit(ip, "api");
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: getRateLimitHeaders(rl) });
+  }
+
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -152,6 +159,12 @@ export async function POST(request: NextRequest) {
 
 // PATCH: Update report extraction data
 export async function PATCH(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = checkRateLimit(ip, "api");
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: getRateLimitHeaders(rl) });
+  }
+
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -190,6 +203,12 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE: Delete a report
 export async function DELETE(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = checkRateLimit(ip, "api");
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: getRateLimitHeaders(rl) });
+  }
+
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

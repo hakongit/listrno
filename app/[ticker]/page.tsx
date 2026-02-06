@@ -210,22 +210,22 @@ export default async function CompanyPage({ params }: PageProps) {
             <h2 className="font-semibold text-sm">Posisjoner</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label={`Shortposisjoner i ${company.issuerName}`}>
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800">
-                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                  <th scope="col" className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
                     Posisjonsholder
                   </th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                  <th scope="col" className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
                     Posisjon
                   </th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                  <th scope="col" className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                     Aksjer
                   </th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
+                  <th scope="col" className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                     Verdi
                   </th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                  <th scope="col" className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
                     Dato
                   </th>
                 </tr>
@@ -354,7 +354,7 @@ export default async function CompanyPage({ params }: PageProps) {
                           <span className="text-gray-400">-</span>
                         )}
                         {trade.insiderRole && (
-                          <div className="text-xs text-gray-400">{trade.insiderRole}</div>
+                          <div className="text-xs text-gray-500">{trade.insiderRole}</div>
                         )}
                       </td>
                       <td className="px-3 py-2 text-center">
@@ -384,7 +384,8 @@ export default async function CompanyPage({ params }: PageProps) {
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                         >
-                          <ExternalLink className="w-3 h-3" />
+                          <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                          <span className="sr-only">Vis kilde</span>
                         </a>
                       </td>
                     </tr>
@@ -619,7 +620,7 @@ export default async function CompanyPage({ params }: PageProps) {
                         <span className="text-gray-400">-</span>
                       )}
                       {trade.insiderRole && (
-                        <div className="text-xs text-gray-400">{trade.insiderRole}</div>
+                        <div className="text-xs text-gray-500">{trade.insiderRole}</div>
                       )}
                     </td>
                     <td className="px-3 py-2 text-center">

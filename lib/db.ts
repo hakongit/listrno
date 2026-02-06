@@ -7,9 +7,6 @@ export function getDb(): Client {
     const url = process.env.TURSO_DATABASE_URL;
     const authToken = process.env.TURSO_AUTH_TOKEN;
 
-    console.log(`[DB] TURSO_DATABASE_URL: "${url}"`);
-    console.log(`[DB] TURSO_AUTH_TOKEN set: ${!!authToken}, length: ${authToken?.length || 0}`);
-
     if (!url) {
       throw new Error("TURSO_DATABASE_URL is not set");
     }
@@ -72,6 +69,8 @@ export async function initializeDatabase() {
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_isin ON positions(isin)`);
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_holder ON positions(holder_name)`);
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_date ON positions(position_date)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_isin_date ON positions(isin, position_date)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_positions_holder_date ON positions(holder_name, position_date)`);
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_stock_prices_isin ON stock_prices(isin)`);
 }
 
@@ -111,4 +110,6 @@ export async function initializeInsiderDatabase() {
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_issuer ON insider_trades(issuer_name)`);
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_company_slug ON insider_trades(company_slug)`);
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_type ON insider_trades(trade_type)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_company_date ON insider_trades(company_slug, trade_date)`);
+  await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_insider_trades_slug_date ON insider_trades(insider_slug, trade_date)`);
 }

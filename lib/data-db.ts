@@ -25,10 +25,8 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
   try {
     companiesResult = await getDb().execute("SELECT isin, issuer_name, slug FROM companies");
   } catch (error: unknown) {
-    const url = process.env.TURSO_DATABASE_URL || 'NOT_SET';
-    const tokenLen = process.env.TURSO_AUTH_TOKEN?.length || 0;
     const errMsg = error instanceof Error ? error.message : String(error);
-    throw new Error(`DB Error: ${errMsg} | URL: ${url} | Token length: ${tokenLen}`);
+    throw new Error(`Database query failed: ${errMsg}`);
   }
   const companies = companiesResult.rows as unknown as DBCompany[];
 
@@ -143,11 +141,17 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
     // Get ticker
     const ticker = getTicker(company.isin, company.issuer_name);
 
+    // Pre-group positions by holder name for O(n) lookup
+    const positionsByHolder = new Map<string, DBPosition[]>();
+    for (const pos of positions) {
+      const existing = positionsByHolder.get(pos.holder_name) || [];
+      existing.push(pos);
+      positionsByHolder.set(pos.holder_name, existing);
+    }
+
     // Build holder positions for this company
     for (const pos of activePositions) {
-      // Get holder's history in this company
-      const holderHistory = positions
-        .filter(p => p.holder_name === pos.positionHolder)
+      const holderHistory = (positionsByHolder.get(pos.positionHolder) || [])
         .map(p => ({
           date: p.position_date,
           pct: p.position_pct,

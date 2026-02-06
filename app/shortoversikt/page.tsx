@@ -2,6 +2,7 @@ import { getShortData } from "@/lib/data";
 import { formatPercent, formatDate, formatNOK } from "@/lib/utils";
 import Link from "next/link";
 import { TrendingDown, TrendingUp, ArrowRight, Minus, Briefcase, Home, ChevronRight } from "lucide-react";
+import { ShortTable } from "@/components/short-table";
 import type { Metadata } from "next";
 
 export const revalidate = 3600; // Cache for 1 hour
@@ -25,7 +26,7 @@ function ChangeIndicator({ change, previousDate }: { change: number; previousDat
       <span className="inline-flex items-center gap-1 text-red-500 text-xs">
         <TrendingUp className="w-3 h-3" />
         <span>+{change.toFixed(2)}</span>
-        {dateStr && <span className="text-gray-400 hidden lg:inline">({dateStr})</span>}
+        {dateStr && <span className="text-gray-500 hidden lg:inline">({dateStr})</span>}
       </span>
     );
   } else if (change < -0.01) {
@@ -33,12 +34,12 @@ function ChangeIndicator({ change, previousDate }: { change: number; previousDat
       <span className="inline-flex items-center gap-1 text-green-500 text-xs">
         <TrendingDown className="w-3 h-3" />
         <span>{change.toFixed(2)}</span>
-        {dateStr && <span className="text-gray-400 hidden lg:inline">({dateStr})</span>}
+        {dateStr && <span className="text-gray-500 hidden lg:inline">({dateStr})</span>}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center text-gray-400 text-xs">
+    <span className="inline-flex items-center text-gray-500 text-xs">
       <Minus className="w-3 h-3" />
     </span>
   );
@@ -202,9 +203,9 @@ export default async function ShortOverviewPage() {
                 <Link
                   key={company.isin}
                   href={`/${company.slug}`}
-                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 >
-                  <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                  <span className="text-sm truncate mr-2" title={company.issuerName}>{company.issuerName}</span>
                   <span className="font-mono text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
                     +{company.change.toFixed(2)}%
                   </span>
@@ -239,9 +240,9 @@ export default async function ShortOverviewPage() {
                 <Link
                   key={company.isin}
                   href={`/${company.slug}`}
-                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 >
-                  <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                  <span className="text-sm truncate mr-2" title={company.issuerName}>{company.issuerName}</span>
                   <span className="font-mono text-sm font-medium text-green-600 dark:text-green-400 whitespace-nowrap">
                     {company.change.toFixed(2)}%
                   </span>
@@ -303,9 +304,9 @@ export default async function ShortOverviewPage() {
                 <Link
                   key={company.isin}
                   href={`/${company.slug}`}
-                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 >
-                  <span className="text-sm truncate mr-2">{company.issuerName}</span>
+                  <span className="text-sm truncate mr-2" title={company.issuerName}>{company.issuerName}</span>
                   <span className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">
                     {formatNOK(company.shortValue!)}
                   </span>
@@ -318,77 +319,19 @@ export default async function ShortOverviewPage() {
         </div>
       </div>
 
-      {/* Full Table */}
-      <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-          <h2 className="font-semibold">Alle selskaper</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Selskap
-                </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Total short
-                </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
-                  Endring
-                </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">
-                  Verdi (NOK)
-                </th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
-                  Sist oppdatert
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {data.companies.map((company) => (
-                <tr
-                  key={company.isin}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <Link href={`/${company.slug}`} className="flex items-center gap-2 hover:underline">
-                      <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
-                      <span className="font-medium">{company.issuerName}</span>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <span
-                        className={`font-mono font-medium ${
-                          company.totalShortPct >= 5
-                            ? "text-red-600 dark:text-red-400"
-                            : company.totalShortPct >= 2
-                            ? "text-orange-600 dark:text-orange-400"
-                            : "text-gray-900 dark:text-gray-100"
-                        }`}
-                      >
-                        {formatPercent(company.totalShortPct)}
-                      </span>
-                      <span className="sm:hidden">
-                        <ChangeIndicator change={company.change} previousDate={company.previousDate} />
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right hidden sm:table-cell">
-                    <ChangeIndicator change={company.change} previousDate={company.previousDate} />
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500 font-mono text-sm hidden md:table-cell">
-                    {company.shortValue ? formatNOK(company.shortValue) : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500 text-sm hidden lg:table-cell">
-                    {formatDate(company.latestDate)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Full Table with Search & Pagination */}
+      <ShortTable
+        companies={data.companies.map((c) => ({
+          isin: c.isin,
+          slug: c.slug,
+          issuerName: c.issuerName,
+          totalShortPct: c.totalShortPct,
+          change: c.change,
+          previousDate: c.previousDate,
+          shortValue: c.shortValue,
+          latestDate: c.latestDate,
+        }))}
+      />
 
       {/* Holder Highlight Cards */}
       <div className="mt-8 mb-8">
@@ -416,9 +359,9 @@ export default async function ShortOverviewPage() {
                 <Link
                   key={holder.slug}
                   href={`/aktor/${holder.slug}`}
-                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 >
-                  <span className="text-sm truncate mr-2">{holder.name}</span>
+                  <span className="text-sm truncate mr-2" title={holder.name}>{holder.name}</span>
                   <span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400 whitespace-nowrap">
                     {holder.totalPositions}
                   </span>
@@ -446,9 +389,9 @@ export default async function ShortOverviewPage() {
                 <Link
                   key={holder.slug}
                   href={`/aktor/${holder.slug}`}
-                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 >
-                  <span className="text-sm truncate mr-2">{holder.name}</span>
+                  <span className="text-sm truncate mr-2" title={holder.name}>{holder.name}</span>
                   <span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400 whitespace-nowrap">
                     {formatPercent(holder.totalShortPct)}
                   </span>

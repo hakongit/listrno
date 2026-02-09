@@ -9,7 +9,6 @@ import {
   TrendingDown,
   Minus,
   Building2,
-  User,
 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -166,34 +165,27 @@ export default async function AnalystReportsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="font-medium">{report.companyName || "-"}</div>
-                        {report.summary && (
-                          <div className="text-xs text-gray-500 mt-1 line-clamp-1 max-w-xs">
-                            {report.summary}
-                          </div>
-                        )}
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell">
                         <div className="flex items-center gap-2">
                           <Building2 className="w-4 h-4 text-gray-400" />
                           <span>{report.investmentBank || "-"}</span>
                         </div>
-                        {report.analystNames && report.analystNames.length > 0 && (
-                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {report.analystNames.join(", ")}
-                          </div>
-                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <RecommendationBadge recommendation={report.recommendation} />
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-sm">
-                        {formatTargetPrice(report.targetPrice, report.targetCurrency)}
+                        <span className="select-none blur-[6px]">
+                          {report.targetPrice ? formatTargetPrice(report.targetPrice, report.targetCurrency) : "-"}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-sm hidden lg:table-cell">
-                        {report.priceAtReport
-                          ? `${formatNumber(report.priceAtReport)} ${report.targetCurrency}`
-                          : "-"}
+                        <span className="select-none blur-[6px]">
+                          {report.priceAtReport
+                            ? `${formatNumber(report.priceAtReport)} ${report.targetCurrency}`
+                            : "-"}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -205,7 +197,7 @@ export default async function AnalystReportsPage() {
 
         {/* Data source note */}
         <p className="mt-4 text-sm text-gray-500 text-center">
-          Data fra analytikerrapporter sendt til Listr. Ikke finansiell rådgivning.
+          Basert på offentlig tilgjengelige analytikerrapporter. Ikke finansiell rådgivning.
         </p>
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
 import { getEmailById } from "@/lib/gmail";
 import { extractReportData, isOpenRouterConfigured } from "@/lib/analyst-extraction";
 import { extractTextFromPdf } from "@/lib/pdf-extract";
+import { revalidateTag } from "next/cache";
 
 // POP3 fetch + PDF extraction + LLM call can take time
 export const maxDuration = 60;
@@ -139,6 +140,7 @@ export async function POST(request: NextRequest) {
 
         // Update report with extracted data
         await updateAnalystReportExtraction(reportId, extracted);
+        revalidateTag("public-analyst-reports");
 
         const updatedReport = await getAnalystReportById(reportId);
         return NextResponse.json({
@@ -206,6 +208,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     await updateAnalystReportExtraction(id, data);
+    revalidateTag("public-analyst-reports");
 
     const updated = await getAnalystReportById(id);
     return NextResponse.json({ success: true, report: updated });
@@ -242,6 +245,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await deleteAnalystReport(id);
+    revalidateTag("public-analyst-reports");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting report:", error);

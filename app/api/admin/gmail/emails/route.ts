@@ -5,7 +5,8 @@ import {
   getEmailById,
   isGmailConfigured,
 } from "@/lib/gmail";
-import { getAllAnalystDomains, getAnalystReportByGmailId } from "@/lib/analyst-db";
+import { getAllAnalystDomains, getAnalystReportByGmailId, createAnalystReport } from "@/lib/analyst-db";
+import { extractTextFromPdf } from "@/lib/pdf-extract";
 
 // POP3 can take 30-60s to connect + fetch emails
 export const maxDuration = 60;
@@ -73,6 +74,64 @@ export async function GET(request: NextRequest) {
               };
             })
           );
+
+          // Auto-import whitelisted emails that aren't already imported
+          const toAutoImport = emailsWithStatus.filter(e => e.isWhitelisted && !e.imported);
+          if (toAutoImport.length > 0) {
+            send("status", { message: `Auto-importerer ${toAutoImport.length} godkjente e-poster...` });
+            for (let i = 0; i < toAutoImport.length; i++) {
+              const emailStatus = toAutoImport[i];
+              const fullEmail = allEmails.find(e => e.id === emailStatus.id);
+              if (!fullEmail) continue;
+
+              send("progress", {
+                stage: "auto-import",
+                current: i + 1,
+                total: toAutoImport.length,
+                message: `Importerer: ${emailStatus.subject}`,
+              });
+
+              try {
+                // Extract text from PDF attachments
+                const pdfAttachments = fullEmail.attachments.filter(
+                  a => a.contentType === "application/pdf" || a.filename.toLowerCase().endsWith(".pdf")
+                );
+                const attachmentTexts: string[] = [];
+                for (const att of pdfAttachments) {
+                  const text = await extractTextFromPdf(att.content);
+                  if (text) attachmentTexts.push(text);
+                }
+
+                const reportId = await createAnalystReport({
+                  gmailMessageId: fullEmail.id,
+                  fromEmail: fullEmail.fromEmail,
+                  fromDomain: fullEmail.fromDomain,
+                  subject: fullEmail.subject,
+                  receivedDate: fullEmail.date,
+                  emailBody: fullEmail.body || undefined,
+                  attachmentTexts: attachmentTexts.length > 0 ? attachmentTexts : undefined,
+                });
+
+                // Update status in the list
+                emailStatus.imported = true;
+                emailStatus.reportId = reportId;
+
+                send("progress", {
+                  stage: "auto-import",
+                  current: i + 1,
+                  total: toAutoImport.length,
+                  message: `Importert: ${emailStatus.subject}`,
+                });
+              } catch (err) {
+                send("progress", {
+                  stage: "auto-import-error",
+                  current: i + 1,
+                  total: toAutoImport.length,
+                  message: `Feil ved import av ${emailStatus.subject}: ${err instanceof Error ? err.message : "Ukjent feil"}`,
+                });
+              }
+            }
+          }
 
           send("complete", {
             emails: emailsWithStatus,

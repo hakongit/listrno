@@ -160,6 +160,10 @@ export default function AdminDashboardClient({
           );
         } else if (data.stage === "done") {
           addLog("success", data.message);
+        } else if (data.stage === "auto-import") {
+          addLog("progress", `[Auto-import ${data.current}/${data.total}] ${data.message}`);
+        } else if (data.stage === "auto-import-error") {
+          addLog("warn", `[Auto-import ${data.current}/${data.total}] ${data.message}`);
         } else {
           addLog("info", data.message);
         }
@@ -416,6 +420,38 @@ export default function AdminDashboardClient({
       addLog("success", `Domene godkjent: ${domain} (${bankName.trim()})`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve domain");
+    }
+  }
+
+  async function deleteReport(messageId: string, reportId: number) {
+    setError("");
+    addLog("info", `Sletter rapport #${reportId}...`);
+    try {
+      const response = await fetch("/api/admin/reports", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: reportId }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete");
+      }
+      setEmails((prev) =>
+        prev.map((e) =>
+          e.id === messageId ? { ...e, imported: false, reportId: undefined } : e
+        )
+      );
+      setProcessResults((prev) => {
+        const next = new Map(prev);
+        next.delete(messageId);
+        return next;
+      });
+      addLog("success", `Rapport #${reportId} slettet`);
+      refreshStats();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Feil ved sletting";
+      addLog("error", msg);
+      setError(msg);
     }
   }
 
@@ -894,6 +930,7 @@ export default function AdminDashboardClient({
                         processResult={processResults.get(email.id)}
                         onImport={() => importEmail(email.id, false)}
                         onProcess={() => processEmail(email.id)}
+                        onDelete={() => email.reportId && deleteReport(email.id, email.reportId)}
                         openRouterConfigured={config.openRouterConfigured}
                       />
                     ))}
@@ -923,6 +960,7 @@ export default function AdminDashboardClient({
                         processResult={processResults.get(email.id)}
                         onImport={() => importEmail(email.id, false)}
                         onProcess={() => processEmail(email.id)}
+                        onDelete={() => email.reportId && deleteReport(email.id, email.reportId)}
                         openRouterConfigured={config.openRouterConfigured}
                       />
                     ))}
@@ -946,6 +984,7 @@ function EmailRow({
   processResult,
   onImport,
   onProcess,
+  onDelete,
   openRouterConfigured,
 }: {
   email: EmailItem;
@@ -956,6 +995,7 @@ function EmailRow({
   processResult?: ProcessResult;
   onImport: () => void;
   onProcess: () => void;
+  onDelete: () => void;
   openRouterConfigured: boolean;
 }) {
   return (
@@ -1014,7 +1054,16 @@ function EmailRow({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {!email.imported && (
+            {email.imported && email.reportId ? (
+              <button
+                onClick={onDelete}
+                className="flex items-center gap-1 text-xs px-2 py-1 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-50"
+                title="Slett rapport"
+              >
+                <Trash2 className="w-3 h-3" />
+                Slett
+              </button>
+            ) : !email.imported ? (
               <button
                 onClick={onImport}
                 disabled={importing}
@@ -1028,7 +1077,7 @@ function EmailRow({
                 )}
                 Lagre
               </button>
-            )}
+            ) : null}
             {openRouterConfigured && (
               <button
                 onClick={onProcess}

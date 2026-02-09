@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/admin-auth";
 import {
   fetchEmailsWithProgress,
+  getEmailById,
   isGmailConfigured,
 } from "@/lib/gmail";
 import { getAllAnalystDomains, getAnalystReportByGmailId } from "@/lib/analyst-db";
+
+// POP3 can take 30-60s to connect + fetch emails
+export const maxDuration = 60;
 
 // GET: List emails from whitelisted domains with streaming progress
 export async function GET(request: NextRequest) {
@@ -151,9 +155,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch all recent emails and find the one we want
-    const emails = await fetchEmailsWithProgress({ maxResults: 100 });
-    const email = emails.find(e => e.id === messageId);
+    // Fetch from cache or POP3
+    const email = await getEmailById(messageId);
 
     if (!email) {
       return NextResponse.json(

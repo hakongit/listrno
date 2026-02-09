@@ -1,21 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Mail,
   FileText,
   CheckCircle,
   AlertCircle,
-  Clock,
   LogOut,
   RefreshCw,
   Plus,
   Trash2,
   Download,
-  Settings,
   Loader2,
   X,
+  Paperclip,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Server,
+  Search,
+  Shield,
 } from "lucide-react";
 import { AnalystDomain } from "@/lib/analyst-types";
 
@@ -47,6 +52,29 @@ interface EmailItem {
   isWhitelisted?: boolean;
 }
 
+interface LogEntry {
+  id: number;
+  timestamp: Date;
+  level: "info" | "success" | "warn" | "error" | "progress";
+  message: string;
+  detail?: string;
+}
+
+interface ProcessResult {
+  emailId: string;
+  success: boolean;
+  extracted?: {
+    companyName?: string;
+    recommendation?: string;
+    targetPrice?: number;
+    targetCurrency?: string;
+    investmentBank?: string;
+    summary?: string;
+  };
+  error?: string;
+  extractionFailed?: boolean;
+}
+
 export default function AdminDashboardClient({
   session,
   config,
@@ -58,19 +86,38 @@ export default function AdminDashboardClient({
   const [domains, setDomains] = useState(initialDomains);
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState("");
-  const [collectedCount, setCollectedCount] = useState(0);
-  const [progressDetails, setProgressDetails] = useState<{
-    current: number;
-    total: number;
-    email?: { from: string; subject: string; date: string };
-  } | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
   const [showDomainForm, setShowDomainForm] = useState(false);
   const [newDomain, setNewDomain] = useState("");
   const [newBankName, setNewBankName] = useState("");
   const [error, setError] = useState("");
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
+  const [processResults, setProcessResults] = useState<Map<string, ProcessResult>>(new Map());
+  const [approvingDomain, setApprovingDomain] = useState<string | null>(null);
+  const [approveBankName, setApproveBankName] = useState("");
+
+  // Activity log
+  const [log, setLog] = useState<LogEntry[]>([]);
+  const [showLog, setShowLog] = useState(true);
+  const logIdRef = useRef(0);
+  const completedRef = useRef(false);
+
+  function addLog(level: LogEntry["level"], message: string, detail?: string) {
+    const entry: LogEntry = {
+      id: logIdRef.current++,
+      timestamp: new Date(),
+      level,
+      message,
+      detail,
+    };
+    setLog((prev) => [...prev, entry]);
+  }
+
+  function clearLog() {
+    setLog([]);
+    logIdRef.current = 0;
+  }
 
   async function handleLogout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -79,36 +126,65 @@ export default function AdminDashboardClient({
 
   async function fetchEmails() {
     setLoadingEmails(true);
-    setLoadingStatus("Starter...");
-    setProgressDetails(null);
-    setCollectedCount(0);
+    clearLog();
     setError("");
+    setEmails([]);
+    setProcessResults(new Map());
+    completedRef.current = false;
+
+    addLog("info", "Starter e-posthenting...");
 
     try {
-      const eventSource = new EventSource("/api/admin/gmail/emails?stream=true");
+      const eventSource = new EventSource("/api/admin/gmail/emails?stream=true&maxResults=20");
 
       eventSource.addEventListener("status", (e) => {
         const data = JSON.parse(e.data);
-        setLoadingStatus(data.message);
+        addLog("info", data.message);
       });
 
       eventSource.addEventListener("progress", (e) => {
         const data = JSON.parse(e.data);
-        setLoadingStatus(data.message);
-        setCollectedCount(data.current);
-        setProgressDetails({
-          current: data.current,
-          total: data.total,
-          email: data.email,
-        });
+        if (data.stage === "connect") {
+          addLog("info", "Kobler til pop.gmail.com:995 (TLS)...");
+        } else if (data.stage === "connected") {
+          addLog("success", "Tilkoblet POP3-server");
+        } else if (data.stage === "stat") {
+          addLog("info", data.message);
+        } else if (data.stage === "list") {
+          addLog("info", data.message);
+        } else if (data.stage === "fetched" && data.email) {
+          addLog(
+            "progress",
+            `[${data.current}/${data.total}] ${data.email.subject}`,
+            `Fra: ${data.email.from} | ${data.email.date}`
+          );
+        } else if (data.stage === "done") {
+          addLog("success", data.message);
+        } else {
+          addLog("info", data.message);
+        }
       });
 
       eventSource.addEventListener("complete", (e) => {
+        completedRef.current = true;
         const data = JSON.parse(e.data);
-        setEmails(data.emails || []);
-        setCollectedCount(data.emails?.length || 0);
-        setLoadingStatus("");
-        setProgressDetails(null);
+        const emailList: EmailItem[] = data.emails || [];
+        setEmails(emailList);
+
+        const whitelisted = emailList.filter((e) => e.isWhitelisted).length;
+        const withAttachments = emailList.filter((e) => e.attachmentCount > 0).length;
+        const alreadyImported = emailList.filter((e) => e.imported).length;
+
+        addLog(
+          "success",
+          `Ferdig! ${emailList.length} e-poster hentet`,
+          [
+            `${whitelisted} fra godkjente domener`,
+            `${withAttachments} med vedlegg`,
+            `${alreadyImported} allerede importert`,
+          ].join(" · ")
+        );
+
         setLoadingEmails(false);
         eventSource.close();
       });
@@ -116,21 +192,26 @@ export default function AdminDashboardClient({
       eventSource.addEventListener("error", (e) => {
         if (e instanceof MessageEvent) {
           const data = JSON.parse(e.data);
+          addLog("error", data.message || "Feil ved henting");
           setError(data.message || "Failed to fetch emails");
-        } else {
-          setError("Connection error");
         }
         setLoadingEmails(false);
         eventSource.close();
       });
 
       eventSource.onerror = () => {
-        setError("Connection lost");
+        // SSE fires onerror when stream closes — ignore if we got "complete"
+        if (!completedRef.current) {
+          addLog("error", "Tilkobling til server brutt");
+          setError("Tilkobling til server brutt. Prøv igjen.");
+        }
         setLoadingEmails(false);
         eventSource.close();
       };
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch emails");
+      const msg = err instanceof Error ? err.message : "Feil ved henting";
+      addLog("error", msg);
+      setError(msg);
       setLoadingEmails(false);
     }
   }
@@ -138,23 +219,62 @@ export default function AdminDashboardClient({
   async function importEmail(messageId: string, autoProcess: boolean = false) {
     setImporting(messageId);
     setError("");
+    addLog("info", `Importerer e-post...`, messageId);
     try {
       const response = await fetch("/api/admin/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messageId, autoProcess }),
       });
+      const data = await response.json();
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Failed to import");
       }
-      // Mark as imported in local state
-      setEmails(prev => prev.map(e =>
-        e.id === messageId ? { ...e, imported: true } : e
-      ));
+      setEmails((prev) =>
+        prev.map((e) =>
+          e.id === messageId ? { ...e, imported: true, reportId: data.report?.id } : e
+        )
+      );
+
+      if (data.extracted) {
+        setProcessResults((prev) => {
+          const next = new Map(prev);
+          next.set(messageId, {
+            emailId: messageId,
+            success: !data.extractionFailed,
+            extracted: data.extracted,
+            error: data.extractionError,
+            extractionFailed: data.extractionFailed,
+          });
+          return next;
+        });
+      }
+
+      if (data.extractionFailed) {
+        addLog("warn", `Importert, men ekstraksjon feilet: ${data.extractionError}`);
+      } else if (data.extracted) {
+        addLog(
+          "success",
+          `Importert og behandlet: ${data.extracted.companyName || "Ukjent selskap"}`,
+          [
+            data.extracted.recommendation,
+            data.extracted.targetPrice
+              ? `Kursmål: ${data.extracted.targetPrice} ${data.extracted.targetCurrency || "NOK"}`
+              : null,
+            data.extracted.investmentBank,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        );
+      } else {
+        addLog("success", "E-post importert (ikke behandlet)");
+      }
+
       refreshStats();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import");
+      const msg = err instanceof Error ? err.message : "Feil ved import";
+      addLog("error", msg);
+      setError(msg);
     } finally {
       setImporting(null);
     }
@@ -163,29 +283,66 @@ export default function AdminDashboardClient({
   async function processEmail(messageId: string) {
     setProcessing(messageId);
     setError("");
+    const email = emails.find((e) => e.id === messageId);
+
+    addLog(
+      "info",
+      `Behandler: ${email?.subject || messageId}`,
+      email?.attachmentCount
+        ? `${email.attachmentCount} vedlegg vil bli ekstrahert`
+        : "Ingen vedlegg"
+    );
+
     try {
-      // First import if not already imported
-      const email = emails.find(e => e.id === messageId);
       if (!email?.imported) {
         await importEmail(messageId, true);
       } else {
-        // Re-process existing report
         const response = await fetch("/api/admin/reports", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messageId, autoProcess: true }),
         });
+        const data = await response.json();
         if (!response.ok) {
-          const data = await response.json();
-          // If already imported, that's fine
           if (!data.error?.includes("already imported")) {
             throw new Error(data.error || "Failed to process");
+          }
+          addLog("info", "Allerede importert");
+        } else if (data.extracted) {
+          setProcessResults((prev) => {
+            const next = new Map(prev);
+            next.set(messageId, {
+              emailId: messageId,
+              success: !data.extractionFailed,
+              extracted: data.extracted,
+              error: data.extractionError,
+              extractionFailed: data.extractionFailed,
+            });
+            return next;
+          });
+          if (data.extractionFailed) {
+            addLog("warn", `Ekstraksjon feilet: ${data.extractionError}`);
+          } else {
+            addLog(
+              "success",
+              `Behandlet: ${data.extracted.companyName || "Ukjent selskap"}`,
+              [
+                data.extracted.recommendation,
+                data.extracted.targetPrice
+                  ? `Kursmål: ${data.extracted.targetPrice} ${data.extracted.targetCurrency || "NOK"}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            );
           }
         }
         refreshStats();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process");
+      const msg = err instanceof Error ? err.message : "Feil ved behandling";
+      addLog("error", msg);
+      setError(msg);
     } finally {
       setProcessing(null);
     }
@@ -211,7 +368,6 @@ export default function AdminDashboardClient({
   async function addDomain(e: React.FormEvent) {
     e.preventDefault();
     if (!newDomain || !newBankName) return;
-
     try {
       const response = await fetch("/api/admin/domains", {
         method: "POST",
@@ -227,8 +383,39 @@ export default function AdminDashboardClient({
       setNewDomain("");
       setNewBankName("");
       setShowDomainForm(false);
+      addLog("success", `Domene lagt til: ${newDomain} (${newBankName})`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add domain");
+    }
+  }
+
+  async function approveDomain(domain: string, bankName: string) {
+    if (!bankName.trim()) return;
+    try {
+      const response = await fetch("/api/admin/domains", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, bankName: bankName.trim() }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to add domain");
+      }
+      const data = await response.json();
+      setDomains(data.domains);
+      // Update email whitelist status
+      setEmails((prev) =>
+        prev.map((e) =>
+          e.domain.toLowerCase() === domain.toLowerCase()
+            ? { ...e, isWhitelisted: true }
+            : e
+        )
+      );
+      setApprovingDomain(null);
+      setApproveBankName("");
+      addLog("success", `Domene godkjent: ${domain} (${bankName.trim()})`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to approve domain");
     }
   }
 
@@ -245,16 +432,53 @@ export default function AdminDashboardClient({
       }
       const data = await response.json();
       setDomains(data.domains);
+      addLog("info", `Domene fjernet: ${domain}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove domain");
     }
   }
 
+  const logLevelIcon = (level: LogEntry["level"]) => {
+    switch (level) {
+      case "success":
+        return <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />;
+      case "error":
+        return <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />;
+      case "warn":
+        return <AlertCircle className="w-3.5 h-3.5 text-yellow-500 shrink-0" />;
+      case "progress":
+        return <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />;
+      default:
+        return <Server className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
+    }
+  };
+
+  const whitelistedEmails = emails.filter((e) => e.isWhitelisted);
+  const otherEmails = emails.filter((e) => !e.isWhitelisted);
+
+  // Compute suggested domains: unique domains from fetched emails, excluding already-approved
+  const approvedDomainSet = new Set(domains.map((d) => d.domain.toLowerCase()));
+  const domainCounts = new Map<string, { count: number; sampleSender: string }>();
+  for (const email of emails) {
+    const d = email.domain.toLowerCase();
+    if (!approvedDomainSet.has(d)) {
+      const existing = domainCounts.get(d);
+      if (existing) {
+        existing.count++;
+      } else {
+        domainCounts.set(d, { count: 1, sampleSender: email.from.name || email.from.email });
+      }
+    }
+  }
+  const suggestedDomains = Array.from(domainCounts.entries())
+    .map(([domain, { count, sampleSender }]) => ({ domain, count, sampleSender }))
+    .sort((a, b) => b.count - a.count);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold">Admin Dashboard</h1>
             <p className="text-sm text-gray-500">Analytikerrapporter</p>
@@ -262,7 +486,7 @@ export default function AdminDashboardClient({
           <div className="flex items-center gap-4">
             {session && (
               <span className="text-xs text-gray-500">
-                Sesjon utløper: {new Date(session.expiresAt).toLocaleString("nb-NO")}
+                Sesjon utl&oslash;per: {new Date(session.expiresAt).toLocaleString("nb-NO")}
               </span>
             )}
             <button
@@ -276,12 +500,12 @@ export default function AdminDashboardClient({
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-6">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg flex items-center justify-between">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-red-900 dark:text-red-100">{error}</p>
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+              <p className="text-sm text-red-900 dark:text-red-100">{error}</p>
             </div>
             <button onClick={() => setError("")}>
               <X className="w-4 h-4 text-red-600" />
@@ -289,7 +513,7 @@ export default function AdminDashboardClient({
           </div>
         )}
 
-        {/* Config Status */}
+        {/* Config + Stats row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div
             className={`p-4 rounded-lg border ${
@@ -301,14 +525,12 @@ export default function AdminDashboardClient({
             <div className="flex items-center gap-3">
               <Mail
                 className={`w-5 h-5 ${
-                  config.gmailConfigured
-                    ? "text-green-600"
-                    : "text-yellow-600"
+                  config.gmailConfigured ? "text-green-600" : "text-yellow-600"
                 }`}
               />
               <div>
-                <h3 className="font-medium">Gmail POP3</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <h3 className="font-medium text-sm">Gmail POP3</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   {config.gmailConfigured
                     ? "Konfigurert"
                     : "Mangler GMAIL_EMAIL / GMAIL_APP_PASSWORD"}
@@ -325,16 +547,14 @@ export default function AdminDashboardClient({
             }`}
           >
             <div className="flex items-center gap-3">
-              <Settings
+              <Zap
                 className={`w-5 h-5 ${
-                  config.openRouterConfigured
-                    ? "text-green-600"
-                    : "text-yellow-600"
+                  config.openRouterConfigured ? "text-green-600" : "text-yellow-600"
                 }`}
               />
               <div>
-                <h3 className="font-medium">OpenRouter (LLM)</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <h3 className="font-medium text-sm">OpenRouter (LLM)</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   {config.openRouterConfigured
                     ? "Konfigurert"
                     : "Mangler OPENROUTER_API_KEY"}
@@ -343,133 +563,284 @@ export default function AdminDashboardClient({
             </div>
           </div>
 
-          <div className="p-4 rounded-lg border bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <div className="p-4 rounded-lg border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-gray-600" />
               <div>
-                <h3 className="font-medium">{stats.total} rapporter</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {stats.processed} behandlet, {stats.pending} venter
+                <h3 className="font-medium text-sm">{stats.total} rapporter</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <span className="text-green-600">{stats.processed} behandlet</span>
+                  {" / "}
+                  <span className="text-yellow-600">{stats.pending} venter</span>
+                  {stats.failed > 0 && (
+                    <>
+                      {" / "}
+                      <span className="text-red-600">{stats.failed} feilet</span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <div className="text-sm text-gray-500">Totalt</div>
-          </div>
-          <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-            <div className="text-sm text-gray-500 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              Venter
+        {/* Two-column layout: Domains + Activity Log */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Domain Whitelist + Suggestions */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-gray-500" />
+                <h2 className="font-semibold text-sm">Godkjente domener</h2>
+                <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
+                  {domains.length}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowDomainForm(!showDomainForm)}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Legg til
+              </button>
             </div>
-          </div>
-          <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
-            <div className="text-2xl font-bold text-green-600">{stats.processed}</div>
-            <div className="text-sm text-gray-500 flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" />
-              Behandlet
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
-            <div className="text-2xl font-bold text-red-600">{stats.failed}</div>
-            <div className="text-sm text-gray-500 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Feilet
-            </div>
-          </div>
-        </div>
 
-        {/* Domain Whitelist */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg mb-6">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-            <h2 className="font-semibold">Godkjente domener</h2>
-            <button
-              onClick={() => setShowDomainForm(!showDomainForm)}
-              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-            >
-              <Plus className="w-4 h-4" />
-              Legg til
-            </button>
-          </div>
-
-          {showDomainForm && (
-            <form onSubmit={addDomain} className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input
-                  type="text"
-                  placeholder="domene.com"
-                  value={newDomain}
-                  onChange={(e) => setNewDomain(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800"
-                />
-                <input
-                  type="text"
-                  placeholder="Banknavn"
-                  value={newBankName}
-                  onChange={(e) => setNewBankName(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800"
-                />
+            {showDomainForm && (
+              <form
+                onSubmit={addDomain}
+                className="p-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950"
+              >
                 <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="domene.com"
+                    value={newDomain}
+                    onChange={(e) => setNewDomain(e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Banknavn"
+                    value={newBankName}
+                    onChange={(e) => setNewBankName(e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800"
+                  />
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                   >
                     Lagre
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowDomainForm(false)}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded"
-                  >
-                    Avbryt
-                  </button>
                 </div>
-              </div>
-            </form>
-          )}
+              </form>
+            )}
 
-          <div className="divide-y divide-gray-200 dark:divide-gray-800">
-            {domains.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                Ingen domener lagt til ennå. Legg til domener for å hente e-poster.
-              </div>
-            ) : (
-              domains.map((domain) => (
-                <div
-                  key={domain.domain}
-                  className="px-4 py-3 flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-mono text-sm">{domain.domain}</span>
-                    <span className="ml-2 text-gray-500">({domain.bankName})</span>
-                  </div>
-                  <button
-                    onClick={() => removeDomain(domain.domain)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-36 overflow-y-auto">
+              {domains.length === 0 ? (
+                <div className="p-4 text-center text-sm text-gray-500">
+                  Ingen domener lagt til enn&aring;.
                 </div>
-              ))
+              ) : (
+                domains.map((domain) => (
+                  <div
+                    key={domain.domain}
+                    className="px-4 py-2 flex items-center justify-between text-sm"
+                  >
+                    <div>
+                      <span className="font-mono text-xs">{domain.domain}</span>
+                      <span className="ml-2 text-gray-500 text-xs">({domain.bankName})</span>
+                    </div>
+                    <button
+                      onClick={() => removeDomain(domain.domain)}
+                      className="text-red-500 hover:text-red-600 p-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Suggested domains from fetched emails */}
+            {suggestedDomains.length > 0 && (
+              <>
+                <div className="px-4 py-2 bg-yellow-50 dark:bg-yellow-950/30 border-t border-b border-gray-200 dark:border-gray-800">
+                  <span className="text-xs font-medium text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">
+                    Nye domener funnet ({suggestedDomains.length})
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-48 overflow-y-auto">
+                  {suggestedDomains.map(({ domain, count, sampleSender }) => (
+                    <div key={domain} className="px-4 py-2">
+                      {approvingDomain === domain ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs shrink-0">{domain}</span>
+                          <input
+                            type="text"
+                            placeholder="Banknavn"
+                            value={approveBankName}
+                            onChange={(e) => setApproveBankName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                approveDomain(domain, approveBankName);
+                              }
+                              if (e.key === "Escape") {
+                                setApprovingDomain(null);
+                                setApproveBankName("");
+                              }
+                            }}
+                            autoFocus
+                            className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800"
+                          />
+                          <button
+                            onClick={() => approveDomain(domain, approveBankName)}
+                            className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                          >
+                            Lagre
+                          </button>
+                          <button
+                            onClick={() => {
+                              setApprovingDomain(null);
+                              setApproveBankName("");
+                            }}
+                            className="text-xs text-gray-500 hover:text-gray-700 px-1"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="min-w-0">
+                            <span className="font-mono text-xs">{domain}</span>
+                            <span className="ml-2 text-gray-400 text-xs">
+                              {count} e-post{count !== 1 ? "er" : ""}
+                            </span>
+                            <span className="ml-1 text-gray-400 text-xs truncate">
+                              ({sampleSender})
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setApprovingDomain(domain);
+                              // Guess a bank name from the domain
+                              const guess = domain
+                                .replace(/\.(no|com|se|dk|fi|eu|co\.uk)$/i, "")
+                                .replace(/[-_]/g, " ")
+                                .replace(/\b\w/g, (c) => c.toUpperCase());
+                              setApproveBankName(guess);
+                            }}
+                            className="flex items-center gap-1 text-xs px-2 py-1 text-green-600 border border-green-300 dark:border-green-700 rounded hover:bg-green-50 dark:hover:bg-green-950 shrink-0"
+                          >
+                            <CheckCircle className="w-3 h-3" />
+                            Godkjenn
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Activity Log */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-gray-500" />
+                <h2 className="font-semibold text-sm">Aktivitetslogg</h2>
+                {log.length > 0 && (
+                  <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
+                    {log.length}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {log.length > 0 && (
+                  <button
+                    onClick={clearLog}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    T&oslash;m
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowLog(!showLog)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  {showLog ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {showLog && (
+              <div className="max-h-48 overflow-y-auto font-mono text-xs">
+                {log.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-gray-500 font-sans">
+                    Loggen er tom. Klikk &quot;Hent e-poster&quot; for &aring; starte.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
+                    {log.map((entry) => (
+                      <div key={entry.id} className="px-3 py-1.5 flex items-start gap-2 hover:bg-gray-50 dark:hover:bg-gray-950">
+                        <span className="text-gray-400 shrink-0 tabular-nums pt-0.5">
+                          {entry.timestamp.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                        </span>
+                        <span className="pt-0.5">{logLevelIcon(entry.level)}</span>
+                        <div className="min-w-0">
+                          <span
+                            className={
+                              entry.level === "error"
+                                ? "text-red-600"
+                                : entry.level === "success"
+                                ? "text-green-600"
+                                : entry.level === "warn"
+                                ? "text-yellow-600"
+                                : "text-gray-700 dark:text-gray-300"
+                            }
+                          >
+                            {entry.message}
+                          </span>
+                          {entry.detail && (
+                            <span className="block text-gray-400 truncate">{entry.detail}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {loadingEmails && (
+                      <div className="px-3 py-1.5 flex items-center gap-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                        <span className="text-blue-500">Henter...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Emails from Gmail */}
+        {/* Email Fetch + List */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="font-semibold">E-poster fra Gmail</h2>
+              <h2 className="font-semibold text-sm">E-poster fra Gmail</h2>
               {emails.length > 0 && (
-                <span className="text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                  {emails.length} funnet
-                </span>
+                <>
+                  <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                    {emails.length} totalt
+                  </span>
+                  {whitelistedEmails.length > 0 && (
+                    <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                      {whitelistedEmails.length} fra godkjente
+                    </span>
+                  )}
+                </>
               )}
             </div>
             <button
@@ -482,131 +853,275 @@ export default function AdminDashboardClient({
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              Hent e-poster
+              {loadingEmails ? "Henter..." : "Hent e-poster"}
             </button>
           </div>
 
           {!config.gmailConfigured ? (
             <div className="p-8 text-center text-gray-500">
-              <p>Konfigurer Gmail for å hente e-poster:</p>
-              <code className="block mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-                GMAIL_EMAIL=din@email.com<br />
+              <p className="text-sm">Konfigurer Gmail for &aring; hente e-poster:</p>
+              <code className="block mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                GMAIL_EMAIL=din@email.com
+                <br />
                 GMAIL_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
               </code>
             </div>
-          ) : loadingEmails ? (
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                  <span className="text-gray-700 dark:text-gray-300 font-medium">{loadingStatus}</span>
-                </div>
-                <div className="text-2xl font-bold text-blue-600">{collectedCount}</div>
-              </div>
-              {progressDetails && progressDetails.total > 0 && (
-                <div className="mb-4">
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${(progressDetails.current / progressDetails.total) * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500">{progressDetails.current} av {progressDetails.total} skannet</p>
-                </div>
-              )}
-              {progressDetails?.email && (
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                  <p className="text-xs text-gray-500 mb-1">Siste hentet:</p>
-                  <p className="text-sm font-medium truncate">{progressDetails.email.subject}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Fra: {progressDetails.email.from} - {progressDetails.email.date}
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : emails.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              Klikk &apos;Hent e-poster&apos; for å laste inn
+          ) : emails.length === 0 && !loadingEmails ? (
+            <div className="p-8 text-center text-gray-500 text-sm">
+              Klikk &quot;Hent e-poster&quot; for &aring; laste inn
             </div>
           ) : (
-            <div className="divide-y divide-gray-200 dark:divide-gray-800">
-              {emails.map((email) => (
-                <div
-                  key={email.id}
-                  className={`px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-950 ${
-                    email.isWhitelisted ? "border-l-4 border-l-green-500" : ""
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium truncate">
-                          {email.from.name || email.from.email}
-                        </span>
-                        <span className={`text-xs font-mono px-1 rounded ${
-                          email.isWhitelisted
-                            ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
-                            : "text-gray-500"
-                        }`}>
-                          @{email.domain}
-                        </span>
-                        {email.imported && (
-                          <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                            Lagret
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm font-medium truncate mb-1">
-                        {email.subject}
-                      </div>
-                      <div className="text-xs text-gray-500 flex items-center gap-3">
-                        <span>{new Date(email.date).toLocaleDateString("nb-NO")}</span>
-                        {email.attachmentCount > 0 && (
-                          <span className="flex items-center gap-1">
-                            <FileText className="w-3 h-3" />
-                            {email.attachmentCount} vedlegg
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!email.imported && (
-                        <button
-                          onClick={() => importEmail(email.id, false)}
-                          disabled={importing === email.id}
-                          className="flex items-center gap-1 text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
-                        >
-                          {importing === email.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Download className="w-3 h-3" />
-                          )}
-                          Lagre
-                        </button>
-                      )}
-                      <button
-                        onClick={() => processEmail(email.id)}
-                        disabled={processing === email.id || importing === email.id}
-                        className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        {processing === email.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Settings className="w-3 h-3" />
-                        )}
-                        Behandle
-                      </button>
-                      {email.imported && (
-                        <span className="text-xs text-green-600">Lagret</span>
-                      )}
-                    </div>
+            <div>
+              {/* Whitelisted emails first */}
+              {whitelistedEmails.length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-green-50 dark:bg-green-950/50 border-b border-gray-200 dark:border-gray-800">
+                    <span className="text-xs font-medium text-green-700 dark:text-green-400 uppercase tracking-wide">
+                      Fra godkjente domener ({whitelistedEmails.length})
+                    </span>
                   </div>
-                </div>
-              ))}
+                  <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {whitelistedEmails.map((email) => (
+                      <EmailRow
+                        key={email.id}
+                        email={email}
+                        expanded={expandedEmail === email.id}
+                        onToggle={() =>
+                          setExpandedEmail(expandedEmail === email.id ? null : email.id)
+                        }
+                        importing={importing === email.id}
+                        processing={processing === email.id}
+                        processResult={processResults.get(email.id)}
+                        onImport={() => importEmail(email.id, false)}
+                        onProcess={() => processEmail(email.id)}
+                        openRouterConfigured={config.openRouterConfigured}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Other emails */}
+              {otherEmails.length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-950/50 border-b border-t border-gray-200 dark:border-gray-800">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      Andre e-poster ({otherEmails.length})
+                    </span>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {otherEmails.map((email) => (
+                      <EmailRow
+                        key={email.id}
+                        email={email}
+                        expanded={expandedEmail === email.id}
+                        onToggle={() =>
+                          setExpandedEmail(expandedEmail === email.id ? null : email.id)
+                        }
+                        importing={importing === email.id}
+                        processing={processing === email.id}
+                        processResult={processResults.get(email.id)}
+                        onImport={() => importEmail(email.id, false)}
+                        onProcess={() => processEmail(email.id)}
+                        openRouterConfigured={config.openRouterConfigured}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function EmailRow({
+  email,
+  expanded,
+  onToggle,
+  importing,
+  processing,
+  processResult,
+  onImport,
+  onProcess,
+  openRouterConfigured,
+}: {
+  email: EmailItem;
+  expanded: boolean;
+  onToggle: () => void;
+  importing: boolean;
+  processing: boolean;
+  processResult?: ProcessResult;
+  onImport: () => void;
+  onProcess: () => void;
+  openRouterConfigured: boolean;
+}) {
+  return (
+    <div
+      className={`${
+        email.isWhitelisted ? "border-l-2 border-l-green-500" : ""
+      }`}
+    >
+      <div
+        className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-950 cursor-pointer"
+        onClick={onToggle}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <span className="text-sm font-medium truncate">
+                {email.from.name || email.from.email}
+              </span>
+              <span
+                className={`text-xs font-mono px-1 py-0.5 rounded ${
+                  email.isWhitelisted
+                    ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-500"
+                }`}
+              >
+                @{email.domain}
+              </span>
+              {email.imported && (
+                <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                  Importert
+                </span>
+              )}
+              {processResult?.success && (
+                <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
+                  Behandlet
+                </span>
+              )}
+              {processResult?.extractionFailed && (
+                <span className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">
+                  Feil
+                </span>
+              )}
+            </div>
+            <div className="text-sm truncate mb-1">{email.subject}</div>
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              <span>{new Date(email.date).toLocaleString("nb-NO", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+              {email.attachmentCount > 0 && (
+                <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                  <Paperclip className="w-3 h-3" />
+                  {email.attachmentCount} vedlegg
+                </span>
+              )}
+              <span className="text-gray-400 font-mono text-[10px] truncate max-w-[200px]">
+                {email.id}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {!email.imported && (
+              <button
+                onClick={onImport}
+                disabled={importing}
+                className="flex items-center gap-1 text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+                title="Importer uten LLM-behandling"
+              >
+                {importing ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Download className="w-3 h-3" />
+                )}
+                Lagre
+              </button>
+            )}
+            {openRouterConfigured && (
+              <button
+                onClick={onProcess}
+                disabled={processing || importing}
+                className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                title="Importer og ekstraher data med LLM"
+              >
+                {processing ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Zap className="w-3 h-3" />
+                )}
+                Behandle
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="px-4 pb-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
+          {/* Snippet */}
+          <div className="pt-3">
+            <p className="text-xs font-medium text-gray-500 mb-1">Forhåndsvisning:</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-4">
+              {email.snippet || "(Ingen tekst)"}
+            </p>
+          </div>
+
+          {/* Process result */}
+          {processResult?.extracted && (
+            <div className="mt-3 p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+              <p className="text-xs font-medium text-gray-500 mb-2">Ekstraherte data:</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {processResult.extracted.companyName && (
+                  <>
+                    <span className="text-gray-500">Selskap:</span>
+                    <span className="font-medium">{processResult.extracted.companyName}</span>
+                  </>
+                )}
+                {processResult.extracted.investmentBank && (
+                  <>
+                    <span className="text-gray-500">Bank:</span>
+                    <span>{processResult.extracted.investmentBank}</span>
+                  </>
+                )}
+                {processResult.extracted.recommendation && (
+                  <>
+                    <span className="text-gray-500">Anbefaling:</span>
+                    <span
+                      className={`font-medium ${
+                        processResult.extracted.recommendation.toLowerCase().includes("kjøp") ||
+                        processResult.extracted.recommendation.toLowerCase().includes("buy")
+                          ? "text-green-600"
+                          : processResult.extracted.recommendation.toLowerCase().includes("selg") ||
+                            processResult.extracted.recommendation.toLowerCase().includes("sell")
+                          ? "text-red-600"
+                          : "text-yellow-600"
+                      }`}
+                    >
+                      {processResult.extracted.recommendation}
+                    </span>
+                  </>
+                )}
+                {processResult.extracted.targetPrice && (
+                  <>
+                    <span className="text-gray-500">Kursm&aring;l:</span>
+                    <span className="font-medium">
+                      {processResult.extracted.targetPrice}{" "}
+                      {processResult.extracted.targetCurrency || "NOK"}
+                    </span>
+                  </>
+                )}
+                {processResult.extracted.summary && (
+                  <div className="col-span-2 mt-1 pt-1 border-t border-gray-100 dark:border-gray-800">
+                    <span className="text-gray-500">Sammendrag: </span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {processResult.extracted.summary}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {processResult?.error && (
+            <div className="mt-2 p-2 bg-red-50 dark:bg-red-950 rounded text-xs text-red-600">
+              Feil: {processResult.error}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

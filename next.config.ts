@@ -36,6 +36,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["pdfjs-dist"],
   // Optimize lucide-react imports to reduce bundle size
   modularizeImports: {
     "lucide-react": {

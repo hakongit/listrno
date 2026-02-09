@@ -61,6 +61,18 @@ export async function initializeAnalystDatabase() {
     )
   `);
 
+  // Add new columns for source content (idempotent - SQLite lacks IF NOT EXISTS for columns)
+  try {
+    await db.execute(`ALTER TABLE analyst_reports ADD COLUMN email_body TEXT`);
+  } catch {
+    // Column already exists
+  }
+  try {
+    await db.execute(`ALTER TABLE analyst_reports ADD COLUMN attachment_texts TEXT`);
+  } catch {
+    // Column already exists
+  }
+
   // Create indexes
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_date ON analyst_reports(received_date)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_company ON analyst_reports(company_name)`);
@@ -92,6 +104,8 @@ function rowToReport(row: AnalystReportRow): AnalystReport {
     summary: row.summary ?? undefined,
     priceAtReport: row.price_at_report ?? undefined,
     priceAtReportDate: row.price_at_report_date ?? undefined,
+    emailBody: row.email_body ?? undefined,
+    attachmentTexts: row.attachment_texts ? JSON.parse(row.attachment_texts) : undefined,
     extractionStatus: row.extraction_status as AnalystReport['extractionStatus'],
     extractionError: row.extraction_error ?? undefined,
     createdAt: row.created_at,
@@ -135,14 +149,16 @@ export async function createAnalystReport(data: {
   receivedDate: string;
   emailBlobUrl?: string;
   attachmentsBlobUrls?: string[];
+  emailBody?: string;
+  attachmentTexts?: string[];
 }): Promise<number> {
   const db = getDb();
   const result = await db.execute({
     sql: `
       INSERT INTO analyst_reports (
         gmail_message_id, from_email, from_domain, subject, received_date,
-        email_blob_url, attachments_blob_urls
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        email_blob_url, attachments_blob_urls, email_body, attachment_texts
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     args: [
       data.gmailMessageId,
@@ -152,6 +168,8 @@ export async function createAnalystReport(data: {
       data.receivedDate,
       data.emailBlobUrl ?? null,
       data.attachmentsBlobUrls ? JSON.stringify(data.attachmentsBlobUrls) : null,
+      data.emailBody ?? null,
+      data.attachmentTexts ? JSON.stringify(data.attachmentTexts) : null,
     ],
   });
   return Number(result.lastInsertRowid);

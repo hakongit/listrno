@@ -1,4 +1,5 @@
 import Pop3Command from "node-pop3";
+import { simpleParser } from "mailparser";
 
 // Timeout wrapper for POP3 operations
 function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
@@ -10,7 +11,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Pro
   ]);
 }
 
-interface EmailMessage {
+export interface EmailMessage {
   id: string;
   from: string;
   fromEmail: string;
@@ -47,7 +48,7 @@ export function needsOAuthSetup(): boolean {
   return false;
 }
 
-// Parse email headers from raw email
+// Parse email headers from raw email (used for fast header pre-filtering)
 function parseHeaders(raw: string): Record<string, string> {
   const headers: Record<string, string> = {};
   const headerSection = raw.split(/\r?\n\r?\n/)[0];
@@ -119,81 +120,20 @@ export function extractDomain(email: string): string {
   return match ? match[1].toLowerCase() : "";
 }
 
-// Parse email body from raw email (simplified - handles plain text and basic MIME)
-function parseBody(raw: string): string {
-  const parts = raw.split(/\r?\n\r?\n/);
-  if (parts.length < 2) return "";
+// --- Email cache (5-min TTL to avoid redundant POP3 sessions) ---
+const EMAIL_CACHE_TTL = 5 * 60 * 1000;
+let emailCache: { emails: EmailMessage[]; fetchedAt: number } | null = null;
 
-  const headers = parseHeaders(raw);
-  const contentType = headers["content-type"] || "text/plain";
-  const body = parts.slice(1).join("\n\n");
-
-  // Handle base64 encoded content
-  const transferEncoding = headers["content-transfer-encoding"] || "";
-  if (transferEncoding.toLowerCase() === "base64") {
-    try {
-      return Buffer.from(body.replace(/\s/g, ""), "base64").toString("utf-8");
-    } catch {
-      return body;
-    }
+function getCachedEmails(): EmailMessage[] | null {
+  if (emailCache && Date.now() - emailCache.fetchedAt < EMAIL_CACHE_TTL) {
+    return emailCache.emails;
   }
+  emailCache = null;
+  return null;
+}
 
-  // Handle quoted-printable
-  if (transferEncoding.toLowerCase() === "quoted-printable") {
-    return body
-      .replace(/=\r?\n/g, "")
-      .replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  }
-
-  // For multipart, try to find text/plain part
-  if (contentType.includes("multipart")) {
-    const boundaryMatch = contentType.match(/boundary="?([^";\s]+)"?/);
-    if (boundaryMatch) {
-      const boundary = boundaryMatch[1];
-      const sections = body.split(new RegExp(`--${boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
-
-      for (const section of sections) {
-        if (section.includes("text/plain")) {
-          const sectionParts = section.split(/\r?\n\r?\n/);
-          if (sectionParts.length >= 2) {
-            const sectionHeaders = parseHeaders(section);
-            let content = sectionParts.slice(1).join("\n\n").trim();
-
-            // Handle encoding in this part
-            const partEncoding = sectionHeaders["content-transfer-encoding"] || "";
-            if (partEncoding.toLowerCase() === "base64") {
-              try {
-                content = Buffer.from(content.replace(/\s/g, ""), "base64").toString("utf-8");
-              } catch {
-                // Keep as is
-              }
-            } else if (partEncoding.toLowerCase() === "quoted-printable") {
-              content = content
-                .replace(/=\r?\n/g, "")
-                .replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-            }
-
-            return content;
-          }
-        }
-      }
-
-      // Fallback to text/html if no plain text
-      for (const section of sections) {
-        if (section.includes("text/html")) {
-          const sectionParts = section.split(/\r?\n\r?\n/);
-          if (sectionParts.length >= 2) {
-            let content = sectionParts.slice(1).join("\n\n").trim();
-            // Strip HTML tags
-            content = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-            return content;
-          }
-        }
-      }
-    }
-  }
-
-  return body;
+function setCachedEmails(emails: EmailMessage[]) {
+  emailCache = { emails, fetchedAt: Date.now() };
 }
 
 export interface FetchProgress {
@@ -216,6 +156,18 @@ export async function fetchEmailsWithProgress(
   } = {},
   onProgress?: (progress: FetchProgress) => void
 ): Promise<EmailMessage[]> {
+  // Check cache first (only for non-progress requests or when no date filter)
+  if (!options.afterDate) {
+    const cached = getCachedEmails();
+    if (cached) {
+      const limited = cached.slice(0, options.maxResults || 20);
+      if (onProgress) {
+        onProgress({ stage: "done", current: limited.length, total: limited.length, message: `Ferdig! ${limited.length} e-poster (fra cache).` });
+      }
+      return limited;
+    }
+  }
+
   const { email, password } = getCredentials();
   const maxResults = options.maxResults || 20;
 
@@ -270,16 +222,10 @@ export async function fetchEmailsWithProgress(
 
       try {
         const raw = await withTimeout(pop3.RETR(msgNum), 20000, `Fetch message ${msgNum}`);
-        const headers = parseHeaders(raw);
 
-        const from = decodeMimeWord(headers["from"] || "");
-        const { email: fromEmail } = parseFromHeader(from);
-        const fromDomain = extractDomain(fromEmail);
-        const subject = decodeMimeWord(headers["subject"] || "(No subject)");
-        const dateStr = headers["date"] || "";
-        const messageId = headers["message-id"] || `pop3-${msgNum}`;
-
-        // Parse date and filter if afterDate specified
+        // Quick header pre-filtering using our fast parser
+        const rawHeaders = parseHeaders(raw);
+        const dateStr = rawHeaders["date"] || "";
         let date: Date;
         try {
           date = new Date(dateStr);
@@ -291,17 +237,33 @@ export async function fetchEmailsWithProgress(
           continue;
         }
 
-        const body = parseBody(raw);
+        // Full MIME parsing with simpleParser (handles attachments, encoding, etc.)
+        const parsed = await simpleParser(raw);
+
+        const fromAddr = parsed.from?.value?.[0];
+        const fromEmail = fromAddr?.address || "";
+        const fromName = fromAddr?.name || fromEmail;
+        const fromDomain = extractDomain(fromEmail);
+        const subject = parsed.subject || "(No subject)";
+        const messageId = (parsed.messageId || `pop3-${msgNum}`).replace(/[<>]/g, "");
+
+        const body = parsed.text || (parsed.html ? parsed.html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : "");
+
+        const attachments = (parsed.attachments || []).map((att) => ({
+          filename: att.filename || "unnamed",
+          content: att.content,
+          contentType: att.contentType || "application/octet-stream",
+        }));
 
         const emailMsg: EmailMessage = {
-          id: messageId.replace(/[<>]/g, ""),
-          from,
+          id: messageId,
+          from: fromName,
           fromEmail,
           fromDomain,
           subject,
-          date: date.toISOString(),
+          date: (parsed.date || date).toISOString(),
           body,
-          attachments: [],
+          attachments,
         };
 
         messages.push(emailMsg);
@@ -314,7 +276,7 @@ export async function fetchEmailsWithProgress(
           email: {
             from: fromEmail,
             subject: subject.substring(0, 60) + (subject.length > 60 ? "..." : ""),
-            date: date.toLocaleDateString("nb-NO"),
+            date: (parsed.date || date).toLocaleDateString("nb-NO"),
           }
         });
       } catch (err) {
@@ -323,6 +285,9 @@ export async function fetchEmailsWithProgress(
     }
 
     report({ stage: "done", current: messages.length, total: messages.length, message: `Ferdig! Hentet ${messages.length} e-poster.` });
+
+    // Cache the fetched emails
+    setCachedEmails(messages);
 
     await withTimeout(pop3.QUIT(), 5000, "POP3 QUIT").catch(() => {});
     return messages;
@@ -350,8 +315,15 @@ export async function fetchEmails(options: {
   return fetchEmailsWithProgress(options);
 }
 
-// Get a single email by message-id (searches through recent emails)
+// Get a single email by message-id (checks cache first, avoids redundant POP3)
 export async function getEmailById(messageId: string): Promise<EmailMessage | null> {
+  // Check cache first
+  const cached = getCachedEmails();
+  if (cached) {
+    return cached.find(e => e.id === messageId) || null;
+  }
+
+  // Fetch from POP3 if not cached
   const emails = await fetchEmails({ maxResults: 100 });
   return emails.find(e => e.id === messageId) || null;
 }

@@ -12,8 +12,12 @@ import {
   getBankNameForDomain,
   getAnalystReportCount,
 } from "@/lib/analyst-db";
-import { fetchEmails } from "@/lib/gmail";
+import { getEmailById } from "@/lib/gmail";
 import { extractReportData, isOpenRouterConfigured } from "@/lib/analyst-extraction";
+import { extractTextFromPdf } from "@/lib/pdf-extract";
+
+// POP3 fetch + PDF extraction + LLM call can take time
+export const maxDuration = 60;
 
 // GET: List all analyst reports
 export async function GET(request: NextRequest) {
@@ -86,9 +90,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch email from POP3
-    const emails = await fetchEmails({ maxResults: 100 });
-    const email = emails.find(e => e.id === messageId);
+    // Fetch email from cache or POP3
+    const email = await getEmailById(messageId);
 
     if (!email) {
       return NextResponse.json(
@@ -97,20 +100,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create report record
+    // Extract text from PDF attachments
+    const pdfAttachments = email.attachments.filter(
+      a => a.contentType === "application/pdf" || a.filename.toLowerCase().endsWith(".pdf")
+    );
+    const attachmentTexts: string[] = [];
+    for (const att of pdfAttachments) {
+      const text = await extractTextFromPdf(att.content);
+      if (text) {
+        attachmentTexts.push(text);
+      }
+    }
+
+    // Create report record with email body and attachment texts
     const reportId = await createAnalystReport({
       gmailMessageId: messageId,
       fromEmail: email.fromEmail,
       fromDomain: email.fromDomain,
       subject: email.subject,
       receivedDate: email.date,
+      emailBody: email.body || undefined,
+      attachmentTexts: attachmentTexts.length > 0 ? attachmentTexts : undefined,
     });
 
     // Auto-process if requested and OpenRouter is configured
     if (autoProcess && isOpenRouterConfigured()) {
       try {
-        // Extract data using LLM
-        const extracted = await extractReportData(email.body, [], email.subject);
+        // Extract data using LLM (now with actual PDF content)
+        const extracted = await extractReportData(email.body, attachmentTexts, email.subject);
 
         // Try to get bank name from domain whitelist
         if (!extracted.investmentBank) {

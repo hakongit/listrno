@@ -28,6 +28,10 @@ export interface AnalystReport {
   priceAtReport?: number;
   priceAtReportDate?: string;
 
+  // Source content (admin only, for re-processing)
+  emailBody?: string;
+  attachmentTexts?: string[];
+
   // Processing status
   extractionStatus: 'pending' | 'processed' | 'failed';
   extractionError?: string;
@@ -55,6 +59,8 @@ export interface AnalystReportRow {
   summary: string | null;
   price_at_report: number | null;
   price_at_report_date: string | null;
+  email_body: string | null;
+  attachment_texts: string | null;
   extraction_status: string;
   extraction_error: string | null;
   created_at: string;
@@ -82,30 +88,6 @@ export interface ExtractedReportData {
   targetCurrency?: string;
   recommendation?: string;
   summary?: string;
-}
-
-export interface GmailMessage {
-  id: string;
-  threadId: string;
-  labelIds: string[];
-  snippet: string;
-  payload: {
-    headers: { name: string; value: string }[];
-    body?: { data?: string };
-    parts?: GmailMessagePart[];
-  };
-  internalDate: string;
-}
-
-export interface GmailMessagePart {
-  mimeType: string;
-  filename?: string;
-  body?: {
-    attachmentId?: string;
-    data?: string;
-    size: number;
-  };
-  parts?: GmailMessagePart[];
 }
 
 export interface PublicAnalystReport {

@@ -866,9 +866,9 @@ export default function AdminDashboardClient({
                 GMAIL_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
               </code>
             </div>
-          ) : emails.length === 0 && !loadingEmails ? (
+          ) : emails.length === 0 ? (
             <div className="p-8 text-center text-gray-500 text-sm">
-              Klikk &quot;Hent e-poster&quot; for &aring; laste inn
+              {loadingEmails ? "Henter e-poster..." : "Klikk \"Hent e-poster\" for \u00e5 laste inn"}
             </div>
           ) : (
             <div>

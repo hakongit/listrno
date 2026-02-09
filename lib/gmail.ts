@@ -254,6 +254,11 @@ export async function fetchEmailsWithProgress(
           contentType: att.contentType || "application/octet-stream",
         }));
 
+        // Skip emails with no sender — likely corrupted or empty messages
+        if (!fromEmail) {
+          continue;
+        }
+
         const emailMsg: EmailMessage = {
           id: messageId,
           from: fromName,

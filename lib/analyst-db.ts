@@ -73,6 +73,15 @@ export async function initializeAnalystDatabase() {
     // Column already exists
   }
 
+  // Extraction guidance (single-row table for persistent LLM instructions)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS extraction_guidance (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      guidance_prompt TEXT NOT NULL DEFAULT '',
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
   // Create indexes
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_date ON analyst_reports(received_date)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_company ON analyst_reports(company_name)`);
@@ -380,16 +389,39 @@ export async function getBankNameForDomain(domain: string): Promise<string | nul
   return String(result.rows[0].bank_name);
 }
 
+// Extraction guidance operations
+
+export async function getExtractionGuidance(): Promise<string> {
+  const db = getDb();
+  const result = await db.execute(`SELECT guidance_prompt FROM extraction_guidance WHERE id = 1`);
+  if (result.rows.length === 0) return "";
+  return String(result.rows[0].guidance_prompt);
+}
+
+export async function updateExtractionGuidance(text: string): Promise<void> {
+  const db = getDb();
+  await db.execute({
+    sql: `
+      INSERT INTO extraction_guidance (id, guidance_prompt, updated_at)
+      VALUES (1, ?, datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        guidance_prompt = excluded.guidance_prompt,
+        updated_at = excluded.updated_at
+    `,
+    args: [text],
+  });
+}
+
 // Cached versions for public pages
 export const getCachedPublicAnalystReports = unstable_cache(
   async (options?: { limit?: number; companyIsin?: string }) =>
     getPublicAnalystReports(options),
   ["public-analyst-reports"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: ["public-analyst-reports"] }
 );
 
 export const getCachedAnalystReportCount = unstable_cache(
   async () => getAnalystReportCount('processed'),
   ["analyst-report-count"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: ["public-analyst-reports"] }
 );

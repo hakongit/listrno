@@ -43,9 +43,19 @@ function getApiKey(): string {
 export async function extractReportData(
   emailBody: string,
   attachmentTexts: string[] = [],
-  subject: string = ""
+  subject: string = "",
+  options?: { guidance?: string; feedback?: string }
 ): Promise<ExtractedReportData> {
   const apiKey = getApiKey();
+
+  // Build system prompt with optional guidance and feedback
+  let systemPrompt = EXTRACTION_PROMPT;
+  if (options?.guidance) {
+    systemPrompt += `\n\n## Standing Instructions\n${options.guidance}`;
+  }
+  if (options?.feedback) {
+    systemPrompt += `\n\n## Specific Instructions for This Report\n${options.feedback}`;
+  }
 
   // Combine all content
   const contentParts = [
@@ -84,7 +94,7 @@ export async function extractReportData(
       messages: [
         {
           role: "system",
-          content: EXTRACTION_PROMPT,
+          content: systemPrompt,
         },
         {
           role: "user",

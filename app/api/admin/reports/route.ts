@@ -11,6 +11,7 @@ import {
   deleteAnalystReport,
   getBankNameForDomain,
   getAnalystReportCount,
+  getExtractionGuidance,
 } from "@/lib/analyst-db";
 import { getEmailById } from "@/lib/gmail";
 import { extractReportData, isOpenRouterConfigured } from "@/lib/analyst-extraction";
@@ -127,8 +128,16 @@ export async function POST(request: NextRequest) {
     // Auto-process if requested and OpenRouter is configured
     if (autoProcess && isOpenRouterConfigured()) {
       try {
+        // Fetch global guidance for LLM extraction
+        const guidance = await getExtractionGuidance();
+
         // Extract data using LLM (now with actual PDF content)
-        const extracted = await extractReportData(email.body, attachmentTexts, email.subject);
+        const extracted = await extractReportData(
+          email.body,
+          attachmentTexts,
+          email.subject,
+          { guidance: guidance || undefined }
+        );
 
         // Try to get bank name from domain whitelist
         if (!extracted.investmentBank) {

@@ -21,6 +21,9 @@ import {
   Server,
   Search,
   Shield,
+  Save,
+  RotateCcw,
+  BookOpen,
 } from "lucide-react";
 import { AnalystDomain } from "@/lib/analyst-types";
 
@@ -63,6 +66,7 @@ interface LogEntry {
 
 interface ProcessResult {
   emailId: string;
+  reportId?: number;
   success: boolean;
   extracted?: {
     companyName?: string;
@@ -70,6 +74,7 @@ interface ProcessResult {
     targetPrice?: number;
     targetCurrency?: string;
     investmentBank?: string;
+    analystNames?: string[];
     summary?: string;
   };
   error?: string;
@@ -99,6 +104,12 @@ export default function AdminDashboardClient({
   const [approvingDomain, setApprovingDomain] = useState<string | null>(null);
   const [approveBankName, setApproveBankName] = useState("");
 
+  // Guidance editor
+  const [guidance, setGuidance] = useState("");
+  const [guidanceLoaded, setGuidanceLoaded] = useState(false);
+  const [savingGuidance, setSavingGuidance] = useState(false);
+  const [showGuidance, setShowGuidance] = useState(false);
+
   // Activity log
   const [log, setLog] = useState<LogEntry[]>([]);
   const [showLog, setShowLog] = useState(true);
@@ -119,6 +130,52 @@ export default function AdminDashboardClient({
   function clearLog() {
     setLog([]);
     logIdRef.current = 0;
+  }
+
+  // Fetch guidance on mount
+  useEffect(() => {
+    if (!guidanceLoaded) {
+      fetch("/api/admin/extraction/guidance")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data) setGuidance(data.guidance || "");
+        })
+        .catch(() => {})
+        .finally(() => setGuidanceLoaded(true));
+    }
+  }, [guidanceLoaded]);
+
+  async function saveGuidance() {
+    setSavingGuidance(true);
+    try {
+      const response = await fetch("/api/admin/extraction/guidance", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guidance }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save guidance");
+      }
+      addLog("success", "LLM-instruksjoner lagret");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Feil ved lagring";
+      addLog("error", msg);
+      setError(msg);
+    } finally {
+      setSavingGuidance(false);
+    }
+  }
+
+  function handleUpdateProcessResult(emailId: string, extracted: ProcessResult["extracted"]) {
+    setProcessResults((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(emailId);
+      if (existing) {
+        next.set(emailId, { ...existing, extracted });
+      }
+      return next;
+    });
   }
 
   async function handleLogout() {
@@ -247,6 +304,7 @@ export default function AdminDashboardClient({
           const next = new Map(prev);
           next.set(messageId, {
             emailId: messageId,
+            reportId: data.report?.id,
             success: !data.extractionFailed,
             extracted: data.extracted,
             error: data.extractionError,
@@ -303,45 +361,46 @@ export default function AdminDashboardClient({
       if (!email?.imported) {
         await importEmail(messageId, true);
       } else {
-        const response = await fetch("/api/admin/reports", {
+        // Already imported — use reprocess endpoint
+        const reportId = email.reportId;
+        if (!reportId) {
+          addLog("warn", "Ingen rapport-ID funnet for denne e-posten");
+          return;
+        }
+
+        const response = await fetch("/api/admin/extraction/reprocess", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messageId, autoProcess: true }),
+          body: JSON.stringify({ reportId }),
         });
         const data = await response.json();
         if (!response.ok) {
-          if (!data.error?.includes("already imported")) {
-            throw new Error(data.error || "Failed to process");
-          }
-          addLog("info", "Allerede importert");
-        } else if (data.extracted) {
+          throw new Error(data.error || "Failed to process");
+        }
+
+        if (data.extracted) {
           setProcessResults((prev) => {
             const next = new Map(prev);
             next.set(messageId, {
               emailId: messageId,
-              success: !data.extractionFailed,
+              reportId,
+              success: true,
               extracted: data.extracted,
-              error: data.extractionError,
-              extractionFailed: data.extractionFailed,
             });
             return next;
           });
-          if (data.extractionFailed) {
-            addLog("warn", `Ekstraksjon feilet: ${data.extractionError}`);
-          } else {
-            addLog(
-              "success",
-              `Behandlet: ${data.extracted.companyName || "Ukjent selskap"}`,
-              [
-                data.extracted.recommendation,
-                data.extracted.targetPrice
-                  ? `Kursmål: ${data.extracted.targetPrice} ${data.extracted.targetCurrency || "NOK"}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")
-            );
-          }
+          addLog(
+            "success",
+            `Behandlet: ${data.extracted.companyName || "Ukjent selskap"}`,
+            [
+              data.extracted.recommendation,
+              data.extracted.targetPrice
+                ? `Kursmål: ${data.extracted.targetPrice} ${data.extracted.targetCurrency || "NOK"}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")
+          );
         }
         refreshStats();
       }
@@ -863,6 +922,54 @@ export default function AdminDashboardClient({
           </div>
         </div>
 
+        {/* LLM Guidance Editor */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg mb-6">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-gray-500" />
+              <h2 className="font-semibold text-sm">LLM-instruksjoner</h2>
+            </div>
+            <button
+              onClick={() => setShowGuidance(!showGuidance)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              {showGuidance ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+          {showGuidance && (
+            <div className="p-4">
+              <p className="text-xs text-gray-500 mb-2">
+                Disse instruksjonene legges til alle fremtidige LLM-ekstraksjoner.
+              </p>
+              <textarea
+                value={guidance}
+                onChange={(e) => setGuidance(e.target.value)}
+                rows={4}
+                placeholder="F.eks: Selskapsnavn skal alltid bruke OSE-ticker format. Anbefaling skal normaliseres til buy/hold/sell."
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 resize-y"
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  onClick={saveGuidance}
+                  disabled={savingGuidance}
+                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {savingGuidance ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  Lagre
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Email Fetch + List */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
@@ -933,6 +1040,7 @@ export default function AdminDashboardClient({
                         onImport={() => importEmail(email.id, false)}
                         onProcess={() => processEmail(email.id)}
                         onDelete={() => email.reportId && deleteReport(email.id, email.reportId)}
+                        onUpdateProcessResult={(extracted) => handleUpdateProcessResult(email.id, extracted)}
                         openRouterConfigured={config.openRouterConfigured}
                       />
                     ))}
@@ -963,6 +1071,7 @@ export default function AdminDashboardClient({
                         onImport={() => importEmail(email.id, false)}
                         onProcess={() => processEmail(email.id)}
                         onDelete={() => email.reportId && deleteReport(email.id, email.reportId)}
+                        onUpdateProcessResult={(extracted) => handleUpdateProcessResult(email.id, extracted)}
                         openRouterConfigured={config.openRouterConfigured}
                       />
                     ))}
@@ -987,6 +1096,7 @@ function EmailRow({
   onImport,
   onProcess,
   onDelete,
+  onUpdateProcessResult,
   openRouterConfigured,
 }: {
   email: EmailItem;
@@ -998,11 +1108,109 @@ function EmailRow({
   onImport: () => void;
   onProcess: () => void;
   onDelete: () => void;
+  onUpdateProcessResult: (extracted: ProcessResult["extracted"]) => void;
   openRouterConfigured: boolean;
 }) {
   const [fullBody, setFullBody] = useState<string | null>(null);
   const [loadingBody, setLoadingBody] = useState(false);
   const [attachments, setAttachments] = useState<{ filename: string; contentType: string }[]>([]);
+
+  // Editable extraction fields
+  const [editFields, setEditFields] = useState<{
+    companyName: string;
+    investmentBank: string;
+    recommendation: string;
+    targetPrice: string;
+    targetCurrency: string;
+    analystNames: string;
+    summary: string;
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [feedback, setFeedback] = useState("");
+
+  // Initialize edit fields when processResult changes
+  useEffect(() => {
+    if (processResult?.extracted) {
+      setEditFields({
+        companyName: processResult.extracted.companyName || "",
+        investmentBank: processResult.extracted.investmentBank || "",
+        recommendation: processResult.extracted.recommendation || "",
+        targetPrice: processResult.extracted.targetPrice?.toString() || "",
+        targetCurrency: processResult.extracted.targetCurrency || "NOK",
+        analystNames: processResult.extracted.analystNames?.join(", ") || "",
+        summary: processResult.extracted.summary || "",
+      });
+    }
+  }, [processResult?.extracted]);
+
+  async function handleSave() {
+    if (!editFields || !processResult?.reportId) return;
+    setSaving(true);
+    try {
+      const body: Record<string, unknown> = {
+        id: processResult.reportId,
+        companyName: editFields.companyName || undefined,
+        investmentBank: editFields.investmentBank || undefined,
+        recommendation: editFields.recommendation || undefined,
+        targetPrice: editFields.targetPrice ? parseFloat(editFields.targetPrice) : undefined,
+        targetCurrency: editFields.targetCurrency || "NOK",
+        analystNames: editFields.analystNames
+          ? editFields.analystNames.split(",").map((n) => n.trim()).filter(Boolean)
+          : undefined,
+        summary: editFields.summary || undefined,
+      };
+      const response = await fetch("/api/admin/reports", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save");
+      }
+      onUpdateProcessResult({
+        companyName: editFields.companyName || undefined,
+        investmentBank: editFields.investmentBank || undefined,
+        recommendation: editFields.recommendation || undefined,
+        targetPrice: editFields.targetPrice ? parseFloat(editFields.targetPrice) : undefined,
+        targetCurrency: editFields.targetCurrency || "NOK",
+        analystNames: editFields.analystNames
+          ? editFields.analystNames.split(",").map((n) => n.trim()).filter(Boolean)
+          : undefined,
+        summary: editFields.summary || undefined,
+      });
+    } catch {
+      // Error handled silently — could add error state if needed
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReprocess() {
+    const reportId = processResult?.reportId || email.reportId;
+    if (!reportId) return;
+    setReprocessing(true);
+    try {
+      const response = await fetch("/api/admin/extraction/reprocess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId, feedback: feedback || undefined }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to re-process");
+      }
+      if (data.extracted) {
+        onUpdateProcessResult(data.extracted);
+        setFeedback("");
+      }
+    } catch {
+      // Error handled silently
+    } finally {
+      setReprocessing(false);
+    }
+  }
 
   useEffect(() => {
     if (expanded && fullBody === null && !loadingBody) {
@@ -1153,58 +1361,126 @@ function EmailRow({
             )}
           </div>
 
-          {/* Process result */}
-          {processResult?.extracted && (
-            <div className="mt-3 p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+          {/* Editable extraction form */}
+          {editFields && processResult?.extracted && (
+            <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
               <p className="text-xs font-medium text-gray-500 mb-2">Ekstraherte data:</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                {processResult.extracted.companyName && (
-                  <>
-                    <span className="text-gray-500">Selskap:</span>
-                    <span className="font-medium">{processResult.extracted.companyName}</span>
-                  </>
-                )}
-                {processResult.extracted.investmentBank && (
-                  <>
-                    <span className="text-gray-500">Bank:</span>
-                    <span>{processResult.extracted.investmentBank}</span>
-                  </>
-                )}
-                {processResult.extracted.recommendation && (
-                  <>
-                    <span className="text-gray-500">Anbefaling:</span>
-                    <span
-                      className={`font-medium ${
-                        processResult.extracted.recommendation.toLowerCase().includes("kjøp") ||
-                        processResult.extracted.recommendation.toLowerCase().includes("buy")
-                          ? "text-green-600"
-                          : processResult.extracted.recommendation.toLowerCase().includes("selg") ||
-                            processResult.extracted.recommendation.toLowerCase().includes("sell")
-                          ? "text-red-600"
-                          : "text-yellow-600"
-                      }`}
-                    >
-                      {processResult.extracted.recommendation}
-                    </span>
-                  </>
-                )}
-                {processResult.extracted.targetPrice && (
-                  <>
-                    <span className="text-gray-500">Kursm&aring;l:</span>
-                    <span className="font-medium">
-                      {processResult.extracted.targetPrice}{" "}
-                      {processResult.extracted.targetCurrency || "NOK"}
-                    </span>
-                  </>
-                )}
-                {processResult.extracted.summary && (
-                  <div className="col-span-2 mt-1 pt-1 border-t border-gray-100 dark:border-gray-800">
-                    <span className="text-gray-500">Sammendrag: </span>
-                    <span className="text-gray-700 dark:text-gray-300">
-                      {processResult.extracted.summary}
-                    </span>
-                  </div>
-                )}
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs items-center">
+                <label className="text-gray-500">Selskap:</label>
+                <input
+                  type="text"
+                  value={editFields.companyName}
+                  onChange={(e) => setEditFields({ ...editFields, companyName: e.target.value })}
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+                />
+
+                <label className="text-gray-500">Bank:</label>
+                <input
+                  type="text"
+                  value={editFields.investmentBank}
+                  onChange={(e) => setEditFields({ ...editFields, investmentBank: e.target.value })}
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+                />
+
+                <label className="text-gray-500">Anbefaling:</label>
+                <select
+                  value={editFields.recommendation}
+                  onChange={(e) => setEditFields({ ...editFields, recommendation: e.target.value })}
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+                >
+                  <option value="">—</option>
+                  <option value="buy">Buy</option>
+                  <option value="hold">Hold</option>
+                  <option value="sell">Sell</option>
+                  <option value="overweight">Overweight</option>
+                  <option value="underweight">Underweight</option>
+                  <option value="outperform">Outperform</option>
+                  <option value="underperform">Underperform</option>
+                </select>
+
+                <label className="text-gray-500">Kursmål:</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    step="any"
+                    value={editFields.targetPrice}
+                    onChange={(e) => setEditFields({ ...editFields, targetPrice: e.target.value })}
+                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+                    placeholder="0"
+                  />
+                  <select
+                    value={editFields.targetCurrency}
+                    onChange={(e) => setEditFields({ ...editFields, targetCurrency: e.target.value })}
+                    className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm w-20"
+                  >
+                    <option value="NOK">NOK</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="SEK">SEK</option>
+                    <option value="DKK">DKK</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                </div>
+
+                <label className="text-gray-500">Analytikere:</label>
+                <input
+                  type="text"
+                  value={editFields.analystNames}
+                  onChange={(e) => setEditFields({ ...editFields, analystNames: e.target.value })}
+                  placeholder="Navn1, Navn2"
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+                />
+
+                <label className="text-gray-500 self-start pt-1">Sammendrag:</label>
+                <textarea
+                  value={editFields.summary}
+                  onChange={(e) => setEditFields({ ...editFields, summary: e.target.value })}
+                  rows={2}
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm resize-y"
+                />
+              </div>
+
+              <div className="mt-3 flex justify-end">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Save className="w-3 h-3" />
+                  )}
+                  Lagre endringer
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Re-process section */}
+          {(processResult?.reportId || email.reportId) && openRouterConfigured && (
+            <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+              <p className="text-xs font-medium text-gray-500 mb-2">Re-prosesser med tilbakemelding:</p>
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={2}
+                placeholder="F.eks: Selskapsnavn er feil, det skal være Equinor ASA. Kursmålet er i NOK, ikke USD."
+                className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 resize-y"
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  onClick={handleReprocess}
+                  disabled={reprocessing}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {reprocessing ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-3 h-3" />
+                  )}
+                  Re-prosesser
+                </button>
               </div>
             </div>
           )}

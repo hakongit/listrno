@@ -44,6 +44,11 @@ TURSO_AUTH_TOKEN=...
 - `db.ts` - Turso database client and schema initialization
 - `data-db.ts` - Short positions queries with stock price enrichment
 - `insider-data-db.ts` - Insider trades queries
+- `analyst-db.ts` - Analyst reports DB: CRUD, domain whitelist, extraction guidance
+- `analyst-extraction.ts` - LLM extraction via OpenRouter (accepts guidance/feedback)
+- `analyst-types.ts` - Types: `AnalystReport`, `ExtractedReportData`, `PublicAnalystReport`
+- `gmail.ts` - Gmail POP3 fetcher with progress streaming and 5-min cache
+- `pdf-extract.ts` - PDF text extraction for email attachments
 - `prices.ts` - Yahoo Finance API for stock quotes (price, volume, 52-week range)
 - `tickers.ts` - ISIN/company name to Yahoo Finance ticker mapping
 - `insider-profiles.ts` - Manual profile data (Twitter handles, bios)
@@ -57,6 +62,16 @@ TURSO_AUTH_TOKEN=...
 - `/innsidehandel` - Insider trades overview
 - `/innsidehandel/[slug]` - Individual insider profile with trades
 - `/topp/[kategori]` - Top lists (biggest shorts, most shorted, etc.)
+- `/analyser` - Public analyst reports page (only shows reports with extracted data)
+- `/admin` - Admin login
+- `/admin/dashboard` - Admin dashboard for email import, LLM extraction, editing
+
+### Admin API (`app/api/admin/`)
+- `reports/` - CRUD for analyst reports (import, process, update, delete)
+- `gmail/emails/` - SSE streaming POP3 email fetch with auto-import
+- `domains/` - Domain whitelist management
+- `extraction/reprocess/` - Re-run LLM extraction with feedback on existing report
+- `extraction/guidance/` - GET/PATCH persistent LLM guidance prompt
 
 ### Data Sync Scripts (`scripts/`)
 - `sync-data.ts` - Fetches from Finanstilsynet, updates positions table
@@ -65,9 +80,17 @@ TURSO_AUTH_TOKEN=...
 ## Data Flow
 
 1. **Build time**: Scripts sync data from APIs → Turso database
-2. **Request time**: Pages query database with `unstable_cache` (5 min TTL)
+2. **Request time**: Pages query database with `unstable_cache` (5 min TTL, tags for revalidation)
 3. **Stock enrichment**: Yahoo Finance prices fetched and merged with company data
 4. **Company pages**: Fall back to insider-only view if no short positions exist
+
+### Analyst Reports Flow
+1. Admin fetches emails via POP3 (Gmail) → SSE stream to dashboard
+2. Whitelisted domain emails are auto-imported (email body + PDF text stored in DB)
+3. "Behandle" runs LLM extraction (OpenRouter) with global guidance prompt
+4. Admin can edit extracted fields, save, or re-process with specific feedback
+5. `revalidateTag("public-analyst-reports")` busts the public page cache
+6. `/analyser` only shows reports with actual extracted data (companyName/recommendation/targetPrice)
 
 ## Key Patterns
 
@@ -75,6 +98,12 @@ TURSO_AUTH_TOKEN=...
 - Ticker symbols are Yahoo Finance format (`HEX.OL` for Oslo Børs)
 - Currency is primarily NOK; insider trades may have other currencies
 - Mobile-first responsive design with Tailwind breakpoints
+
+## Key DB Tables (Analyst)
+
+- `analyst_reports` - Imported emails with extracted data, source content stored for re-processing
+- `analyst_domains` - Whitelisted sender domains (auto-import)
+- `extraction_guidance` - Single-row table for persistent LLM instructions
 
 ## Language
 
@@ -84,3 +113,21 @@ All user-facing text is in Norwegian (nb). Key terms:
 - Aktør = Actor/holder
 - Selskap = Company
 - Kjøp/Salg = Buy/Sell
+- Analytikerrapporter = Analyst reports
+- Behandle = Process
+- Godkjente domener = Approved domains
+
+## Session Status (2026-02-09)
+
+### Recently completed
+- Editable extraction results form in admin dashboard (edit company, bank, recommendation, target price, analysts, summary)
+- LLM feedback loop: re-process reports with one-time feedback, persistent guidance prompt for all extractions
+- Fixed "Behandle" on already-imported emails (was returning 409, now uses reprocess endpoint)
+- Fixed `unstable_cache` missing `tags` option so `revalidateTag` actually invalidates public page cache
+- Fetch all POP3 emails (maxResults=500 instead of 20), newest first
+- `/analyser` page hides reports with no extracted data, hides empty cells
+
+### Known state
+- 17 emails in mailbox, 4 whitelisted domains configured
+- Most reports are imported but not yet processed (pending status)
+- Next step: process imported reports via "Behandle" to populate /analyser page

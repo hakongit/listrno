@@ -8,8 +8,8 @@ import {
 import { getAllAnalystDomains, getAnalystReportByGmailId, createAnalystReport } from "@/lib/analyst-db";
 import { extractTextFromPdf } from "@/lib/pdf-extract";
 
-// POP3 can take 30-60s to connect + fetch emails
-export const maxDuration = 60;
+// POP3 can take a while when fetching all emails
+export const maxDuration = 300;
 
 // GET: List emails from whitelisted domains with streaming progress
 export async function GET(request: NextRequest) {

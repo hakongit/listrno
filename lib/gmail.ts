@@ -159,7 +159,7 @@ export async function fetchEmailsWithProgress(
   // Check cache first (only for non-progress requests or when no date filter)
   if (!options.afterDate) {
     const cached = getCachedEmails();
-    if (cached) {
+    if (cached && cached.length >= (options.maxResults || 20)) {
       const limited = cached.slice(0, options.maxResults || 20);
       if (onProgress) {
         onProgress({ stage: "done", current: limited.length, total: limited.length, message: `Ferdig! ${limited.length} e-poster (fra cache).` });
@@ -202,8 +202,7 @@ export async function fetchEmailsWithProgress(
     // Process most recent messages first (highest numbers are newest in POP3)
     const messageIds = list
       .map((item) => item[0])
-      .sort((a, b) => b - a)
-      .slice(0, maxResults * 2); // Fetch extra in case we filter some out
+      .sort((a, b) => b - a);
 
     const totalToFetch = Math.min(messageIds.length, maxResults);
     report({ stage: "list", current: 0, total: totalToFetch, message: `Fant ${list.length} meldinger, henter ${totalToFetch}...` });

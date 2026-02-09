@@ -194,7 +194,7 @@ export default function AdminDashboardClient({
     addLog("info", "Starter e-posthenting...");
 
     try {
-      const eventSource = new EventSource("/api/admin/gmail/emails?stream=true&maxResults=20");
+      const eventSource = new EventSource("/api/admin/gmail/emails?stream=true&maxResults=500");
 
       eventSource.addEventListener("status", (e) => {
         const data = JSON.parse(e.data);

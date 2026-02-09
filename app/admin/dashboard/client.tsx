@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Mail,
@@ -1000,6 +1000,32 @@ function EmailRow({
   onDelete: () => void;
   openRouterConfigured: boolean;
 }) {
+  const [fullBody, setFullBody] = useState<string | null>(null);
+  const [loadingBody, setLoadingBody] = useState(false);
+  const [attachments, setAttachments] = useState<{ filename: string; contentType: string }[]>([]);
+
+  useEffect(() => {
+    if (expanded && fullBody === null && !loadingBody) {
+      setLoadingBody(true);
+      fetch("/api/admin/gmail/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: email.id }),
+      })
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data) {
+            setFullBody(data.body || "(Ingen innhold)");
+            setAttachments(data.attachments || []);
+          } else {
+            setFullBody(email.snippet || "(Kunne ikke hente innhold)");
+          }
+        })
+        .catch(() => setFullBody(email.snippet || "(Feil ved henting)"))
+        .finally(() => setLoadingBody(false));
+    }
+  }, [expanded, fullBody, loadingBody, email.id, email.snippet]);
+
   return (
     <div
       className={`${
@@ -1102,12 +1128,29 @@ function EmailRow({
       {/* Expanded detail */}
       {expanded && (
         <div className="px-4 pb-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
-          {/* Snippet */}
+          {/* Full email body */}
           <div className="pt-3">
-            <p className="text-xs font-medium text-gray-500 mb-1">Forhåndsvisning:</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-4">
-              {email.snippet || "(Ingen tekst)"}
-            </p>
+            <p className="text-xs font-medium text-gray-500 mb-1">E-postinnhold:</p>
+            {loadingBody ? (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Henter innhold...
+              </div>
+            ) : (
+              <div className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap max-h-80 overflow-y-auto bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 p-3">
+                {fullBody || email.snippet || "(Ingen tekst)"}
+              </div>
+            )}
+            {attachments.length > 0 && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                {attachments.map((att, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                    <Paperclip className="w-3 h-3" />
+                    {att.filename}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Process result */}

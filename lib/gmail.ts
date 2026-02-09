@@ -186,15 +186,14 @@ export async function fetchEmailsWithProgress(
   });
 
   try {
-    await withTimeout(pop3.connect(), 15000, "POP3 connect");
-    report({ stage: "connected", current: 0, total: 0, message: "Tilkoblet! Henter postboksstatus..." });
+    // Don't call pop3.connect() manually — it only opens the socket without
+    // authenticating. The first command (LIST) calls _connect() internally
+    // which handles both socket + USER/PASS authentication.
+    report({ stage: "connected", current: 0, total: 0, message: "Kobler til og autentiserer..." });
 
-    // First get mailbox stats (faster than LIST for large mailboxes)
-    const statResult = await withTimeout(pop3.STAT(), 10000, "POP3 STAT");
-    const [totalMessages] = (statResult as unknown) as [number, number];
-    report({ stage: "stat", current: 0, total: 0, message: `Postboks: ${totalMessages} meldinger. Henter liste...` });
-
-    // Get list of messages - returns [[msgNum, size], ...]
+    // Skip STAT — Gmail POP3 sometimes rejects it with "bad command".
+    // Go straight to LIST which also triggers connect + auth and gives us
+    // both the message count and the message numbers we need.
     // Use longer timeout for LIST as it can be slow with large mailboxes
     const listResult = await withTimeout(pop3.LIST(), 45000, "POP3 LIST");
     const list = (listResult as unknown) as Array<[number, number]>;

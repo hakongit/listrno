@@ -33,6 +33,8 @@ export default async function AdminDashboardPage() {
     getAllAnalystReports({ limit: 50 }),
   ]);
 
+  console.log("[admin] existingReports:", existingReports.length, existingReports.map(r => ({ id: r.id, gmail: r.gmailMessageId, subject: r.subject })));
+
   // Convert DB reports to EmailItem format for initial display
   const whitelistedDomains = new Set(domains.map(d => d.domain.toLowerCase()));
   const initialEmails = existingReports.map(r => ({

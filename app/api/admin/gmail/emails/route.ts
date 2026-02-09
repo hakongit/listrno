@@ -92,6 +92,14 @@ export async function GET(request: NextRequest) {
               });
 
               try {
+                // Double-check not already imported (safety against race conditions)
+                const alreadyExists = await getAnalystReportByGmailId(fullEmail.id);
+                if (alreadyExists) {
+                  emailStatus.imported = true;
+                  emailStatus.reportId = alreadyExists.id;
+                  continue;
+                }
+
                 // Extract text from PDF attachments
                 const pdfAttachments = fullEmail.attachments.filter(
                   a => a.contentType === "application/pdf" || a.filename.toLowerCase().endsWith(".pdf")

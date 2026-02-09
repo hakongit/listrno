@@ -37,6 +37,7 @@ interface Props {
     failed: number;
   };
   domains: AnalystDomain[];
+  initialEmails?: EmailItem[];
 }
 
 interface EmailItem {
@@ -80,11 +81,12 @@ export default function AdminDashboardClient({
   config,
   stats: initialStats,
   domains: initialDomains,
+  initialEmails = [],
 }: Props) {
   const router = useRouter();
   const [stats, setStats] = useState(initialStats);
   const [domains, setDomains] = useState(initialDomains);
-  const [emails, setEmails] = useState<EmailItem[]>([]);
+  const [emails, setEmails] = useState<EmailItem[]>(initialEmails);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);

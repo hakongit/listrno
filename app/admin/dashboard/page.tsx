@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { isAuthenticated, getSession } from "@/lib/admin-auth";
 import { isGmailConfigured } from "@/lib/gmail";
 import { isOpenRouterConfigured } from "@/lib/analyst-extraction";
-import { getAnalystReportCount, getAllAnalystDomains } from "@/lib/analyst-db";
+import { getAnalystReportCount, getAllAnalystDomains, getAllAnalystReports } from "@/lib/analyst-db";
 import { initializeAnalystDatabase } from "@/lib/analyst-db";
 import AdminDashboardClient from "./client";
 
@@ -23,14 +23,30 @@ export default async function AdminDashboardPage() {
   const gmailConfigured = isGmailConfigured();
   const openRouterConfigured = isOpenRouterConfigured();
 
-  // Get stats
-  const [totalReports, pendingReports, processedReports, failedReports, domains] = await Promise.all([
+  // Get stats and existing reports
+  const [totalReports, pendingReports, processedReports, failedReports, domains, existingReports] = await Promise.all([
     getAnalystReportCount(),
     getAnalystReportCount("pending"),
     getAnalystReportCount("processed"),
     getAnalystReportCount("failed"),
     getAllAnalystDomains(),
+    getAllAnalystReports({ limit: 50 }),
   ]);
+
+  // Convert DB reports to EmailItem format for initial display
+  const whitelistedDomains = new Set(domains.map(d => d.domain.toLowerCase()));
+  const initialEmails = existingReports.map(r => ({
+    id: r.gmailMessageId,
+    from: { email: r.fromEmail, name: r.fromEmail },
+    domain: r.fromDomain,
+    subject: r.subject,
+    date: r.receivedDate,
+    snippet: "",
+    attachmentCount: 0,
+    imported: true,
+    reportId: r.id,
+    isWhitelisted: whitelistedDomains.has(r.fromDomain.toLowerCase()),
+  }));
 
   return (
     <AdminDashboardClient
@@ -46,6 +62,7 @@ export default async function AdminDashboardPage() {
         failed: failedReports,
       }}
       domains={domains}
+      initialEmails={initialEmails}
     />
   );
 }

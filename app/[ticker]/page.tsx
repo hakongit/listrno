@@ -419,7 +419,7 @@ export default async function CompanyPage({ params }: PageProps) {
             <div className="divide-y divide-gray-200 dark:divide-gray-800">
               {analystReports.map((report) => (
                 <div
-                  key={report.id}
+                  key={report.recommendationId}
                   className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 >
                   <div className="flex items-center justify-between">

@@ -192,7 +192,7 @@ export default async function AnalystReportsPage() {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {reports.map((report) => (
                   <tr
-                    key={report.id}
+                    key={report.recommendationId}
                     className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                   >
                     <td className="px-4 py-3 text-sm">

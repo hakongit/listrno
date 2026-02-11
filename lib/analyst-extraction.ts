@@ -1,27 +1,32 @@
-import { ExtractedReportData } from "./analyst-types";
+import { ExtractedReportData, ExtractedRecommendation } from "./analyst-types";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL = "anthropic/claude-3.5-haiku";
 
-const EXTRACTION_PROMPT = `You are an expert at extracting structured data from analyst reports. Extract the following information from the provided analyst report content:
+const EXTRACTION_PROMPT = `You are an expert at extracting structured data from analyst reports. An email may cover one or multiple companies. Extract the following information:
 
+Report-level fields:
 1. Investment bank name (the bank/firm that published the report)
 2. Analyst name(s) (individual analyst(s) who authored the report)
-3. Target company name (the company being analyzed)
-4. Target price and currency
-5. Recommendation (e.g., buy, hold, sell, overweight, underweight, outperform, underperform)
-6. A brief 1-2 sentence summary of the key thesis or main point of the report
+
+Per-company fields (one entry per company covered):
+1. Target company name
+2. Target price and currency
+3. Recommendation (e.g., buy, hold, sell, overweight, underweight, outperform, underperform)
+4. A brief 1-2 sentence summary of the key thesis for that company
 
 Return your response as a JSON object with these fields:
 - investmentBank: string (the investment bank name)
 - analystNames: string[] (array of analyst names)
-- companyName: string (the target company name)
-- targetPrice: number (just the number, no currency symbol)
-- targetCurrency: string (e.g., "NOK", "USD", "EUR")
-- recommendation: string (normalized to: buy, hold, sell, overweight, underweight, outperform, underperform)
-- summary: string (1-2 sentence summary)
+- recommendations: array of objects, one per company, each with:
+  - companyName: string (the target company name)
+  - targetPrice: number (just the number, no currency symbol)
+  - targetCurrency: string (e.g., "NOK", "USD", "EUR")
+  - recommendation: string (normalized to: buy, hold, sell, overweight, underweight, outperform, underperform)
+  - summary: string (1-2 sentence summary)
 
 If a field cannot be determined from the content, omit it from the response.
+Only include a company in the recommendations array if you can determine at least a target price for it.
 Only return the JSON object, no other text.`;
 
 interface OpenRouterResponse {
@@ -102,7 +107,7 @@ export async function extractReportData(
         },
       ],
       temperature: 0.1,
-      max_tokens: 1000,
+      max_tokens: 2000,
     }),
   });
 
@@ -128,8 +133,8 @@ export async function extractReportData(
 
     const parsed = JSON.parse(jsonMatch[0]);
 
-    // Validate and normalize the response
-    const result: ExtractedReportData = {};
+    // Build result
+    const result: ExtractedReportData = { recommendations: [] };
 
     if (typeof parsed.investmentBank === "string" && parsed.investmentBank) {
       result.investmentBank = parsed.investmentBank.trim();
@@ -141,24 +146,56 @@ export async function extractReportData(
         .map((n: string) => n.trim());
     }
 
-    if (typeof parsed.companyName === "string" && parsed.companyName) {
-      result.companyName = parsed.companyName.trim();
+    // Handle recommendations array
+    if (Array.isArray(parsed.recommendations)) {
+      result.recommendations = parsed.recommendations
+        .map((rec: Record<string, unknown>): ExtractedRecommendation => {
+          const extracted: ExtractedRecommendation = {};
+          if (typeof rec.companyName === "string" && rec.companyName) {
+            extracted.companyName = (rec.companyName as string).trim();
+          }
+          if (typeof rec.companyIsin === "string" && rec.companyIsin) {
+            extracted.companyIsin = (rec.companyIsin as string).trim();
+          }
+          if (typeof rec.targetPrice === "number" && !isNaN(rec.targetPrice)) {
+            extracted.targetPrice = rec.targetPrice;
+          }
+          if (typeof rec.targetCurrency === "string" && rec.targetCurrency) {
+            extracted.targetCurrency = (rec.targetCurrency as string).toUpperCase().trim();
+          }
+          if (typeof rec.recommendation === "string" && rec.recommendation) {
+            extracted.recommendation = normalizeRecommendation(rec.recommendation as string);
+          }
+          if (typeof rec.summary === "string" && rec.summary) {
+            extracted.summary = (rec.summary as string).trim();
+          }
+          return extracted;
+        })
+        .filter((rec: ExtractedRecommendation) => rec.companyName || rec.targetPrice);
     }
 
-    if (typeof parsed.targetPrice === "number" && !isNaN(parsed.targetPrice)) {
-      result.targetPrice = parsed.targetPrice;
-    }
-
-    if (typeof parsed.targetCurrency === "string" && parsed.targetCurrency) {
-      result.targetCurrency = parsed.targetCurrency.toUpperCase().trim();
-    }
-
-    if (typeof parsed.recommendation === "string" && parsed.recommendation) {
-      result.recommendation = normalizeRecommendation(parsed.recommendation);
-    }
-
-    if (typeof parsed.summary === "string" && parsed.summary) {
-      result.summary = parsed.summary.trim();
+    // Backward-compat fallback: if LLM returns top-level companyName/targetPrice (old format),
+    // wrap in a single-element recommendations array
+    if (result.recommendations.length === 0 && parsed.companyName) {
+      const fallback: ExtractedRecommendation = {};
+      if (typeof parsed.companyName === "string" && parsed.companyName) {
+        fallback.companyName = parsed.companyName.trim();
+      }
+      if (typeof parsed.targetPrice === "number" && !isNaN(parsed.targetPrice)) {
+        fallback.targetPrice = parsed.targetPrice;
+      }
+      if (typeof parsed.targetCurrency === "string" && parsed.targetCurrency) {
+        fallback.targetCurrency = parsed.targetCurrency.toUpperCase().trim();
+      }
+      if (typeof parsed.recommendation === "string" && parsed.recommendation) {
+        fallback.recommendation = normalizeRecommendation(parsed.recommendation);
+      }
+      if (typeof parsed.summary === "string" && parsed.summary) {
+        fallback.summary = parsed.summary.trim();
+      }
+      if (fallback.companyName || fallback.targetPrice) {
+        result.recommendations.push(fallback);
+      }
     }
 
     return result;

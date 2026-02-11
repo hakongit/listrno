@@ -6,6 +6,8 @@ import {
   AnalystDomainRow,
   PublicAnalystReport,
   ExtractedReportData,
+  Recommendation,
+  RecommendationRow,
 } from "./analyst-types";
 import { unstable_cache } from "next/cache";
 
@@ -82,16 +84,78 @@ export async function initializeAnalystDatabase() {
     )
   `);
 
+  // Analyst recommendations table (1:N with analyst_reports)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS analyst_recommendations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      report_id INTEGER NOT NULL,
+      company_name TEXT,
+      company_isin TEXT,
+      recommendation TEXT,
+      target_price REAL,
+      target_currency TEXT DEFAULT 'NOK',
+      summary TEXT,
+      price_at_report REAL,
+      price_at_report_date TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Migrate existing data: if analyst_recommendations is empty but analyst_reports has rows with target_price
+  const recCount = await db.execute(`SELECT COUNT(*) as count FROM analyst_recommendations`);
+  const hasRecs = Number(recCount.rows[0].count) > 0;
+  if (!hasRecs) {
+    const reportsWithData = await db.execute(
+      `SELECT id, company_name, company_isin, recommendation, target_price, target_currency, summary, price_at_report, price_at_report_date
+       FROM analyst_reports WHERE target_price IS NOT NULL`
+    );
+    for (const row of reportsWithData.rows) {
+      await db.execute({
+        sql: `INSERT INTO analyst_recommendations (report_id, company_name, company_isin, recommendation, target_price, target_currency, summary, price_at_report, price_at_report_date)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          row.id as number,
+          row.company_name as string | null,
+          row.company_isin as string | null,
+          row.recommendation as string | null,
+          row.target_price as number | null,
+          row.target_currency as string | null ?? 'NOK',
+          row.summary as string | null,
+          row.price_at_report as number | null,
+          row.price_at_report_date as string | null,
+        ],
+      });
+    }
+  }
+
   // Create indexes
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_date ON analyst_reports(received_date)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_company ON analyst_reports(company_name)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_isin ON analyst_reports(company_isin)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_status ON analyst_reports(extraction_status)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_domain ON analyst_reports(from_domain)`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_recommendations_report ON analyst_recommendations(report_id)`);
 }
 
-// Convert database row to AnalystReport
-function rowToReport(row: AnalystReportRow): AnalystReport {
+// Convert recommendation row to Recommendation
+function rowToRecommendation(row: RecommendationRow): Recommendation {
+  return {
+    id: row.id,
+    reportId: row.report_id,
+    companyName: row.company_name ?? undefined,
+    companyIsin: row.company_isin ?? undefined,
+    recommendation: row.recommendation ?? undefined,
+    targetPrice: row.target_price ?? undefined,
+    targetCurrency: row.target_currency,
+    summary: row.summary ?? undefined,
+    priceAtReport: row.price_at_report ?? undefined,
+    priceAtReportDate: row.price_at_report_date ?? undefined,
+  };
+}
+
+// Convert database row to AnalystReport (without recommendations - attached separately)
+function rowToReport(row: AnalystReportRow, recommendations: Recommendation[] = []): AnalystReport {
   return {
     id: row.id,
     gmailMessageId: row.gmail_message_id,
@@ -105,37 +169,13 @@ function rowToReport(row: AnalystReportRow): AnalystReport {
       : undefined,
     investmentBank: row.investment_bank ?? undefined,
     analystNames: row.analyst_names ? JSON.parse(row.analyst_names) : undefined,
-    companyName: row.company_name ?? undefined,
-    companyIsin: row.company_isin ?? undefined,
-    targetPrice: row.target_price ?? undefined,
-    targetCurrency: row.target_currency,
-    recommendation: row.recommendation ?? undefined,
-    summary: row.summary ?? undefined,
-    priceAtReport: row.price_at_report ?? undefined,
-    priceAtReportDate: row.price_at_report_date ?? undefined,
+    recommendations,
     emailBody: row.email_body ?? undefined,
     attachmentTexts: row.attachment_texts ? JSON.parse(row.attachment_texts) : undefined,
     extractionStatus: row.extraction_status as AnalystReport['extractionStatus'],
     extractionError: row.extraction_error ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  };
-}
-
-// Convert database row to public report (no sensitive data)
-function rowToPublicReport(row: AnalystReportRow): PublicAnalystReport {
-  return {
-    id: row.id,
-    investmentBank: row.investment_bank ?? undefined,
-    analystNames: row.analyst_names ? JSON.parse(row.analyst_names) : undefined,
-    companyName: row.company_name ?? undefined,
-    targetPrice: row.target_price ?? undefined,
-    targetCurrency: row.target_currency,
-    recommendation: row.recommendation ?? undefined,
-    summary: row.summary ?? undefined,
-    priceAtReport: row.price_at_report ?? undefined,
-    receivedDate: row.received_date,
-    createdAt: row.created_at,
   };
 }
 
@@ -146,6 +186,25 @@ function rowToDomain(row: AnalystDomainRow): AnalystDomain {
     bankName: row.bank_name,
     addedAt: row.added_at,
   };
+}
+
+// Fetch recommendations for a set of report IDs
+async function getRecommendationsByReportIds(reportIds: number[]): Promise<Map<number, Recommendation[]>> {
+  if (reportIds.length === 0) return new Map();
+  const db = getDb();
+  const placeholders = reportIds.map(() => '?').join(',');
+  const result = await db.execute({
+    sql: `SELECT * FROM analyst_recommendations WHERE report_id IN (${placeholders}) ORDER BY id`,
+    args: reportIds,
+  });
+  const map = new Map<number, Recommendation[]>();
+  for (const row of result.rows) {
+    const rec = rowToRecommendation(row as unknown as RecommendationRow);
+    const existing = map.get(rec.reportId) || [];
+    existing.push(rec);
+    map.set(rec.reportId, existing);
+  }
+  return map;
 }
 
 // CRUD Operations
@@ -191,7 +250,14 @@ export async function getAnalystReportById(id: number): Promise<AnalystReport | 
     args: [id],
   });
   if (result.rows.length === 0) return null;
-  return rowToReport(result.rows[0] as unknown as AnalystReportRow);
+
+  const row = result.rows[0] as unknown as AnalystReportRow;
+  const recsResult = await db.execute({
+    sql: `SELECT * FROM analyst_recommendations WHERE report_id = ? ORDER BY id`,
+    args: [id],
+  });
+  const recommendations = (recsResult.rows as unknown as RecommendationRow[]).map(rowToRecommendation);
+  return rowToReport(row, recommendations);
 }
 
 export async function getAnalystReportByGmailId(gmailMessageId: string): Promise<AnalystReport | null> {
@@ -201,30 +267,29 @@ export async function getAnalystReportByGmailId(gmailMessageId: string): Promise
     args: [gmailMessageId],
   });
   if (result.rows.length === 0) return null;
-  return rowToReport(result.rows[0] as unknown as AnalystReportRow);
+
+  const row = result.rows[0] as unknown as AnalystReportRow;
+  const reportId = row.id;
+  const recsResult = await db.execute({
+    sql: `SELECT * FROM analyst_recommendations WHERE report_id = ? ORDER BY id`,
+    args: [reportId],
+  });
+  const recommendations = (recsResult.rows as unknown as RecommendationRow[]).map(rowToRecommendation);
+  return rowToReport(row, recommendations);
 }
 
 export async function updateAnalystReportExtraction(
   id: number,
-  data: ExtractedReportData & {
-    priceAtReport?: number;
-    priceAtReportDate?: string;
-  }
+  data: ExtractedReportData
 ): Promise<void> {
   const db = getDb();
+
+  // Update report-level fields
   await db.execute({
     sql: `
       UPDATE analyst_reports SET
         investment_bank = ?,
         analyst_names = ?,
-        company_name = ?,
-        company_isin = ?,
-        target_price = ?,
-        target_currency = ?,
-        recommendation = ?,
-        summary = ?,
-        price_at_report = ?,
-        price_at_report_date = ?,
         extraction_status = 'processed',
         extraction_error = NULL,
         updated_at = datetime('now')
@@ -233,17 +298,33 @@ export async function updateAnalystReportExtraction(
     args: [
       data.investmentBank ?? null,
       data.analystNames ? JSON.stringify(data.analystNames) : null,
-      data.companyName ?? null,
-      data.companyIsin ?? null,
-      data.targetPrice ?? null,
-      data.targetCurrency ?? 'NOK',
-      data.recommendation ?? null,
-      data.summary ?? null,
-      data.priceAtReport ?? null,
-      data.priceAtReportDate ?? null,
       id,
     ],
   });
+
+  // Delete old recommendations for this report
+  await db.execute({
+    sql: `DELETE FROM analyst_recommendations WHERE report_id = ?`,
+    args: [id],
+  });
+
+  // Insert new recommendations - only those with a targetPrice
+  for (const rec of data.recommendations) {
+    if (rec.targetPrice == null) continue;
+    await db.execute({
+      sql: `INSERT INTO analyst_recommendations (report_id, company_name, company_isin, recommendation, target_price, target_currency, summary)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        rec.companyName ?? null,
+        rec.companyIsin ?? null,
+        rec.recommendation ?? null,
+        rec.targetPrice,
+        rec.targetCurrency ?? 'NOK',
+        rec.summary ?? null,
+      ],
+    });
+  }
 }
 
 export async function updateAnalystReportAttachmentTexts(id: number, attachmentTexts: string[]): Promise<void> {
@@ -270,6 +351,10 @@ export async function markAnalystReportFailed(id: number, error: string): Promis
 
 export async function deleteAnalystReport(id: number): Promise<void> {
   const db = getDb();
+  await db.execute({
+    sql: `DELETE FROM analyst_recommendations WHERE report_id = ?`,
+    args: [id],
+  });
   await db.execute({
     sql: `DELETE FROM analyst_reports WHERE id = ?`,
     args: [id],
@@ -299,7 +384,13 @@ export async function getAllAnalystReports(options?: {
   args.push(limit, offset);
 
   const result = await db.execute({ sql, args });
-  return (result.rows as unknown as AnalystReportRow[]).map(rowToReport);
+  const rows = result.rows as unknown as AnalystReportRow[];
+
+  // Batch fetch recommendations
+  const reportIds = rows.map(r => r.id);
+  const recsMap = await getRecommendationsByReportIds(reportIds);
+
+  return rows.map(row => rowToReport(row, recsMap.get(row.id) || []));
 }
 
 export async function getPublicAnalystReports(options?: {
@@ -312,16 +403,16 @@ export async function getPublicAnalystReports(options?: {
   const limit = options?.limit ?? 50;
   const offset = options?.offset ?? 0;
 
-  let whereClause = `extraction_status = 'processed'`;
+  let whereClause = `ar.extraction_status = 'processed' AND rec.target_price IS NOT NULL`;
   const args: (string | number)[] = [];
 
   if (options?.companyIsin) {
-    whereClause += ` AND company_isin = ?`;
+    whereClause += ` AND rec.company_isin = ?`;
     args.push(options.companyIsin);
   }
 
   if (options?.companyName) {
-    whereClause += ` AND company_name LIKE ?`;
+    whereClause += ` AND rec.company_name LIKE ?`;
     args.push(`%${options.companyName}%`);
   }
 
@@ -329,15 +420,42 @@ export async function getPublicAnalystReports(options?: {
 
   const result = await db.execute({
     sql: `
-      SELECT * FROM analyst_reports
+      SELECT
+        rec.id as recommendation_id,
+        ar.id as report_id,
+        ar.investment_bank,
+        ar.analyst_names,
+        rec.company_name,
+        rec.target_price,
+        rec.target_currency,
+        rec.recommendation,
+        rec.summary,
+        rec.price_at_report,
+        ar.received_date,
+        ar.created_at
+      FROM analyst_recommendations rec
+      JOIN analyst_reports ar ON ar.id = rec.report_id
       WHERE ${whereClause}
-      ORDER BY received_date DESC
+      ORDER BY ar.received_date DESC
       LIMIT ? OFFSET ?
     `,
     args,
   });
 
-  return (result.rows as unknown as AnalystReportRow[]).map(rowToPublicReport);
+  return result.rows.map((row) => ({
+    recommendationId: Number(row.recommendation_id),
+    reportId: Number(row.report_id),
+    investmentBank: row.investment_bank ? String(row.investment_bank) : undefined,
+    analystNames: row.analyst_names ? JSON.parse(String(row.analyst_names)) : undefined,
+    companyName: row.company_name ? String(row.company_name) : undefined,
+    targetPrice: row.target_price != null ? Number(row.target_price) : undefined,
+    targetCurrency: String(row.target_currency || 'NOK'),
+    recommendation: row.recommendation ? String(row.recommendation) : undefined,
+    summary: row.summary ? String(row.summary) : undefined,
+    priceAtReport: row.price_at_report != null ? Number(row.price_at_report) : undefined,
+    receivedDate: String(row.received_date),
+    createdAt: String(row.created_at),
+  }));
 }
 
 export async function getAnalystReportCount(status?: 'pending' | 'processed' | 'failed'): Promise<number> {

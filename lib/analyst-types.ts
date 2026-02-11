@@ -14,19 +14,12 @@ export interface AnalystReport {
   emailBlobUrl?: string;
   attachmentsBlobUrls?: string[];
 
-  // Extracted data (public)
+  // Extracted data (report-level)
   investmentBank?: string;
   analystNames?: string[];
-  companyName?: string;
-  companyIsin?: string;
-  targetPrice?: number;
-  targetCurrency: string;
-  recommendation?: string;
-  summary?: string;
 
-  // Historical price at report time
-  priceAtReport?: number;
-  priceAtReportDate?: string;
+  // Recommendations (company-level extracted data)
+  recommendations: Recommendation[];
 
   // Source content (admin only, for re-processing)
   emailBody?: string;
@@ -67,6 +60,34 @@ export interface AnalystReportRow {
   updated_at: string;
 }
 
+export interface Recommendation {
+  id: number;
+  reportId: number;
+  companyName?: string;
+  companyIsin?: string;
+  recommendation?: string;
+  targetPrice?: number;
+  targetCurrency: string;
+  summary?: string;
+  priceAtReport?: number;
+  priceAtReportDate?: string;
+}
+
+export interface RecommendationRow {
+  id: number;
+  report_id: number;
+  company_name: string | null;
+  company_isin: string | null;
+  recommendation: string | null;
+  target_price: number | null;
+  target_currency: string;
+  summary: string | null;
+  price_at_report: number | null;
+  price_at_report_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AnalystDomain {
   domain: string;
   bankName: string;
@@ -79,9 +100,7 @@ export interface AnalystDomainRow {
   added_at: string;
 }
 
-export interface ExtractedReportData {
-  investmentBank?: string;
-  analystNames?: string[];
+export interface ExtractedRecommendation {
   companyName?: string;
   companyIsin?: string;
   targetPrice?: number;
@@ -90,8 +109,15 @@ export interface ExtractedReportData {
   summary?: string;
 }
 
+export interface ExtractedReportData {
+  investmentBank?: string;
+  analystNames?: string[];
+  recommendations: ExtractedRecommendation[];
+}
+
 export interface PublicAnalystReport {
-  id: number;
+  recommendationId: number;
+  reportId: number;
   investmentBank?: string;
   analystNames?: string[];
   companyName?: string;

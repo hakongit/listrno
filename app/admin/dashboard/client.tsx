@@ -66,21 +66,39 @@ interface LogEntry {
   detail?: string;
 }
 
+interface ExtractedRec {
+  companyName?: string;
+  companyIsin?: string;
+  recommendation?: string;
+  targetPrice?: number;
+  targetCurrency?: string;
+  summary?: string;
+}
+
 interface ProcessResult {
   emailId: string;
   reportId?: number;
   success: boolean;
   extracted?: {
-    companyName?: string;
-    recommendation?: string;
-    targetPrice?: number;
-    targetCurrency?: string;
     investmentBank?: string;
     analystNames?: string[];
-    summary?: string;
+    recommendations: ExtractedRec[];
   };
   error?: string;
   extractionFailed?: boolean;
+}
+
+interface RecEditFields {
+  companyName: string;
+  recommendation: string;
+  targetPrice: string;
+  targetCurrency: string;
+  summary: string;
+}
+
+interface ReportEditFields {
+  investmentBank: string;
+  analystNames: string;
 }
 
 export default function AdminDashboardClient({
@@ -320,15 +338,16 @@ export default function AdminDashboardClient({
       if (data.extractionFailed) {
         addLog("warn", `Importert, men ekstraksjon feilet: ${data.extractionError}`);
       } else if (data.extracted) {
+        const recs = data.extracted.recommendations || [];
+        const recSummary = recs.length > 0
+          ? recs.map((r: ExtractedRec) => r.companyName || "Ukjent").join(", ")
+          : "Ingen anbefalinger";
         addLog(
           "success",
-          `Importert og behandlet: ${data.extracted.companyName || "Ukjent selskap"}`,
+          `Importert og behandlet: ${recSummary}`,
           [
-            data.extracted.recommendation,
-            data.extracted.targetPrice
-              ? `Kursmål: ${data.extracted.targetPrice} ${data.extracted.targetCurrency || "NOK"}`
-              : null,
             data.extracted.investmentBank,
+            `${recs.length} anbefaling(er)`,
           ]
             .filter(Boolean)
             .join(" · ")
@@ -392,17 +411,14 @@ export default function AdminDashboardClient({
             });
             return next;
           });
+          const recs = data.extracted.recommendations || [];
+          const recSummary = recs.length > 0
+            ? recs.map((r: ExtractedRec) => r.companyName || "Ukjent").join(", ")
+            : "Ingen anbefalinger";
           addLog(
             "success",
-            `Behandlet: ${data.extracted.companyName || "Ukjent selskap"}`,
-            [
-              data.extracted.recommendation,
-              data.extracted.targetPrice
-                ? `Kursmål: ${data.extracted.targetPrice} ${data.extracted.targetCurrency || "NOK"}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")
+            `Behandlet: ${recSummary}`,
+            `${recs.length} anbefaling(er)`
           );
         }
         refreshStats();
@@ -527,7 +543,7 @@ export default function AdminDashboardClient({
       const response = await fetch("/api/admin/reports", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: reportId }),
+        body: JSON.stringify({ id: reportId, recommendations: [] }),
       });
       if (!response.ok) {
         const data = await response.json();
@@ -540,7 +556,7 @@ export default function AdminDashboardClient({
           emailId: messageId,
           reportId,
           success: true,
-          extracted: {},
+          extracted: { recommendations: [] },
         });
         return next;
       });
@@ -1197,6 +1213,145 @@ export default function AdminDashboardClient({
   );
 }
 
+// Shared recommendation form component
+function RecommendationCard({
+  rec,
+  index,
+  onChange,
+  onRemove,
+}: {
+  rec: RecEditFields;
+  index: number;
+  onChange: (updated: RecEditFields) => void;
+  onRemove?: () => void;
+}) {
+  return (
+    <div className="border border-gray-200 dark:border-gray-700 rounded p-3 relative">
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          className="absolute top-2 right-2 text-red-400 hover:text-red-600 p-0.5"
+          title="Fjern anbefaling"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
+      <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-2">
+        Anbefaling {index + 1}
+      </p>
+      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs items-center">
+        <label className="text-gray-500">Selskap:</label>
+        <input
+          type="text"
+          value={rec.companyName}
+          onChange={(e) => onChange({ ...rec, companyName: e.target.value })}
+          className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+        />
+
+        <label className="text-gray-500">Anbefaling:</label>
+        <select
+          value={rec.recommendation}
+          onChange={(e) => onChange({ ...rec, recommendation: e.target.value })}
+          className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+        >
+          <option value="">--</option>
+          <option value="buy">Buy</option>
+          <option value="hold">Hold</option>
+          <option value="sell">Sell</option>
+          <option value="overweight">Overweight</option>
+          <option value="underweight">Underweight</option>
+          <option value="outperform">Outperform</option>
+          <option value="underperform">Underperform</option>
+        </select>
+
+        <label className="text-gray-500">Kursmål:</label>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            step="any"
+            value={rec.targetPrice}
+            onChange={(e) => onChange({ ...rec, targetPrice: e.target.value })}
+            className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+            placeholder="0"
+          />
+          <select
+            value={rec.targetCurrency}
+            onChange={(e) => onChange({ ...rec, targetCurrency: e.target.value })}
+            className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm w-20"
+          >
+            <option value="NOK">NOK</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="SEK">SEK</option>
+            <option value="DKK">DKK</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </div>
+
+        <label className="text-gray-500 self-start pt-1">Sammendrag:</label>
+        <textarea
+          value={rec.summary}
+          onChange={(e) => onChange({ ...rec, summary: e.target.value })}
+          rows={2}
+          className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm resize-y"
+        />
+      </div>
+    </div>
+  );
+}
+
+function extractedToEditState(extracted: ProcessResult["extracted"]): {
+  reportFields: ReportEditFields;
+  recFields: RecEditFields[];
+} | null {
+  if (!extracted) return null;
+  return {
+    reportFields: {
+      investmentBank: extracted.investmentBank || "",
+      analystNames: extracted.analystNames?.join(", ") || "",
+    },
+    recFields: (extracted.recommendations || []).map((r) => ({
+      companyName: r.companyName || "",
+      recommendation: r.recommendation || "",
+      targetPrice: r.targetPrice?.toString() || "",
+      targetCurrency: r.targetCurrency || "NOK",
+      summary: r.summary || "",
+    })),
+  };
+}
+
+function editStateToPayload(reportFields: ReportEditFields, recFields: RecEditFields[]) {
+  return {
+    investmentBank: reportFields.investmentBank || undefined,
+    analystNames: reportFields.analystNames
+      ? reportFields.analystNames.split(",").map((n) => n.trim()).filter(Boolean)
+      : undefined,
+    recommendations: recFields.map((r) => ({
+      companyName: r.companyName || undefined,
+      targetPrice: r.targetPrice ? parseFloat(r.targetPrice) : undefined,
+      targetCurrency: r.targetCurrency || "NOK",
+      recommendation: r.recommendation || undefined,
+      summary: r.summary || undefined,
+    })),
+  };
+}
+
+function editStateToExtracted(reportFields: ReportEditFields, recFields: RecEditFields[]): ProcessResult["extracted"] {
+  return {
+    investmentBank: reportFields.investmentBank || undefined,
+    analystNames: reportFields.analystNames
+      ? reportFields.analystNames.split(",").map((n) => n.trim()).filter(Boolean)
+      : undefined,
+    recommendations: recFields.map((r) => ({
+      companyName: r.companyName || undefined,
+      targetPrice: r.targetPrice ? parseFloat(r.targetPrice) : undefined,
+      targetCurrency: r.targetCurrency || "NOK",
+      recommendation: r.recommendation || undefined,
+      summary: r.summary || undefined,
+    })),
+  };
+}
+
 function EmailRow({
   email,
   expanded,
@@ -1228,73 +1383,39 @@ function EmailRow({
   const [loadingBody, setLoadingBody] = useState(false);
   const [attachments, setAttachments] = useState<{ filename: string; contentType: string }[]>([]);
 
-  // Editable extraction fields
-  const [editFields, setEditFields] = useState<{
-    companyName: string;
-    investmentBank: string;
-    recommendation: string;
-    targetPrice: string;
-    targetCurrency: string;
-    analystNames: string;
-    summary: string;
-  } | null>(null);
+  // Editable extraction fields (split into report + recs)
+  const [reportFields, setReportFields] = useState<ReportEditFields | null>(null);
+  const [recFields, setRecFields] = useState<RecEditFields[]>([]);
   const [saving, setSaving] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
   const [feedback, setFeedback] = useState("");
 
   // Initialize edit fields when processResult changes
   useEffect(() => {
-    if (processResult?.extracted) {
-      setEditFields({
-        companyName: processResult.extracted.companyName || "",
-        investmentBank: processResult.extracted.investmentBank || "",
-        recommendation: processResult.extracted.recommendation || "",
-        targetPrice: processResult.extracted.targetPrice?.toString() || "",
-        targetCurrency: processResult.extracted.targetCurrency || "NOK",
-        analystNames: processResult.extracted.analystNames?.join(", ") || "",
-        summary: processResult.extracted.summary || "",
-      });
+    const state = extractedToEditState(processResult?.extracted);
+    if (state) {
+      setReportFields(state.reportFields);
+      setRecFields(state.recFields);
     }
   }, [processResult?.extracted]);
 
   async function handleSave() {
-    if (!editFields || !processResult?.reportId) return;
+    if (!reportFields || !processResult?.reportId) return;
     setSaving(true);
     try {
-      const body: Record<string, unknown> = {
-        id: processResult.reportId,
-        companyName: editFields.companyName || undefined,
-        investmentBank: editFields.investmentBank || undefined,
-        recommendation: editFields.recommendation || undefined,
-        targetPrice: editFields.targetPrice ? parseFloat(editFields.targetPrice) : undefined,
-        targetCurrency: editFields.targetCurrency || "NOK",
-        analystNames: editFields.analystNames
-          ? editFields.analystNames.split(",").map((n) => n.trim()).filter(Boolean)
-          : undefined,
-        summary: editFields.summary || undefined,
-      };
+      const payload = editStateToPayload(reportFields, recFields);
       const response = await fetch("/api/admin/reports", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ id: processResult.reportId, ...payload }),
       });
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to save");
       }
-      onUpdateProcessResult({
-        companyName: editFields.companyName || undefined,
-        investmentBank: editFields.investmentBank || undefined,
-        recommendation: editFields.recommendation || undefined,
-        targetPrice: editFields.targetPrice ? parseFloat(editFields.targetPrice) : undefined,
-        targetCurrency: editFields.targetCurrency || "NOK",
-        analystNames: editFields.analystNames
-          ? editFields.analystNames.split(",").map((n) => n.trim()).filter(Boolean)
-          : undefined,
-        summary: editFields.summary || undefined,
-      });
+      onUpdateProcessResult(editStateToExtracted(reportFields, recFields));
     } catch {
-      // Error handled silently — could add error state if needed
+      // Error handled silently
     } finally {
       setSaving(false);
     }
@@ -1485,83 +1606,56 @@ function EmailRow({
           </div>
 
           {/* Editable extraction form */}
-          {editFields && processResult?.extracted && (
+          {reportFields && processResult?.extracted && (
             <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
               <p className="text-xs font-medium text-gray-500 mb-2">Ekstraherte data:</p>
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs items-center">
-                <label className="text-gray-500">Selskap:</label>
-                <input
-                  type="text"
-                  value={editFields.companyName}
-                  onChange={(e) => setEditFields({ ...editFields, companyName: e.target.value })}
-                  className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
-                />
 
+              {/* Report-level fields */}
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs items-center mb-3">
                 <label className="text-gray-500">Bank:</label>
                 <input
                   type="text"
-                  value={editFields.investmentBank}
-                  onChange={(e) => setEditFields({ ...editFields, investmentBank: e.target.value })}
+                  value={reportFields.investmentBank}
+                  onChange={(e) => setReportFields({ ...reportFields, investmentBank: e.target.value })}
                   className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
                 />
-
-                <label className="text-gray-500">Anbefaling:</label>
-                <select
-                  value={editFields.recommendation}
-                  onChange={(e) => setEditFields({ ...editFields, recommendation: e.target.value })}
-                  className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
-                >
-                  <option value="">—</option>
-                  <option value="buy">Buy</option>
-                  <option value="hold">Hold</option>
-                  <option value="sell">Sell</option>
-                  <option value="overweight">Overweight</option>
-                  <option value="underweight">Underweight</option>
-                  <option value="outperform">Outperform</option>
-                  <option value="underperform">Underperform</option>
-                </select>
-
-                <label className="text-gray-500">Kursmål:</label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    step="any"
-                    value={editFields.targetPrice}
-                    onChange={(e) => setEditFields({ ...editFields, targetPrice: e.target.value })}
-                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
-                    placeholder="0"
-                  />
-                  <select
-                    value={editFields.targetCurrency}
-                    onChange={(e) => setEditFields({ ...editFields, targetCurrency: e.target.value })}
-                    className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm w-20"
-                  >
-                    <option value="NOK">NOK</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="SEK">SEK</option>
-                    <option value="DKK">DKK</option>
-                    <option value="GBP">GBP</option>
-                  </select>
-                </div>
 
                 <label className="text-gray-500">Analytikere:</label>
                 <input
                   type="text"
-                  value={editFields.analystNames}
-                  onChange={(e) => setEditFields({ ...editFields, analystNames: e.target.value })}
+                  value={reportFields.analystNames}
+                  onChange={(e) => setReportFields({ ...reportFields, analystNames: e.target.value })}
                   placeholder="Navn1, Navn2"
                   className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
                 />
-
-                <label className="text-gray-500 self-start pt-1">Sammendrag:</label>
-                <textarea
-                  value={editFields.summary}
-                  onChange={(e) => setEditFields({ ...editFields, summary: e.target.value })}
-                  rows={2}
-                  className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm resize-y"
-                />
               </div>
+
+              {/* Recommendation cards */}
+              <div className="space-y-2">
+                {recFields.map((rec, i) => (
+                  <RecommendationCard
+                    key={i}
+                    rec={rec}
+                    index={i}
+                    onChange={(updated) => {
+                      const next = [...recFields];
+                      next[i] = updated;
+                      setRecFields(next);
+                    }}
+                    onRemove={recFields.length > 1 ? () => {
+                      setRecFields(recFields.filter((_, j) => j !== i));
+                    } : undefined}
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={() => setRecFields([...recFields, { companyName: "", recommendation: "", targetPrice: "", targetCurrency: "NOK", summary: "" }])}
+                className="mt-2 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+              >
+                <Plus className="w-3 h-3" />
+                Legg til anbefaling
+              </button>
 
               <div className="mt-3 flex justify-end">
                 <button
@@ -1650,15 +1744,8 @@ function ReviewPanel({
   const [loadingBody, setLoadingBody] = useState(false);
   const [attachments, setAttachments] = useState<{ filename: string; contentType: string }[]>([]);
 
-  const [editFields, setEditFields] = useState<{
-    companyName: string;
-    investmentBank: string;
-    recommendation: string;
-    targetPrice: string;
-    targetCurrency: string;
-    analystNames: string;
-    summary: string;
-  } | null>(null);
+  const [reportFields, setReportFields] = useState<ReportEditFields | null>(null);
+  const [recFields, setRecFields] = useState<RecEditFields[]>([]);
   const [saving, setSaving] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -1689,57 +1776,30 @@ function ReviewPanel({
 
   // Initialize edit fields from processResult
   useEffect(() => {
-    if (processResult?.extracted) {
-      setEditFields({
-        companyName: processResult.extracted.companyName || "",
-        investmentBank: processResult.extracted.investmentBank || "",
-        recommendation: processResult.extracted.recommendation || "",
-        targetPrice: processResult.extracted.targetPrice?.toString() || "",
-        targetCurrency: processResult.extracted.targetCurrency || "NOK",
-        analystNames: processResult.extracted.analystNames?.join(", ") || "",
-        summary: processResult.extracted.summary || "",
-      });
+    const state = extractedToEditState(processResult?.extracted);
+    if (state) {
+      setReportFields(state.reportFields);
+      setRecFields(state.recFields);
     }
   }, [processResult?.extracted]);
 
   const reportId = processResult?.reportId || email.reportId;
 
   async function handleSave() {
-    if (!editFields || !reportId) return;
+    if (!reportFields || !reportId) return;
     setSaving(true);
     try {
-      const body: Record<string, unknown> = {
-        id: reportId,
-        companyName: editFields.companyName || undefined,
-        investmentBank: editFields.investmentBank || undefined,
-        recommendation: editFields.recommendation || undefined,
-        targetPrice: editFields.targetPrice ? parseFloat(editFields.targetPrice) : undefined,
-        targetCurrency: editFields.targetCurrency || "NOK",
-        analystNames: editFields.analystNames
-          ? editFields.analystNames.split(",").map((n) => n.trim()).filter(Boolean)
-          : undefined,
-        summary: editFields.summary || undefined,
-      };
+      const payload = editStateToPayload(reportFields, recFields);
       const response = await fetch("/api/admin/reports", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ id: reportId, ...payload }),
       });
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to save");
       }
-      onUpdateProcessResult({
-        companyName: editFields.companyName || undefined,
-        investmentBank: editFields.investmentBank || undefined,
-        recommendation: editFields.recommendation || undefined,
-        targetPrice: editFields.targetPrice ? parseFloat(editFields.targetPrice) : undefined,
-        targetCurrency: editFields.targetCurrency || "NOK",
-        analystNames: editFields.analystNames
-          ? editFields.analystNames.split(",").map((n) => n.trim()).filter(Boolean)
-          : undefined,
-        summary: editFields.summary || undefined,
-      });
+      onUpdateProcessResult(editStateToExtracted(reportFields, recFields));
     } catch {
       // Error handling could be added
     } finally {
@@ -1774,7 +1834,7 @@ function ReviewPanel({
   async function handleApproveAndNextClick() {
     setAdvancingNext(true);
     try {
-      if (editFields && reportId) {
+      if (reportFields && reportId) {
         await handleSave();
       }
       await onApproveAndNext();
@@ -1811,7 +1871,7 @@ function ReviewPanel({
           <span className="text-xs text-gray-500">
             {email.from.name || email.from.email}
           </span>
-          {!editFields && email.reportId && (
+          {!reportFields && email.reportId && (
             <button
               onClick={handleSkipAndNextClick}
               disabled={skipping || advancingNext}
@@ -1841,7 +1901,7 @@ function ReviewPanel({
           ) : (
             <button
               onClick={async () => {
-                if (editFields && reportId) await handleSave();
+                if (reportFields && reportId) await handleSave();
                 onClose();
               }}
               className="flex items-center gap-1.5 text-sm px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -1915,82 +1975,54 @@ function ReviewPanel({
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* Extraction form */}
-            {editFields ? (
+            {reportFields ? (
               <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 text-sm items-center">
-                  <label className="text-gray-500 text-xs">Selskap:</label>
-                  <input
-                    type="text"
-                    value={editFields.companyName}
-                    onChange={(e) => setEditFields({ ...editFields, companyName: e.target.value })}
-                    className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
-                  />
-
+                {/* Report-level fields */}
+                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 text-sm items-center mb-4">
                   <label className="text-gray-500 text-xs">Bank:</label>
                   <input
                     type="text"
-                    value={editFields.investmentBank}
-                    onChange={(e) => setEditFields({ ...editFields, investmentBank: e.target.value })}
+                    value={reportFields.investmentBank}
+                    onChange={(e) => setReportFields({ ...reportFields, investmentBank: e.target.value })}
                     className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
                   />
-
-                  <label className="text-gray-500 text-xs">Anbefaling:</label>
-                  <select
-                    value={editFields.recommendation}
-                    onChange={(e) => setEditFields({ ...editFields, recommendation: e.target.value })}
-                    className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
-                  >
-                    <option value="">--</option>
-                    <option value="buy">Buy</option>
-                    <option value="hold">Hold</option>
-                    <option value="sell">Sell</option>
-                    <option value="overweight">Overweight</option>
-                    <option value="underweight">Underweight</option>
-                    <option value="outperform">Outperform</option>
-                    <option value="underperform">Underperform</option>
-                  </select>
-
-                  <label className="text-gray-500 text-xs">Kursmål:</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="any"
-                      value={editFields.targetPrice}
-                      onChange={(e) => setEditFields({ ...editFields, targetPrice: e.target.value })}
-                      className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
-                      placeholder="0"
-                    />
-                    <select
-                      value={editFields.targetCurrency}
-                      onChange={(e) => setEditFields({ ...editFields, targetCurrency: e.target.value })}
-                      className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm w-20"
-                    >
-                      <option value="NOK">NOK</option>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                      <option value="SEK">SEK</option>
-                      <option value="DKK">DKK</option>
-                      <option value="GBP">GBP</option>
-                    </select>
-                  </div>
 
                   <label className="text-gray-500 text-xs">Analytikere:</label>
                   <input
                     type="text"
-                    value={editFields.analystNames}
-                    onChange={(e) => setEditFields({ ...editFields, analystNames: e.target.value })}
+                    value={reportFields.analystNames}
+                    onChange={(e) => setReportFields({ ...reportFields, analystNames: e.target.value })}
                     placeholder="Navn1, Navn2"
                     className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
                   />
-
-                  <label className="text-gray-500 text-xs self-start pt-1.5">Sammendrag:</label>
-                  <textarea
-                    value={editFields.summary}
-                    onChange={(e) => setEditFields({ ...editFields, summary: e.target.value })}
-                    rows={3}
-                    className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm resize-y"
-                  />
                 </div>
+
+                {/* Recommendation cards */}
+                <div className="space-y-3">
+                  {recFields.map((rec, i) => (
+                    <RecommendationCard
+                      key={i}
+                      rec={rec}
+                      index={i}
+                      onChange={(updated) => {
+                        const next = [...recFields];
+                        next[i] = updated;
+                        setRecFields(next);
+                      }}
+                      onRemove={recFields.length > 1 ? () => {
+                        setRecFields(recFields.filter((_, j) => j !== i));
+                      } : undefined}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setRecFields([...recFields, { companyName: "", recommendation: "", targetPrice: "", targetCurrency: "NOK", summary: "" }])}
+                  className="mt-3 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                >
+                  <Plus className="w-3 h-3" />
+                  Legg til anbefaling
+                </button>
 
                 <div className="mt-3 flex justify-end">
                   <button
@@ -2110,7 +2142,7 @@ function ReviewPanel({
               ) : (
                 <button
                   onClick={async () => {
-                    if (editFields && reportId) await handleSave();
+                    if (reportFields && reportId) await handleSave();
                     onClose();
                   }}
                   className="w-full flex items-center justify-center gap-2 text-sm px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"

@@ -205,7 +205,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const { id, ...data } = await request.json();
+    const { id, investmentBank, analystNames, recommendations } = await request.json();
 
     if (!id) {
       return NextResponse.json(
@@ -222,7 +222,11 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    await updateAnalystReportExtraction(id, data);
+    await updateAnalystReportExtraction(id, {
+      investmentBank,
+      analystNames,
+      recommendations: recommendations || [],
+    });
     revalidateTag("public-analyst-reports");
 
     const updated = await getAnalystReportById(id);

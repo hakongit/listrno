@@ -6,7 +6,7 @@ import {
   isGmailConfigured,
 } from "@/lib/gmail";
 import { getAllAnalystDomains, getAnalystReportByGmailId, createAnalystReport } from "@/lib/analyst-db";
-import { extractTextFromPdf } from "@/lib/pdf-extract";
+import { extractTextFromPdf, extractLinkedPdfTexts } from "@/lib/pdf-extract";
 
 // POP3 can take a while when fetching all emails
 export const maxDuration = 300;
@@ -108,6 +108,12 @@ export async function GET(request: NextRequest) {
                 for (const att of pdfAttachments) {
                   const text = await extractTextFromPdf(att.content);
                   if (text) attachmentTexts.push(text);
+                }
+
+                // Extract text from PDFs linked in email body
+                if (fullEmail.body) {
+                  const linkedTexts = await extractLinkedPdfTexts(fullEmail.body);
+                  attachmentTexts.push(...linkedTexts);
                 }
 
                 const reportId = await createAnalystReport({

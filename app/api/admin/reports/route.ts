@@ -15,7 +15,7 @@ import {
 } from "@/lib/analyst-db";
 import { getEmailById } from "@/lib/gmail";
 import { extractReportData, isOpenRouterConfigured } from "@/lib/analyst-extraction";
-import { extractTextFromPdf } from "@/lib/pdf-extract";
+import { extractTextFromPdf, extractLinkedPdfTexts } from "@/lib/pdf-extract";
 import { revalidateTag } from "next/cache";
 
 // POP3 fetch + PDF extraction + LLM call can take time
@@ -112,6 +112,12 @@ export async function POST(request: NextRequest) {
       if (text) {
         attachmentTexts.push(text);
       }
+    }
+
+    // Extract text from PDFs linked in email body
+    if (email.body) {
+      const linkedTexts = await extractLinkedPdfTexts(email.body);
+      attachmentTexts.push(...linkedTexts);
     }
 
     // Create report record with email body and attachment texts

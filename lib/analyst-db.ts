@@ -246,6 +246,14 @@ export async function updateAnalystReportExtraction(
   });
 }
 
+export async function updateAnalystReportAttachmentTexts(id: number, attachmentTexts: string[]): Promise<void> {
+  const db = getDb();
+  await db.execute({
+    sql: `UPDATE analyst_reports SET attachment_texts = ?, updated_at = datetime('now') WHERE id = ?`,
+    args: [JSON.stringify(attachmentTexts), id],
+  });
+}
+
 export async function markAnalystReportFailed(id: number, error: string): Promise<void> {
   const db = getDb();
   await db.execute({

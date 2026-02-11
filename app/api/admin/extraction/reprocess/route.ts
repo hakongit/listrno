@@ -4,10 +4,12 @@ import { checkRateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
 import {
   getAnalystReportById,
   updateAnalystReportExtraction,
+  updateAnalystReportAttachmentTexts,
   getExtractionGuidance,
   getBankNameForDomain,
 } from "@/lib/analyst-db";
 import { extractReportData } from "@/lib/analyst-extraction";
+import { extractLinkedPdfTexts } from "@/lib/pdf-extract";
 import { revalidateTag } from "next/cache";
 
 export const maxDuration = 60;
@@ -37,7 +39,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    if (!report.emailBody && (!report.attachmentTexts || report.attachmentTexts.length === 0)) {
+    // Try to fetch linked PDFs if none stored yet
+    let attachmentTexts = report.attachmentTexts || [];
+    if (attachmentTexts.length === 0 && report.emailBody) {
+      const linkedTexts = await extractLinkedPdfTexts(report.emailBody);
+      if (linkedTexts.length > 0) {
+        attachmentTexts = linkedTexts;
+        await updateAnalystReportAttachmentTexts(reportId, attachmentTexts);
+      }
+    }
+
+    if (!report.emailBody && attachmentTexts.length === 0) {
       return NextResponse.json(
         { error: "Report has no stored content to re-process" },
         { status: 400 }
@@ -48,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const extracted = await extractReportData(
       report.emailBody || "",
-      report.attachmentTexts || [],
+      attachmentTexts,
       report.subject,
       {
         guidance: guidance || undefined,

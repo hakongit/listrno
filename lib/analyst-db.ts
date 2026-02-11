@@ -310,7 +310,7 @@ export async function updateAnalystReportExtraction(
 
   // Insert new recommendations - only those with a targetPrice
   for (const rec of data.recommendations) {
-    if (rec.targetPrice == null) continue;
+    if (!rec.targetPrice) continue;
     await db.execute({
       sql: `INSERT INTO analyst_recommendations (report_id, company_name, company_isin, recommendation, target_price, target_currency, summary)
             VALUES (?, ?, ?, ?, ?, ?, ?)`,

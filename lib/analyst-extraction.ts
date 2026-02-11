@@ -26,7 +26,8 @@ Return your response as a JSON object with these fields:
   - summary: string (1-2 sentence summary)
 
 If a field cannot be determined from the content, omit it from the response.
-Only include a company in the recommendations array if you can determine at least a target price for it.
+Only include a company in the recommendations array if you can determine a specific, non-zero target price for it. Do NOT include entries with targetPrice 0 or without a target price.
+If the email is a market overview or commentary without specific company target prices, return an empty recommendations array.
 Only return the JSON object, no other text.`;
 
 interface OpenRouterResponse {
@@ -157,7 +158,7 @@ export async function extractReportData(
           if (typeof rec.companyIsin === "string" && rec.companyIsin) {
             extracted.companyIsin = (rec.companyIsin as string).trim();
           }
-          if (typeof rec.targetPrice === "number" && !isNaN(rec.targetPrice)) {
+          if (typeof rec.targetPrice === "number" && !isNaN(rec.targetPrice) && rec.targetPrice > 0) {
             extracted.targetPrice = rec.targetPrice;
           }
           if (typeof rec.targetCurrency === "string" && rec.targetCurrency) {
@@ -171,7 +172,7 @@ export async function extractReportData(
           }
           return extracted;
         })
-        .filter((rec: ExtractedRecommendation) => rec.companyName || rec.targetPrice);
+        .filter((rec: ExtractedRecommendation) => rec.targetPrice);
     }
 
     // Backward-compat fallback: if LLM returns top-level companyName/targetPrice (old format),
@@ -181,7 +182,7 @@ export async function extractReportData(
       if (typeof parsed.companyName === "string" && parsed.companyName) {
         fallback.companyName = parsed.companyName.trim();
       }
-      if (typeof parsed.targetPrice === "number" && !isNaN(parsed.targetPrice)) {
+      if (typeof parsed.targetPrice === "number" && !isNaN(parsed.targetPrice) && parsed.targetPrice > 0) {
         fallback.targetPrice = parsed.targetPrice;
       }
       if (typeof parsed.targetCurrency === "string" && parsed.targetCurrency) {
@@ -193,7 +194,7 @@ export async function extractReportData(
       if (typeof parsed.summary === "string" && parsed.summary) {
         fallback.summary = parsed.summary.trim();
       }
-      if (fallback.companyName || fallback.targetPrice) {
+      if (fallback.targetPrice) {
         result.recommendations.push(fallback);
       }
     }

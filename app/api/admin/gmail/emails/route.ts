@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
 
     // Check database first (instant) for already-imported reports
     const report = await getAnalystReportByGmailId(messageId);
-    if (report && (report.emailBody || report.attachmentTexts?.length)) {
+    if (report) {
       const bodyParts: string[] = [];
       if (report.emailBody) bodyParts.push(report.emailBody);
       if (report.attachmentTexts?.length) {
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
         domain: report.fromDomain,
         subject: report.subject,
         date: report.receivedDate,
-        body: bodyParts.join("\n"),
+        body: bodyParts.join("\n") || "(Ingen innhold lagret for denne e-posten)",
         attachments: [],
       });
     }

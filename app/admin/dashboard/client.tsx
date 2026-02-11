@@ -520,6 +520,39 @@ export default function AdminDashboardClient({
     }
   }
 
+  async function skipReport(messageId: string, reportId: number) {
+    setError("");
+    addLog("info", `Hopper over rapport #${reportId}...`);
+    try {
+      const response = await fetch("/api/admin/reports", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: reportId }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to skip");
+      }
+      // Mark as processed in local state
+      setProcessResults((prev) => {
+        const next = new Map(prev);
+        next.set(messageId, {
+          emailId: messageId,
+          reportId,
+          success: true,
+          extracted: {},
+        });
+        return next;
+      });
+      addLog("success", `Rapport #${reportId} hoppet over`);
+      refreshStats();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Feil ved hopping";
+      addLog("error", msg);
+      setError(msg);
+    }
+  }
+
   async function removeDomain(domain: string) {
     try {
       const response = await fetch("/api/admin/domains", {
@@ -1088,6 +1121,7 @@ export default function AdminDashboardClient({
                         onImport={() => importEmail(email.id, false)}
                         onProcess={() => processEmail(email.id)}
                         onDelete={() => email.reportId && deleteReport(email.id, email.reportId)}
+                        onSkip={() => email.reportId && skipReport(email.id, email.reportId)}
                         onUpdateProcessResult={(extracted) => handleUpdateProcessResult(email.id, extracted)}
                         openRouterConfigured={config.openRouterConfigured}
                       />
@@ -1119,6 +1153,7 @@ export default function AdminDashboardClient({
                         onImport={() => importEmail(email.id, false)}
                         onProcess={() => processEmail(email.id)}
                         onDelete={() => email.reportId && deleteReport(email.id, email.reportId)}
+                        onSkip={() => email.reportId && skipReport(email.id, email.reportId)}
                         onUpdateProcessResult={(extracted) => handleUpdateProcessResult(email.id, extracted)}
                         openRouterConfigured={config.openRouterConfigured}
                       />
@@ -1139,6 +1174,13 @@ export default function AdminDashboardClient({
           processResult={processResults.get(reviewEmail)}
           onClose={() => setReviewEmail(null)}
           onApproveAndNext={handleApproveAndNext}
+          onSkipAndNext={async () => {
+            const item = reviewEmailItem;
+            if (item?.reportId) {
+              await skipReport(reviewEmail, item.reportId);
+            }
+            await handleApproveAndNext();
+          }}
           onUpdateProcessResult={(extracted) => handleUpdateProcessResult(reviewEmail, extracted)}
           guidance={guidance}
           onGuidanceChange={setGuidance}
@@ -1162,6 +1204,7 @@ function EmailRow({
   onImport,
   onProcess,
   onDelete,
+  onSkip,
   onUpdateProcessResult,
   openRouterConfigured,
 }: {
@@ -1174,6 +1217,7 @@ function EmailRow({
   onImport: () => void;
   onProcess: () => void;
   onDelete: () => void;
+  onSkip: () => void;
   onUpdateProcessResult: (extracted: ProcessResult["extracted"]) => void;
   openRouterConfigured: boolean;
 }) {
@@ -1380,6 +1424,16 @@ function EmailRow({
                 Lagre
               </button>
             ) : null}
+            {email.imported && email.reportId && !processResult?.success && (
+              <button
+                onClick={onSkip}
+                className="flex items-center gap-1 text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                title="Merk som behandlet uten LLM"
+              >
+                <CheckCircle className="w-3 h-3" />
+                Hopp over
+              </button>
+            )}
             {openRouterConfigured && (
               <button
                 onClick={onProcess}
@@ -1567,6 +1621,7 @@ function ReviewPanel({
   processResult,
   onClose,
   onApproveAndNext,
+  onSkipAndNext,
   onUpdateProcessResult,
   guidance,
   onGuidanceChange,
@@ -1579,6 +1634,7 @@ function ReviewPanel({
   processResult?: ProcessResult;
   onClose: () => void;
   onApproveAndNext: () => Promise<void>;
+  onSkipAndNext: () => Promise<void>;
   onUpdateProcessResult: (extracted: ProcessResult["extracted"]) => void;
   guidance: string;
   onGuidanceChange: (g: string) => void;
@@ -1605,6 +1661,7 @@ function ReviewPanel({
   const [feedback, setFeedback] = useState("");
   const [showGuidanceSection, setShowGuidanceSection] = useState(false);
   const [advancingNext, setAdvancingNext] = useState(false);
+  const [skipping, setSkipping] = useState(false);
 
   // Fetch email body on mount
   useEffect(() => {
@@ -1723,6 +1780,15 @@ function ReviewPanel({
     }
   }
 
+  async function handleSkipAndNextClick() {
+    setSkipping(true);
+    try {
+      await onSkipAndNext();
+    } finally {
+      setSkipping(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-gray-950 flex flex-col">
       {/* Header */}
@@ -1742,10 +1808,24 @@ function ReviewPanel({
           <span className="text-xs text-gray-500">
             {email.from.name || email.from.email}
           </span>
+          {!editFields && email.reportId && (
+            <button
+              onClick={handleSkipAndNextClick}
+              disabled={skipping || advancingNext}
+              className="flex items-center gap-1.5 text-sm px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+            >
+              {skipping ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle className="w-4 h-4" />
+              )}
+              Hopp over
+            </button>
+          )}
           {hasNextPending ? (
             <button
               onClick={handleApproveAndNextClick}
-              disabled={advancingNext || reprocessing}
+              disabled={advancingNext || reprocessing || skipping}
               className="flex items-center gap-1.5 text-sm px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
             >
               {advancingNext ? (

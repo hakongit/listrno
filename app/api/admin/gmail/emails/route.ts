@@ -205,13 +205,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isGmailConfigured()) {
-    return NextResponse.json(
-      { error: "Gmail not configured" },
-      { status: 400 }
-    );
-  }
-
   try {
     const { messageId } = await request.json();
 
@@ -222,28 +215,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch from cache or POP3
-    const email = await getEmailById(messageId);
-
-    if (!email) {
-      return NextResponse.json(
-        { error: "Email not found" },
-        { status: 404 }
-      );
+    // Try Gmail POP3 cache first
+    if (isGmailConfigured()) {
+      try {
+        const email = await getEmailById(messageId);
+        if (email) {
+          return NextResponse.json({
+            id: email.id,
+            from: email.fromEmail,
+            domain: email.fromDomain,
+            subject: email.subject,
+            date: email.date,
+            body: email.body,
+            attachments: email.attachments.map(a => ({
+              filename: a.filename,
+              contentType: a.contentType,
+            })),
+          });
+        }
+      } catch {
+        // Gmail fetch failed, fall through to DB
+      }
     }
 
-    return NextResponse.json({
-      id: email.id,
-      from: email.fromEmail,
-      domain: email.fromDomain,
-      subject: email.subject,
-      date: email.date,
-      body: email.body,
-      attachments: email.attachments.map(a => ({
-        filename: a.filename,
-        contentType: a.contentType,
-      })),
-    });
+    // Fall back to database content for already-imported reports
+    const report = await getAnalystReportByGmailId(messageId);
+    if (report) {
+      const bodyParts: string[] = [];
+      if (report.emailBody) bodyParts.push(report.emailBody);
+      if (report.attachmentTexts?.length) {
+        for (const text of report.attachmentTexts) {
+          bodyParts.push(`\n--- Vedlegg ---\n${text}`);
+        }
+      }
+      return NextResponse.json({
+        id: messageId,
+        from: report.fromEmail,
+        domain: report.fromDomain,
+        subject: report.subject,
+        date: report.receivedDate,
+        body: bodyParts.join("\n") || "(Ingen innhold lagret)",
+        attachments: [],
+      });
+    }
+
+    return NextResponse.json(
+      { error: "Email not found" },
+      { status: 404 }
+    );
   } catch (error) {
     console.error("Error fetching email:", error);
     return NextResponse.json(

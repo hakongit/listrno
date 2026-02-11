@@ -590,6 +590,7 @@ export default function AdminDashboardClient({
   function findNextPendingEmail(excludeId?: string): EmailItem | undefined {
     return emails
       .filter((e) => e.isWhitelisted)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .find(
         (e) =>
           e.id !== excludeId &&
@@ -614,8 +615,10 @@ export default function AdminDashboardClient({
     }
   }
 
-  const whitelistedEmails = emails.filter((e) => e.isWhitelisted);
-  const otherEmails = emails.filter((e) => !e.isWhitelisted);
+  const sortByDateDesc = (a: EmailItem, b: EmailItem) =>
+    new Date(b.date).getTime() - new Date(a.date).getTime();
+  const whitelistedEmails = emails.filter((e) => e.isWhitelisted).sort(sortByDateDesc);
+  const otherEmails = emails.filter((e) => !e.isWhitelisted).sort(sortByDateDesc);
   const reviewEmailItem = reviewEmail ? emails.find((e) => e.id === reviewEmail) : null;
 
   // Compute suggested domains: unique domains from fetched emails, excluding already-approved

@@ -30,7 +30,7 @@ export default async function AdminDashboardPage() {
     getAnalystReportCount("processed"),
     getAnalystReportCount("failed"),
     getAllAnalystDomains(),
-    getAllAnalystReports({ limit: 50 }),
+    getAllAnalystReports({ limit: 1000 }),
   ]);
 
   console.log("[admin] existingReports:", existingReports.length, existingReports.map(r => ({ id: r.id, gmail: r.gmailMessageId, subject: r.subject })));

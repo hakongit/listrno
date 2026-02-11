@@ -215,7 +215,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try Gmail POP3 cache first
+    // Check database first (instant) for already-imported reports
+    const report = await getAnalystReportByGmailId(messageId);
+    if (report && (report.emailBody || report.attachmentTexts?.length)) {
+      const bodyParts: string[] = [];
+      if (report.emailBody) bodyParts.push(report.emailBody);
+      if (report.attachmentTexts?.length) {
+        for (const text of report.attachmentTexts) {
+          bodyParts.push(`\n--- Vedlegg ---\n${text}`);
+        }
+      }
+      return NextResponse.json({
+        id: messageId,
+        from: report.fromEmail,
+        domain: report.fromDomain,
+        subject: report.subject,
+        date: report.receivedDate,
+        body: bodyParts.join("\n"),
+        attachments: [],
+      });
+    }
+
+    // Fall back to Gmail POP3 cache (only if cached, avoids slow re-fetch)
     if (isGmailConfigured()) {
       try {
         const email = await getEmailById(messageId);
@@ -234,29 +255,8 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch {
-        // Gmail fetch failed, fall through to DB
+        // Gmail fetch failed
       }
-    }
-
-    // Fall back to database content for already-imported reports
-    const report = await getAnalystReportByGmailId(messageId);
-    if (report) {
-      const bodyParts: string[] = [];
-      if (report.emailBody) bodyParts.push(report.emailBody);
-      if (report.attachmentTexts?.length) {
-        for (const text of report.attachmentTexts) {
-          bodyParts.push(`\n--- Vedlegg ---\n${text}`);
-        }
-      }
-      return NextResponse.json({
-        id: messageId,
-        from: report.fromEmail,
-        domain: report.fromDomain,
-        subject: report.subject,
-        date: report.receivedDate,
-        body: bodyParts.join("\n") || "(Ingen innhold lagret)",
-        attachments: [],
-      });
     }
 
     return NextResponse.json(

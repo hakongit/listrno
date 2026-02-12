@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description:
     "Oversikt over alle shortposisjoner i norske aksjer. Data fra Finanstilsynet, oppdatert daglig.",
   keywords: ["short", "shortposisjoner", "aksjer", "norge", "finanstilsynet", "børs"],
+  icons: {
+    icon: "/icon.svg",
+  },
   openGraph: {
     title: "Listr - Norske shortposisjoner",
     description: "Oversikt over alle shortposisjoner i norske aksjer",

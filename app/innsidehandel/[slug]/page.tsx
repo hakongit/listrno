@@ -19,6 +19,7 @@ import {
   Banknote,
 } from "lucide-react";
 import type { Metadata } from "next";
+import { Logo } from "@/components/logo";
 
 export const revalidate = 3600;
 
@@ -109,8 +110,8 @@ export default async function InsiderDetailPage({ params }: PageProps) {
       {/* Header */}
       <header className="border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          <Link href="/" className="text-lg font-bold tracking-tight flex-shrink-0">
-            Listr<span className="text-gray-400">.no</span>
+          <Link href="/" className="flex-shrink-0">
+            <Logo />
           </Link>
           <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
             <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">

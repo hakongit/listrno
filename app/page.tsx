@@ -13,6 +13,7 @@ import {
   BarChart3,
   User,
 } from "lucide-react";
+import { Logo } from "@/components/logo";
 
 export const revalidate = 3600;
 
@@ -75,8 +76,8 @@ export default async function DashboardPage() {
       {/* Header */}
       <header className="border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight" aria-label="Listr.no - Til forsiden">
-            Listr<span className="text-gray-400">.no</span>
+          <Link href="/" aria-label="Listr.no - Til forsiden">
+            <Logo />
           </Link>
           <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
             <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">

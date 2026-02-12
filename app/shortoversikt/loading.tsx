@@ -1,11 +1,11 @@
+import { Logo } from "@/components/logo";
+
 export default function ShortOverviewLoading() {
   return (
     <div>
       <header className="border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          <div className="text-lg font-bold tracking-tight">
-            Listr<span className="text-gray-400">.no</span>
-          </div>
+          <Logo />
           <div className="h-5 w-40 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
           <div className="flex gap-4">
             <div className="h-4 w-20 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />

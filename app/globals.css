@@ -3,47 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-}
+  --background: #080c14;
+  --foreground: #e2e0db;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 4px;
-}
-
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-thumb {
-    background: #374151;
-  }
-}
-
-/* ─── Analyser Section Theme ─── */
-.analyser-theme {
   --an-bg-base: #080c14;
   --an-bg-surface: #0e1420;
   --an-bg-raised: #141c2b;
@@ -69,31 +31,62 @@ body {
   --an-red: #c25050;
   --an-red-bg: rgba(194, 80, 80, 0.1);
   --an-red-border: rgba(194, 80, 80, 0.25);
+}
 
-  font-family: var(--font-inter), -apple-system, system-ui, sans-serif;
-  background: var(--an-bg-base);
+body {
   color: var(--an-text-primary);
+  background: var(--an-bg-base);
+  font-family: var(--font-inter), -apple-system, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-.analyser-theme .mono {
+.mono {
   font-family: var(--font-mono), "SF Mono", monospace;
 }
 
-/* Gold accent line at top */
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--an-border);
+  border-radius: 4px;
+}
+
+/* ─── Navigation ─── */
+.nav-link {
+  color: var(--an-text-secondary);
+  transition: all 0.15s;
+}
+.nav-link:hover {
+  color: var(--an-text-primary);
+  background: var(--an-bg-raised);
+}
+.nav-link.active {
+  color: var(--an-text-primary);
+  background: var(--an-bg-raised);
+}
+
+/* ─── Gold accent line at top ─── */
 .an-top-accent {
   height: 2px;
   background: linear-gradient(90deg, var(--an-accent) 0%, transparent 60%);
   opacity: 0.5;
 }
 
-/* Gold-tinted stat card */
+/* ─── Gold-tinted stat card ─── */
 .an-stat-accent {
   border-color: rgba(201, 168, 76, 0.2) !important;
   background: linear-gradient(135deg, var(--an-bg-surface) 0%, rgba(201, 168, 76, 0.04) 100%) !important;
 }
 
-/* Recommendation bars */
+/* ─── Recommendation bars ─── */
 .rec-bar-track {
   height: 24px;
   background: var(--an-bg-base);
@@ -106,12 +99,7 @@ body {
   transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Table row hover */
-.analyser-theme .an-table-row:hover {
+/* ─── Table row hover ─── */
+.an-table-row:hover {
   background: var(--an-bg-hover);
-}
-
-/* Hide root footer when analyser-theme is active */
-body:has(.analyser-theme) > main + footer {
-  display: none;
 }

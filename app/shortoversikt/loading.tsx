@@ -1,19 +1,6 @@
-import { Logo } from "@/components/logo";
-
 export default function ShortOverviewLoading() {
   return (
     <div>
-      <header className="border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <Logo />
-          <div className="flex gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-4 w-20 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
-            ))}
-          </div>
-        </div>
-      </header>
-
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="mb-6">
           <div className="h-8 w-72 bg-gray-200 dark:bg-gray-800 rounded animate-pulse mb-2" />

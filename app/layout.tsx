@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { SiteNav } from "@/components/site-nav";
 import "./globals.css";
 
 const inter = Inter({
@@ -39,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nb">
+    <html lang="nb" className="dark">
       <head>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
@@ -57,27 +58,28 @@ export default function RootLayout({
       <body className={`antialiased min-h-screen flex flex-col ${inter.variable} ${jetbrainsMono.variable}`}>
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:dark:bg-gray-900 focus:border focus:border-gray-300 focus:dark:border-gray-700 focus:rounded-lg focus:text-sm focus:font-medium"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-gray-900 focus:border focus:border-gray-700 focus:rounded-lg focus:text-sm focus:font-medium"
         >
           Hopp til hovedinnhold
         </a>
+
+        <div className="an-top-accent" />
+        <SiteNav />
+
         <main id="main-content" className="flex-1">{children}</main>
 
-        <footer className="border-t border-gray-200 dark:border-gray-800 mt-auto">
-          <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-            <p>
-              Data fra offentlig tilgjengelige kilder
-            </p>
-            <p>
-              Et prosjekt fra{" "}
-              <a
-                href="https://blueboxas.no"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                Bluebox AS
-              </a>
+        <footer
+          className="border-t mt-auto py-5"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <div className="max-w-[1120px] mx-auto px-6">
+            <p
+              className="text-[11px] text-center leading-relaxed"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              Data fra offentlig tilgjengelige kilder. Ikke finansiell r&aring;dgivning.
+              <br />
+              Bluebox AS
             </p>
           </div>
         </footer>

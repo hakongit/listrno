@@ -1,19 +1,6 @@
-import { Logo } from "@/components/logo";
-
 export default function CompanyLoading() {
   return (
     <div>
-      <header className="border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <Logo />
-          <div className="flex gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-4 w-20 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
-            ))}
-          </div>
-        </div>
-      </header>
-
       <div className="max-w-6xl mx-auto px-4 py-4">
         {/* Stats skeleton */}
         <div className="flex flex-wrap gap-4 mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">

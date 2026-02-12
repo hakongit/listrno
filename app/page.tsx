@@ -13,8 +13,6 @@ import {
   BarChart3,
   User,
 } from "lucide-react";
-import { Logo } from "@/components/logo";
-
 export const revalidate = 3600;
 
 function TradeTypeIcon({ type }: { type: string }) {
@@ -73,29 +71,6 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <Link href="/" aria-label="Listr.no - Til forsiden">
-            <Logo />
-          </Link>
-          <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
-            <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Shortposisjoner
-            </Link>
-            <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Innsidehandel
-            </Link>
-            <Link href="/analyser" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Analyser
-            </Link>
-            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Om
-            </Link>
-          </nav>
-        </div>
-      </header>
-
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Hero */}
         <div className="mb-8 text-center">

@@ -122,18 +122,18 @@ export function extractDomain(email: string): string {
 
 // --- Email cache (5-min TTL to avoid redundant POP3 sessions) ---
 const EMAIL_CACHE_TTL = 5 * 60 * 1000;
-let emailCache: { emails: EmailMessage[]; fetchedAt: number } | null = null;
+let emailCache: { emails: EmailMessage[]; totalOnServer: number; fetchedAt: number } | null = null;
 
-function getCachedEmails(): EmailMessage[] | null {
+function getCachedEmails(): { emails: EmailMessage[]; totalOnServer: number } | null {
   if (emailCache && Date.now() - emailCache.fetchedAt < EMAIL_CACHE_TTL) {
-    return emailCache.emails;
+    return { emails: emailCache.emails, totalOnServer: emailCache.totalOnServer };
   }
   emailCache = null;
   return null;
 }
 
-function setCachedEmails(emails: EmailMessage[]) {
-  emailCache = { emails, fetchedAt: Date.now() };
+function setCachedEmails(emails: EmailMessage[], totalOnServer: number) {
+  emailCache = { emails, totalOnServer, fetchedAt: Date.now() };
 }
 
 export interface FetchProgress {
@@ -159,12 +159,12 @@ export async function fetchEmailsWithProgress(
   // Check cache first (only for non-progress requests or when no date filter)
   if (!options.afterDate) {
     const cached = getCachedEmails();
-    if (cached && cached.length >= (options.maxResults || 20)) {
-      const limited = cached.slice(0, options.maxResults || 20);
+    if (cached && cached.emails.length >= (options.maxResults || 20)) {
+      const limited = cached.emails.slice(0, options.maxResults || 20);
       if (onProgress) {
         onProgress({ stage: "done", current: limited.length, total: limited.length, message: `Ferdig! ${limited.length} e-poster (fra cache).` });
       }
-      return { messages: limited, totalOnServer: cached.length };
+      return { messages: limited, totalOnServer: cached.totalOnServer };
     }
   }
 
@@ -290,8 +290,8 @@ export async function fetchEmailsWithProgress(
     const totalOnServer = messageIds.length;
     report({ stage: "done", current: messages.length, total: messages.length, message: `Ferdig! Hentet ${messages.length} av ${totalOnServer} e-poster.` });
 
-    // Cache the fetched emails
-    setCachedEmails(messages);
+    // Cache the fetched emails (preserve real server total)
+    setCachedEmails(messages, totalOnServer);
 
     await withTimeout(pop3.QUIT(), 5000, "POP3 QUIT").catch(() => {});
     return { messages, totalOnServer };
@@ -325,7 +325,7 @@ export async function getEmailById(messageId: string): Promise<EmailMessage | nu
   // Check cache first
   const cached = getCachedEmails();
   if (cached) {
-    return cached.find(e => e.id === messageId) || null;
+    return cached.emails.find(e => e.id === messageId) || null;
   }
 
   // Fetch from POP3 if not cached

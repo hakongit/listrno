@@ -209,8 +209,7 @@ export default function AdminDashboardClient({
     setLoadingEmails(true);
     clearLog();
     setError("");
-    setEmails([]);
-    setProcessResults(new Map());
+    // Don't clear emails — we merge fetched with existing (DB-imported) ones
     completedRef.current = false;
 
     addLog("info", "Starter e-posthenting...");
@@ -254,7 +253,12 @@ export default function AdminDashboardClient({
         completedRef.current = true;
         const data = JSON.parse(e.data);
         const emailList: EmailItem[] = data.emails || [];
-        setEmails(emailList);
+        // Merge: fetched emails take precedence, keep existing DB-imported ones
+        setEmails((prev) => {
+          const fetchedIds = new Set(emailList.map((em) => em.id));
+          const existing = prev.filter((em) => !fetchedIds.has(em.id));
+          return [...emailList, ...existing];
+        });
         if (data.totalOnServer != null) setTotalOnServer(data.totalOnServer);
 
         const whitelisted = emailList.filter((e) => e.isWhitelisted).length;
@@ -1064,10 +1068,13 @@ export default function AdminDashboardClient({
               {emails.length > 0 && (
                 <>
                   <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                    {totalOnServer != null && totalOnServer > emails.length
-                      ? `${emails.length} av ${totalOnServer} hentet`
-                      : `${emails.length} totalt`}
+                    {emails.length} totalt
                   </span>
+                  {totalOnServer != null && (
+                    <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
+                      {totalOnServer} nye på server
+                    </span>
+                  )}
                   {whitelistedEmails.length > 0 && (
                     <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
                       {whitelistedEmails.length} fra godkjente

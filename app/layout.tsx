@@ -53,24 +53,7 @@ export default function RootLayout({
         <footer className="border-t border-gray-200 dark:border-gray-800 mt-auto">
           <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
             <p>
-              Data fra{" "}
-              <a
-                href="https://www.finanstilsynet.no/en/publications/short-selling-/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                Finanstilsynet
-              </a>
-              {" "}og{" "}
-              <a
-                href="https://live.euronext.com/nb/markets/oslo/insider-disclosure"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                Euronext Oslo
-              </a>
+              Data fra offentlig tilgjengelige kilder
             </p>
             <p>
               Et prosjekt fra{" "}

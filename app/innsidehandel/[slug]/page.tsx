@@ -8,11 +8,8 @@ import {
   ArrowDownRight,
   Minus,
   ExternalLink,
-  Users,
   TrendingUp,
   TrendingDown,
-  Home,
-  ChevronRight,
   Building2,
   Calendar,
   Twitter,
@@ -109,27 +106,22 @@ export default async function InsiderDetailPage({ params }: PageProps) {
     <div>
       {/* Header */}
       <header className="border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          <Link href="/" className="flex-shrink-0">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+          <Link href="/" aria-label="Listr.no - Til forsiden">
             <Logo />
           </Link>
-          <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
-            <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
-              <Home className="w-4 h-4" />
-            </Link>
-            <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
-            <Link href="/innsidehandel" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
-              <Users className="w-4 h-4" />
-            </Link>
-            <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
-            <span className="font-medium truncate">{insider.name}</span>
-          </div>
-          <nav className="flex items-center gap-4 text-sm flex-shrink-0">
-            <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Dashboard
-            </Link>
+          <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
             <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Shortposisjoner
+            </Link>
+            <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Innsidehandel
+            </Link>
+            <Link href="/analyser" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Analyser
+            </Link>
+            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Om
             </Link>
           </nav>
         </div>

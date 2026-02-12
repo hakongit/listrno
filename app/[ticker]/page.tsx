@@ -6,7 +6,7 @@ import { fetchStockQuotes, StockQuote } from "@/lib/prices";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, Home, ArrowUpRight, ArrowDownRight, ExternalLink, BarChart2, Activity, Building2, FileText } from "lucide-react";
+import { TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, ArrowUpRight, ArrowDownRight, ExternalLink, BarChart2, Activity, Building2, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import { LazyShortChart } from "@/components/lazy-short-chart";
 import { Logo } from "@/components/logo";
@@ -87,40 +87,19 @@ export default async function CompanyPage({ params }: PageProps) {
       <div>
         {/* Header */}
         <header className="border-b border-gray-200 dark:border-gray-800">
-          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-            <Link href="/" className="flex-shrink-0">
+          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+            <Link href="/" aria-label="Listr.no - Til forsiden">
               <Logo />
             </Link>
-            <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
-              <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
-                <Home className="w-4 h-4" />
-              </Link>
-              <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
-              <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <span className="font-medium truncate">{company.issuerName}</span>
-              {company.ticker && (
-                <span className="text-xs text-gray-500 font-mono">
-                  {company.ticker.replace(".OL", "")}
-                </span>
-              )}
-              <span
-                className={`font-mono font-bold ${
-                  company.totalShortPct >= 5
-                    ? "text-red-600 dark:text-red-400"
-                    : company.totalShortPct >= 2
-                    ? "text-orange-600 dark:text-orange-400"
-                    : "text-gray-900 dark:text-gray-100"
-                }`}
-              >
-                {formatPercent(company.totalShortPct)}
-              </span>
-            </div>
-            <nav className="flex items-center gap-4 text-sm flex-shrink-0">
-              <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-                Oversikt
+            <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
+              <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+                Shortposisjoner
               </Link>
               <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
                 Innsidehandel
+              </Link>
+              <Link href="/analyser" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+                Analyser
               </Link>
               <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
                 Om
@@ -486,24 +465,19 @@ export default async function CompanyPage({ params }: PageProps) {
     <div>
       {/* Header */}
       <header className="border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          <Link href="/" className="flex-shrink-0">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+          <Link href="/" aria-label="Listr.no - Til forsiden">
             <Logo />
           </Link>
-          <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
-            <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
-              <Home className="w-4 h-4" />
-            </Link>
-            <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
-            <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
-            <span className="font-medium truncate">{insiderOnlyCompanyName}</span>
-          </div>
-          <nav className="flex items-center gap-4 text-sm flex-shrink-0">
-            <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Oversikt
+          <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
+            <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Shortposisjoner
             </Link>
             <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Innsidehandel
+            </Link>
+            <Link href="/analyser" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Analyser
             </Link>
             <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Om

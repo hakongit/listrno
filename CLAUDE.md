@@ -63,8 +63,8 @@ TURSO_AUTH_TOKEN=...
 - `/innsidehandel/[slug]` - Individual insider profile with trades
 - `/topp/[kategori]` - Top lists (biggest shorts, most shorted, etc.)
 - `/analyser` - Public analyst reports page (only shows reports with extracted data)
-- `/admin` - Admin login
-- `/admin/dashboard` - Admin dashboard for email import, LLM extraction, editing
+- `/analystatwork` - Admin login
+- `/analystatwork/dashboard` - Admin dashboard for email import, LLM extraction, editing
 
 ### Admin API (`app/api/admin/`)
 - `reports/` - CRUD for analyst reports (import, process, update, delete)
@@ -120,19 +120,18 @@ All user-facing text is in Norwegian (nb). Key terms:
 ## Session Status (2026-02-12)
 
 ### Recently completed
-- POP3 fetch now merges with existing DB-imported emails instead of replacing them
-- Separate "nye på server" badge shows POP3 server count; "totalt" badge shows all known emails
-- Cache preserves real totalOnServer from POP3 LIST command
-- Normal POP3 mode: first fetch gets all available emails, subsequent fetches get only new ones
-- Editable extraction results form in admin dashboard (edit company, bank, recommendation, target price, analysts, summary)
-- LLM feedback loop: re-process reports with one-time feedback, persistent guidance prompt for all extractions
-- Fixed "Behandle" on already-imported emails (was returning 409, now uses reprocess endpoint)
-- Fixed `unstable_cache` missing `tags` option so `revalidateTag` actually invalidates public page cache
-- Fetch all POP3 emails (maxResults=500 instead of 20), newest first
-- `/analyser` page hides reports with no extracted data, hides empty cells
+- Consistent navigation across all pages: full menu (Shortposisjoner, Innsidehandel, Analyser, Om) replaces old breadcrumb pattern
+- Batch pre-loading for analyst report review: pre-loads 5 reports ahead for instant "Godkjenn og neste"
+- Bar chart favicon (`app/icon.svg`) and reusable `<Logo />` component (`components/logo.tsx`)
+- Branding: Bluebox AS (blueboxas.no) in footer and /om page
+- Fixed insider sync: Euronext broke `?page=N` pagination (301 redirects), now fetches base URL
+- Admin pages moved from `/admin` to `/analystatwork`
+- POP3 fetch merges with existing DB-imported emails; separate server/total counts
+- Editable extraction results form in admin dashboard
+- LLM feedback loop: re-process reports with one-time feedback, persistent guidance prompt
+- `/analyser` page hides reports with no extracted data
 
 ### Known state
 - 431 reports imported in DB, 5 whitelisted domains configured
-- 13 reports processed, 418 pending
 - Gmail POP3 must be set to "Enable POP for all mail" in Gmail settings to expose all historical emails
 - Next step: process imported reports via "Behandle" to populate /analyser page

@@ -4,8 +4,6 @@ import {
   Users,
   TrendingUp,
   TrendingDown,
-  Home,
-  ChevronRight,
   User,
   ArrowRight,
 } from "lucide-react";
@@ -40,27 +38,22 @@ export default async function InsiderTradesPage() {
     <div>
       {/* Header */}
       <header className="border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          <Link href="/" className="flex-shrink-0">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+          <Link href="/" aria-label="Listr.no - Til forsiden">
             <Logo />
           </Link>
-          <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
-            <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0">
-              <Home className="w-4 h-4" />
-            </Link>
-            <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />
-            <Users className="w-4 h-4 text-blue-500 flex-shrink-0" />
-            <span className="font-medium">Innsidehandel</span>
-          </div>
-          <nav className="flex items-center gap-4 text-sm flex-shrink-0">
-            <Link href="/" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Dashboard
-            </Link>
+          <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
             <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Shortposisjoner
             </Link>
+            <Link href="/innsidehandel" className="text-gray-900 dark:text-gray-100 font-medium">
+              Innsidehandel
+            </Link>
             <Link href="/analyser" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
               Analyser
+            </Link>
+            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              Om
             </Link>
           </nav>
         </div>

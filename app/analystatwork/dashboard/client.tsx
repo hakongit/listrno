@@ -138,11 +138,11 @@ export default function AdminDashboardClient({
   const logIdRef = useRef(0);
   const completedRef = useRef(false);
 
-  // Pre-loading: process next email in background while user reviews current one
-  const preloadRef = useRef<{
-    emailId: string;
-    promise: Promise<{ result: ProcessResult; importedEmail?: Partial<EmailItem> } | null>;
-  } | null>(null);
+  // Pre-loading: process upcoming emails in background while user reviews current one
+  const PRELOAD_BATCH_SIZE = 5;
+  const preloadMapRef = useRef<
+    Map<string, Promise<{ result: ProcessResult; importedEmail?: Partial<EmailItem> } | null>>
+  >(new Map());
 
   function addLog(level: LogEntry["level"], message: string, detail?: string) {
     const entry: LogEntry = {
@@ -443,7 +443,7 @@ export default function AdminDashboardClient({
       setProcessing(null);
       setReviewEmail(messageId);
       // Start pre-loading the next email while user reviews this one
-      preloadNextEmail(messageId);
+      preloadNextEmails(messageId);
     }
   }
 
@@ -617,15 +617,20 @@ export default function AdminDashboardClient({
     }
   };
 
-  function findNextPendingEmail(excludeId?: string): EmailItem | undefined {
+  function findNextPendingEmails(excludeId?: string, count: number = 1): EmailItem[] {
     return emails
       .filter((e) => e.isWhitelisted)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .find(
+      .filter(
         (e) =>
           e.id !== excludeId &&
           (!processResults.has(e.id) || !processResults.get(e.id)?.success)
-      );
+      )
+      .slice(0, count);
+  }
+
+  function findNextPendingEmail(excludeId?: string): EmailItem | undefined {
+    return findNextPendingEmails(excludeId, 1)[0];
   }
 
   // Fetch-only version of processEmail (no UI state changes) for pre-loading
@@ -679,12 +684,13 @@ export default function AdminDashboardClient({
     }
   }
 
-  function preloadNextEmail(excludeId?: string) {
-    const next = findNextPendingEmail(excludeId);
-    if (!next || preloadRef.current?.emailId === next.id) return;
-
-    const promise = doProcessEmailFetch(next);
-    preloadRef.current = { emailId: next.id, promise };
+  function preloadNextEmails(excludeId?: string) {
+    const nextBatch = findNextPendingEmails(excludeId, PRELOAD_BATCH_SIZE);
+    for (const email of nextBatch) {
+      if (!preloadMapRef.current.has(email.id)) {
+        preloadMapRef.current.set(email.id, doProcessEmailFetch(email));
+      }
+    }
   }
 
   async function handleApproveAndNext() {
@@ -696,11 +702,11 @@ export default function AdminDashboardClient({
     }
 
     // Check if we have a preloaded result for this email
-    if (preloadRef.current?.emailId === next.id) {
-      const { promise } = preloadRef.current;
-      preloadRef.current = null;
+    const preloadedPromise = preloadMapRef.current.get(next.id);
+    if (preloadedPromise) {
+      preloadMapRef.current.delete(next.id);
 
-      const preloaded = await promise;
+      const preloaded = await preloadedPromise;
       if (preloaded) {
         const { result, importedEmail } = preloaded;
 
@@ -723,8 +729,8 @@ export default function AdminDashboardClient({
         setReviewEmail(next.id);
         refreshStats();
 
-        // Preload the next one
-        preloadNextEmail(next.id);
+        // Preload next batch
+        preloadNextEmails(next.id);
         return;
       }
       // If preload failed, fall through to regular processing
@@ -1306,7 +1312,7 @@ export default function AdminDashboardClient({
           email={reviewEmailItem}
           processResult={processResults.get(reviewEmail)}
           onClose={() => {
-            preloadRef.current = null;
+            preloadMapRef.current.clear();
             setReviewEmail(null);
           }}
           onApproveAndNext={handleApproveAndNext}

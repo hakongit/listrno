@@ -1,40 +1,35 @@
 import { getShortData } from "@/lib/data";
-import { formatPercent, formatNOK, formatDate } from "@/lib/utils";
+import { formatPercent, formatNOK, formatDateShort } from "@/lib/utils";
 import Link from "next/link";
-import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { CompanyShortData } from "@/lib/types";
 
-export const revalidate = 3600; // Cache for 1 hour
+export const revalidate = 3600;
 
 const categories = {
   "hoyest-short": {
     title: "Høyest short",
     description: "Selskaper med høyest andel shortposisjoner",
-    icon: TrendingDown,
-    color: "red",
+    color: "red" as const,
     hasPeriodFilter: false,
   },
   "storst-okning": {
     title: "Størst økning",
     description: "Selskaper med størst økning i shortposisjoner",
-    icon: TrendingUp,
-    color: "red",
+    color: "red" as const,
     hasPeriodFilter: true,
   },
   "storst-nedgang": {
     title: "Størst nedgang",
     description: "Selskaper med størst nedgang i shortposisjoner",
-    icon: TrendingDown,
-    color: "green",
+    color: "green" as const,
     hasPeriodFilter: true,
   },
   "hoyest-verdi": {
     title: "Høyest verdi",
     description: "Selskaper med høyest markedsverdi på shortposisjoner",
-    icon: TrendingDown,
-    color: "blue",
+    color: "blue" as const,
     hasPeriodFilter: false,
   },
 } as const;
@@ -69,7 +64,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-
 export default async function TopListPage({ params, searchParams }: PageProps) {
   const { kategori } = await params;
   const { periode: periodeParam } = await searchParams;
@@ -81,11 +75,9 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
 
   const data = await getShortData();
 
-  // Find the most recent date in the dataset
   const allDates = data.companies.map(c => new Date(c.latestDate).getTime());
   const mostRecentDate = new Date(Math.max(...allDates));
 
-  // Determine selected period (default to "dag" for change categories)
   const defaultPeriod = category.hasPeriodFilter ? "dag" : "alle";
   const selectedPeriod = (periodeParam && periodeParam in periods)
     ? periodeParam as PeriodKey
@@ -106,14 +98,12 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
     case "storst-nedgang": {
       let filtered = [...data.companies];
 
-      // Filter by period (when was the company last updated)
       if (periodConfig.days !== null) {
         const cutoffDate = new Date(mostRecentDate);
         cutoffDate.setDate(cutoffDate.getDate() - periodConfig.days);
         filtered = filtered.filter(c => new Date(c.latestDate) >= cutoffDate);
       }
 
-      // Sort by most recent change (same for all periods)
       if (kategori === "storst-okning") {
         filtered = filtered
           .filter(c => c.change > 0)
@@ -137,41 +127,55 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
       notFound();
   }
 
-  const colorClasses = {
-    red: {
-      header: "bg-red-50 dark:bg-red-950",
-      text: "text-red-900 dark:text-red-100",
-      value: "text-red-600 dark:text-red-400",
-    },
-    green: {
-      header: "bg-green-50 dark:bg-green-950",
-      text: "text-green-900 dark:text-green-100",
-      value: "text-green-600 dark:text-green-400",
-    },
-    blue: {
-      header: "bg-blue-50 dark:bg-blue-950",
-      text: "text-blue-900 dark:text-blue-100",
-      value: "text-blue-600 dark:text-blue-400",
-    },
-  };
-  const colors = colorClasses[category.color];
-
   return (
-    <div>
-      <div className="max-w-6xl mx-auto px-4 py-4">
+    <div className="max-w-[1120px] mx-auto px-6">
+      {/* Hero */}
+      <div className="pt-8 pb-6">
+        <div
+          className="text-[11px] font-medium mb-2"
+          style={{ color: "var(--an-text-muted)" }}
+        >
+          <Link
+            href="/"
+            className="transition-colors hover:text-[var(--an-accent)]"
+          >
+            Hjem
+          </Link>
+          <span className="mx-1.5">/</span>
+          <span style={{ color: "var(--an-text-secondary)" }}>Toppliste</span>
+        </div>
+        <h1 className="text-[26px] font-bold tracking-tight mb-1">
+          {category.title}
+        </h1>
+        <p
+          className="text-[13px]"
+          style={{ color: "var(--an-text-secondary)" }}
+        >
+          {category.description}
+        </p>
+      </div>
 
       {/* Period Filter */}
       {showPeriodFilter && (
-        <div className="flex gap-1 mb-4">
+        <div className="flex gap-1.5 mb-3">
           {Object.entries(periods).map(([key, { label }]) => (
             <Link
               key={key}
               href={`/topp/${kategori}${key === defaultPeriod ? "" : `?periode=${key}`}`}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border"
+              style={
                 selectedPeriod === key
-                  ? `${colors.header} ${colors.text}`
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-              }`}
+                  ? {
+                      color: "var(--an-accent)",
+                      borderColor: "rgba(201, 168, 76, 0.3)",
+                      background: "var(--an-accent-dim)",
+                    }
+                  : {
+                      color: "var(--an-text-muted)",
+                      borderColor: "var(--an-border)",
+                      background: "transparent",
+                    }
+              }
             >
               {label}
             </Link>
@@ -180,70 +184,140 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
       )}
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+      <div
+        className="rounded-lg overflow-hidden border mb-10"
+        style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+      >
+        <div
+          className="px-[18px] py-3 border-b flex items-center justify-between"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <span
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Topp {companies.length}
+          </span>
+          {showPeriodFilter && (
+            <span
+              className="text-[11px]"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              {periods[selectedPeriod].label}
+            </span>
+          )}
+        </div>
         {companies.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400 w-8">#</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">Selskap</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>Short</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>Endring</th>
-                  <th className={`text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>Verdi</th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">Dato</th>
+                <tr>
+                  <th
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "40px" }}
+                  >
+                    #
+                  </th>
+                  <th
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
+                  >
+                    Selskap
+                  </th>
+                  <th
+                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "90px" }}
+                  >
+                    Short
+                  </th>
+                  <th
+                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                  >
+                    Endring
+                  </th>
+                  <th
+                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                  >
+                    Verdi
+                  </th>
+                  <th
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "70px" }}
+                  >
+                    Dato
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              <tbody>
                 {companies.map((company, index) => {
                   const displayChange = company.change;
                   return (
                     <tr
                       key={company.isin}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                      className="an-table-row transition-colors"
+                      style={{
+                        borderBottom: index < companies.length - 1
+                          ? "1px solid var(--an-border-subtle)"
+                          : "none",
+                      }}
                     >
-                      <td className="px-3 py-2 text-gray-400">{index + 1}</td>
-                      <td className="px-3 py-2">
-                        <Link href={`/${company.slug}`} className="flex items-center gap-2 hover:underline">
-                          <TrendingDown className="w-3 h-3 text-red-500 flex-shrink-0" />
-                          <span className="font-medium truncate">{company.issuerName}</span>
+                      <td
+                        className="px-[18px] py-3 text-[13px]"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {index + 1}
+                      </td>
+                      <td className="px-[18px] py-3">
+                        <Link
+                          href={`/${company.slug}`}
+                          className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] truncate block"
+                          style={{ color: "var(--an-text-primary)" }}
+                        >
+                          {company.issuerName}
                         </Link>
                       </td>
-                      <td className={`px-3 py-2 text-right ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>
+                      <td className={`px-[18px] py-3 text-right ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>
                         <span
-                          className={`font-mono font-medium ${
-                            company.totalShortPct >= 5
-                              ? "text-red-600 dark:text-red-400"
-                              : company.totalShortPct >= 2
-                              ? "text-orange-600 dark:text-orange-400"
-                              : "text-gray-900 dark:text-gray-100"
-                          }`}
+                          className="mono text-[13px] font-semibold"
+                          style={{ color: "var(--an-red)" }}
                         >
                           {formatPercent(company.totalShortPct)}
                         </span>
                       </td>
-                      <td className={`px-3 py-2 text-right ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>
+                      <td className={`px-[18px] py-3 text-right ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>
                         {displayChange > 0.01 ? (
-                          <span className="inline-flex items-center gap-1 text-red-500 font-mono">
-                            <TrendingUp className="w-3 h-3" />
-                            <span>+{displayChange.toFixed(2)}%</span>
+                          <span
+                            className="mono text-[13px] font-semibold"
+                            style={{ color: "var(--an-red)" }}
+                          >
+                            +{displayChange.toFixed(2)}%
                           </span>
                         ) : displayChange < -0.01 ? (
-                          <span className="inline-flex items-center gap-1 text-green-500 font-mono">
-                            <TrendingDown className="w-3 h-3" />
-                            <span>{displayChange.toFixed(2)}%</span>
+                          <span
+                            className="mono text-[13px] font-semibold"
+                            style={{ color: "var(--an-green)" }}
+                          >
+                            {displayChange.toFixed(2)}%
                           </span>
                         ) : (
-                          <span className="inline-flex items-center text-gray-400">
-                            <Minus className="w-3 h-3" />
-                          </span>
+                          <span style={{ color: "var(--an-text-muted)" }}>-</span>
                         )}
                       </td>
-                      <td className={`px-3 py-2 text-right text-gray-500 font-mono ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>
-                        {company.shortValue ? formatNOK(company.shortValue) : "-"}
+                      <td className={`px-[18px] py-3 text-right ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>
+                        <span
+                          className="mono text-[13px]"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          {company.shortValue ? formatNOK(company.shortValue) : "-"}
+                        </span>
                       </td>
-                      <td className="px-3 py-2 text-right text-gray-500">
-                        {formatDate(company.latestDate)}
+                      <td
+                        className="px-[18px] py-3 text-right text-xs"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(company.latestDate)}
                       </td>
                     </tr>
                   );
@@ -252,14 +326,16 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
             </table>
           </div>
         ) : (
-          <div className="px-4 py-8 text-center text-gray-600 dark:text-gray-400">
+          <div
+            className="px-[18px] py-8 text-center text-[13px]"
+            style={{ color: "var(--an-text-muted)" }}
+          >
             Ingen selskaper i denne kategorien
             {showPeriodFilter && selectedPeriod !== "alle" && (
               <span> for {periods[selectedPeriod].label.toLowerCase()}</span>
             )}
           </div>
         )}
-      </div>
       </div>
     </div>
   );

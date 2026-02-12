@@ -155,11 +155,6 @@ All user-facing text is in Norwegian (nb). Key terms:
 - LLM feedback loop: re-process reports with one-time feedback, persistent guidance prompt
 - `/analyser` page hides reports with no extracted data
 
-### Known state
-- 431 reports imported in DB, 5 whitelisted domains configured
-- Gmail POP3 must be set to "Enable POP for all mail" in Gmail settings to expose all historical emails
-
-### Recently completed (cont.)
 - **Company page (`/[ticker]`) revamp** — full redesign with navy-dark theme:
   - Hero: prominent h1 company name, ticker badge, stock price, ISIN
   - Stats grid (4 cards): total short %, stock price + 52-week, insider activity, analyst consensus
@@ -169,3 +164,35 @@ All user-facing text is in Norwegian (nb). Key terms:
   - All entities clickable with gold hover, `RecommendationBadge`, `an-stat-accent`, `an-table-row` patterns
   - Removed all old gray Tailwind classes, uses CSS variables directly via `style={}` props
   - Dates use `formatDateShort()` (DD.MM format) in compact panels
+
+### Known state
+- 431 reports imported in DB, 5 whitelisted domains configured
+- Gmail POP3 must be set to "Enable POP for all mail" in Gmail settings to expose all historical emails
+
+### Clickability audit (2026-02-12)
+All core entities are properly clickable across every page:
+- Company names → `/{slug}` or `/analyser/selskap/{slug}` (100%)
+- Actor/holder names → `/aktor/{slug}` (100%)
+- Insider names → `/innsidehandel/{slug}` (100%)
+- Bank names → `/analyser/bank/{slug}` (100%)
+- Breadcrumbs present on all nested pages
+- External source links open in new tabs
+- No missing navigation paths found
+
+### Design consistency audit (2026-02-12)
+All pages now use navy CSS vars (`--an-*`) via `style={}` props:
+
+- `/page.tsx` (dashboard) — full navy redesign ✓
+- `/[ticker]/page.tsx` — full navy redesign ✓ (headers improved: "Short-historikk", "Aktive shortposisjoner", "Siste innsidehandler")
+- `/aktor/[slug]/page.tsx` — full navy redesign ✓ (breadcrumb, stats grid, descriptive headers)
+- `/innsidehandel/page.tsx` — full navy redesign ✓
+- `/innsidehandel/[slug]/page.tsx` — full navy redesign ✓ (breadcrumb, company pills, trades table)
+- `/topp/[kategori]/page.tsx` — full navy redesign ✓ (gold accent period filter, breadcrumb)
+- `/analyser/page.tsx` — full navy redesign ✓
+- `/analyser/bank/[slug]/page.tsx` — full navy redesign ✓
+- `/analyser/selskap/[slug]/page.tsx` — full navy redesign ✓
+- `components/insider-table.tsx` — navy redesign ✓ (removed lucide icons, CSS var badges)
+- `components/searchable-table.tsx` — navy redesign ✓ (inline SVG search icon, CSS var styling)
+
+### Completed: Full site navy redesign
+All pages and shared components now use `--an-*` CSS variables via `style={}` props. No pages remain on old gray Tailwind styling. Lucide icons removed from redesigned components in favor of CSS-based styling and inline SVGs.

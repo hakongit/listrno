@@ -1,14 +1,8 @@
 import { getInsiderTrades, getInsiderStats, getTopInsiders } from "@/lib/insider-data";
 import Link from "next/link";
-import {
-  Users,
-  TrendingUp,
-  TrendingDown,
-  User,
-  ArrowRight,
-} from "lucide-react";
 import { InsiderTable } from "@/components/insider-table";
 import type { Metadata } from "next";
+import { formatDateShort } from "@/lib/utils";
 
 export const revalidate = 3600;
 
@@ -28,86 +22,159 @@ export default async function InsiderTradesPage() {
     getTopInsiders(10),
   ]);
 
-  // Filter to insiders with actual names (not company names as fallback)
   const realInsiders = topInsiders.filter(
     (insider) => insider.name !== insider.companies[0] && insider.totalTrades > 1
   );
 
   return (
-    <div>
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Hero */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-1">Innsidehandel</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
-            Meldepliktige handler fra primærinnsidere i norske aksjer. Data fra Euronext Oslo.
-          </p>
-        </div>
+    <div className="max-w-[1120px] mx-auto px-6">
+      {/* Hero */}
+      <div className="pt-8 pb-6">
+        <h1 className="text-[26px] font-bold tracking-tight mb-1">
+          Innsidehandel
+        </h1>
+        <p
+          className="text-[13px]"
+          style={{ color: "var(--an-text-secondary)" }}
+        >
+          Meldepliktige handler fra primærinnsidere i norske aksjer
+        </p>
+      </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-            <div className="text-2xl font-bold">{stats.totalTrades}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Totalt handler</div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div
+          className="an-stat-accent rounded-lg p-4 border"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            style={{ color: "var(--an-accent)" }}
+          >
+            {stats.totalTrades}
           </div>
-          <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              {stats.buyCount}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Kjøp</div>
-          </div>
-          <div className="bg-red-50 dark:bg-red-950 rounded-lg p-4">
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
-              <TrendingDown className="w-5 h-5" />
-              {stats.sellCount}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Salg</div>
-          </div>
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-            <div className="text-2xl font-bold">{stats.otherCount}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Annet</div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Totalt handler
           </div>
         </div>
-
-        {/* Top Insiders Card */}
-        {realInsiders.length > 0 && (
-          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-6">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950">
-              <h2 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Mest aktive innsidere
-              </h2>
-            </div>
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
-              {realInsiders.slice(0, 5).map((insider) => (
-                <Link
-                  key={insider.slug}
-                  href={`/innsidehandel/${insider.slug}`}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                >
-                  <div>
-                    <span className="font-medium">{insider.name}</span>
-                    <div className="text-xs text-gray-500">
-                      {insider.companies.slice(0, 2).join(", ")}
-                      {insider.companies.length > 2 && ` +${insider.companies.length - 2}`}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm">
-                      <span className="text-green-600 dark:text-green-400">{insider.buyCount}</span>
-                      {" / "}
-                      <span className="text-red-600 dark:text-red-400">{insider.sellCount}</span>
-                    </span>
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </Link>
-              ))}
-            </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            style={{ color: "var(--an-green)" }}
+          >
+            {stats.buyCount}
           </div>
-        )}
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Kjøp
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            style={{ color: "var(--an-red)" }}
+          >
+            {stats.sellCount}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Salg
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+            {stats.otherCount}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Annet
+          </div>
+        </div>
+      </div>
 
-        {/* Trades Table with Search & Pagination */}
+      {/* Top Insiders */}
+      {realInsiders.length > 0 && (
+        <div
+          className="rounded-lg overflow-hidden border mt-3"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="px-[18px] py-3 border-b flex items-center justify-between"
+            style={{ borderColor: "var(--an-border)" }}
+          >
+            <span
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Mest aktive innsidere
+            </span>
+          </div>
+          <div>
+            {realInsiders.slice(0, 5).map((insider, i) => (
+              <Link
+                key={insider.slug}
+                href={`/innsidehandel/${insider.slug}`}
+                className="an-table-row flex items-center justify-between px-[18px] py-3 transition-colors"
+                style={{
+                  borderBottom: i < Math.min(realInsiders.length, 5) - 1
+                    ? "1px solid var(--an-border-subtle)"
+                    : "none",
+                }}
+              >
+                <div className="min-w-0">
+                  <div
+                    className="text-[13px] font-medium truncate"
+                    style={{ color: "var(--an-text-primary)" }}
+                  >
+                    {insider.name}
+                  </div>
+                  <div
+                    className="text-[11px] truncate"
+                    style={{ color: "var(--an-text-muted)" }}
+                  >
+                    {insider.companies.slice(0, 2).join(", ")}
+                    {insider.companies.length > 2 && ` +${insider.companies.length - 2}`}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0 ml-3">
+                  <div className="text-[13px]">
+                    <span style={{ color: "var(--an-green)" }}>{insider.buyCount}</span>
+                    <span style={{ color: "var(--an-text-muted)" }} className="mx-1">/</span>
+                    <span style={{ color: "var(--an-red)" }}>{insider.sellCount}</span>
+                  </div>
+                  <span
+                    className="text-[11px]"
+                    style={{ color: "var(--an-text-muted)" }}
+                  >
+                    {formatDateShort(insider.latestTrade)}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trades Table */}
+      <div className="mt-3 mb-6">
         <InsiderTable
           trades={trades.map((t) => ({
             messageId: t.messageId,
@@ -123,21 +190,23 @@ export default async function InsiderTradesPage() {
             sourceUrl: t.sourceUrl,
           }))}
         />
-
-        {/* Data source note */}
-        <p className="mt-4 text-sm text-gray-500 text-center">
-          Data fra{" "}
-          <a
-            href="https://live.euronext.com/en/listview/company-press-releases/1061"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            Euronext Oslo
-          </a>
-          . Oppdateres ved deploy.
-        </p>
       </div>
+
+      {/* Data source note */}
+      <p
+        className="text-[11px] text-center pb-6"
+        style={{ color: "var(--an-text-muted)" }}
+      >
+        Data fra{" "}
+        <a
+          href="https://live.euronext.com/en/listview/company-press-releases/1061"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline transition-colors hover:text-[var(--an-accent)]"
+        >
+          Euronext Oslo
+        </a>
+      </p>
     </div>
   );
 }

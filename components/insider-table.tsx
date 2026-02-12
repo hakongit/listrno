@@ -2,7 +2,6 @@
 
 import { SearchableTable } from "./searchable-table";
 import Link from "next/link";
-import { ArrowUpRight, ArrowDownRight, Minus, ExternalLink } from "lucide-react";
 
 interface TradeRow {
   messageId: string;
@@ -22,7 +21,6 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("nb-NO", {
     day: "2-digit",
     month: "2-digit",
-    year: "2-digit",
   });
 }
 
@@ -37,33 +35,43 @@ function formatNOK(value: number): string {
   return value.toFixed(0);
 }
 
-function TradeTypeIcon({ type }: { type: string }) {
-  if (type === "buy") {
-    return <ArrowUpRight className="w-4 h-4 text-green-500" aria-hidden="true" />;
-  } else if (type === "sell") {
-    return <ArrowDownRight className="w-4 h-4 text-red-500" aria-hidden="true" />;
-  }
-  return <Minus className="w-4 h-4 text-gray-400" aria-hidden="true" />;
-}
-
 function TradeTypeBadge({ type }: { type: string }) {
   if (type === "buy") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-        <ArrowUpRight className="w-3 h-3" aria-hidden="true" />
+      <span
+        className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+        style={{
+          color: "var(--an-green)",
+          background: "var(--an-green-bg)",
+          borderColor: "var(--an-green-border)",
+        }}
+      >
         Kjøp
       </span>
     );
   } else if (type === "sell") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-        <ArrowDownRight className="w-3 h-3" aria-hidden="true" />
+      <span
+        className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+        style={{
+          color: "var(--an-red)",
+          background: "var(--an-red-bg)",
+          borderColor: "var(--an-red-border)",
+        }}
+      >
         Salg
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+    <span
+      className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+      style={{
+        color: "var(--an-text-muted)",
+        background: "var(--an-bg-raised)",
+        borderColor: "var(--an-border)",
+      }}
+    >
       Annet
     </span>
   );
@@ -75,9 +83,20 @@ export function InsiderTable({ trades }: { trades: TradeRow[] }) {
   );
 
   return (
-    <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-        <h2 className="font-semibold">Siste handler</h2>
+    <div
+      className="rounded-lg overflow-hidden border"
+      style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+    >
+      <div
+        className="px-[18px] py-3 border-b"
+        style={{ borderColor: "var(--an-border)" }}
+      >
+        <span
+          className="text-xs font-semibold uppercase tracking-wider"
+          style={{ color: "var(--an-text-secondary)" }}
+        >
+          Alle handler
+        </span>
       </div>
       <SearchableTable
         searchableData={searchableData}
@@ -87,96 +106,146 @@ export function InsiderTable({ trades }: { trades: TradeRow[] }) {
       >
         {(filteredIndices) => (
           <div className="overflow-x-auto">
-            <table className="w-full" aria-label="Innsidehandler i norske aksjer">
+            <table className="w-full border-collapse" aria-label="Innsidehandler i norske aksjer">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                  <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                <tr>
+                  <th
+                    scope="col"
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "70px" }}
+                  >
                     Dato
                   </th>
-                  <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    scope="col"
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
+                  >
                     Selskap
                   </th>
-                  <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                  <th
+                    scope="col"
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden md:table-cell"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
+                  >
                     Innsider
                   </th>
-                  <th scope="col" className="text-center px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    scope="col"
+                    className="text-center text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
+                  >
                     Type
                   </th>
-                  <th scope="col" className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
+                  <th
+                    scope="col"
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden lg:table-cell"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                  >
                     Aksjer
                   </th>
-                  <th scope="col" className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden xl:table-cell">
+                  <th
+                    scope="col"
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden xl:table-cell"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                  >
                     Verdi
                   </th>
-                  <th scope="col" className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    scope="col"
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "40px" }}
+                  >
                     <span className="sr-only">Kilde</span>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredIndices.map((idx) => {
+              <tbody>
+                {filteredIndices.map((idx, i) => {
                   const trade = trades[idx];
                   return (
                     <tr
                       key={trade.messageId}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                      className="an-table-row transition-colors"
+                      style={{
+                        borderBottom: i < filteredIndices.length - 1
+                          ? "1px solid var(--an-border-subtle)"
+                          : "none",
+                      }}
                     >
-                      <td className="px-4 py-3 text-sm">
+                      <td
+                        className="px-[18px] py-3 text-xs whitespace-nowrap"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
                         {formatDate(trade.tradeDate)}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <TradeTypeIcon type={trade.tradeType} />
-                          {trade.companySlug ? (
-                            <Link
-                              href={`/${trade.companySlug}`}
-                              className="font-medium truncate max-w-[150px] sm:max-w-[200px] hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                              title={trade.issuerName}
-                            >
-                              {trade.issuerName}
-                            </Link>
-                          ) : (
-                            <span className="font-medium truncate max-w-[150px] sm:max-w-[200px]" title={trade.issuerName}>
-                              {trade.issuerName}
-                            </span>
-                          )}
-                        </div>
+                      <td className="px-[18px] py-3">
+                        {trade.companySlug ? (
+                          <Link
+                            href={`/${trade.companySlug}`}
+                            className="text-[13px] font-medium truncate max-w-[150px] sm:max-w-[200px] block transition-colors hover:text-[var(--an-accent)]"
+                            style={{ color: "var(--an-text-primary)" }}
+                            title={trade.issuerName}
+                          >
+                            {trade.issuerName}
+                          </Link>
+                        ) : (
+                          <span
+                            className="text-[13px] font-medium truncate max-w-[150px] sm:max-w-[200px] block"
+                            style={{ color: "var(--an-text-primary)" }}
+                            title={trade.issuerName}
+                          >
+                            {trade.issuerName}
+                          </span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
+                      <td className="px-[18px] py-3 hidden md:table-cell">
                         {trade.insiderName !== trade.issuerName ? (
                           <Link
                             href={`/innsidehandel/${trade.insiderSlug}`}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                            className="text-[13px] transition-colors hover:text-[var(--an-accent)] block truncate max-w-[150px] sm:max-w-[200px]"
+                            style={{ color: "var(--an-text-secondary)" }}
+                            title={trade.insiderName}
                           >
-                            <div className="truncate max-w-[150px] sm:max-w-[200px]" title={trade.insiderName}>
-                              {trade.insiderName}
-                            </div>
+                            {trade.insiderName}
                           </Link>
                         ) : (
-                          <span className="text-gray-500">-</span>
+                          <span style={{ color: "var(--an-text-muted)" }}>-</span>
                         )}
                         {trade.insiderRole && (
-                          <div className="text-xs text-gray-500">{trade.insiderRole}</div>
+                          <div
+                            className="text-[11px]"
+                            style={{ color: "var(--an-text-muted)" }}
+                          >
+                            {trade.insiderRole}
+                          </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-[18px] py-3 text-center">
                         <TradeTypeBadge type={trade.tradeType} />
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-sm hidden lg:table-cell">
+                      <td
+                        className="px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
                         {trade.shares ? formatNumber(trade.shares) : "-"}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-sm hidden xl:table-cell">
+                      <td
+                        className="px-[18px] py-3 text-right mono text-[13px] hidden xl:table-cell"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
                         {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-[18px] py-3 text-right">
                         <a
                           href={trade.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+                          className="text-[11px] transition-colors hover:text-[var(--an-accent)]"
+                          style={{ color: "var(--an-text-muted)" }}
                           aria-label={`Kilde for ${trade.issuerName} handel`}
                         >
-                          <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                          ↗
                         </a>
                       </td>
                     </tr>
@@ -184,7 +253,11 @@ export function InsiderTable({ trades }: { trades: TradeRow[] }) {
                 })}
                 {filteredIndices.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    <td
+                      colSpan={7}
+                      className="px-[18px] py-8 text-center text-[13px]"
+                      style={{ color: "var(--an-text-muted)" }}
+                    >
                       Ingen handler funnet
                     </td>
                   </tr>

@@ -1,12 +1,11 @@
 import { getAllHolders, getHolderBySlug } from "@/lib/data";
-import { formatPercent, formatNumber, formatDate, formatNOK } from "@/lib/utils";
+import { formatPercent, formatNumber, formatDate, formatNOK, formatDateShort } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Building2, TrendingDown, Briefcase, Banknote } from "lucide-react";
 import type { Metadata } from "next";
 import { LazyHolderChart } from "@/components/lazy-holder-chart";
 
-export const revalidate = 3600; // Cache for 1 hour
+export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -30,7 +29,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-
 export default async function HolderPage({ params }: PageProps) {
   const { slug } = await params;
   const holder = await getHolderBySlug(slug);
@@ -40,105 +38,232 @@ export default async function HolderPage({ params }: PageProps) {
   }
 
   const totalValue = holder.companies.reduce((sum, c) => sum + (c.positionValue || 0), 0);
+  const avgPct = holder.companies.length > 0 ? holder.totalShortPct / holder.companies.length : 0;
 
   return (
-    <div>
-      <div className="max-w-6xl mx-auto px-4 py-4">
-      {/* Compact Stats */}
-      <div className="flex flex-wrap gap-4 text-sm mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-gray-400" />
-          <span className="font-medium">{holder.companies.length}</span>
-          <span className="text-gray-500">selskaper</span>
+    <div className="max-w-[1120px] mx-auto px-6">
+      {/* Hero */}
+      <div className="pt-8 pb-6">
+        <div
+          className="text-[11px] font-medium mb-2"
+          style={{ color: "var(--an-text-muted)" }}
+        >
+          <Link
+            href="/"
+            className="transition-colors hover:text-[var(--an-accent)]"
+          >
+            Hjem
+          </Link>
+          <span className="mx-1.5">/</span>
+          <span style={{ color: "var(--an-text-secondary)" }}>Aktør</span>
         </div>
-        <div className="flex items-center gap-2">
-          <TrendingDown className="w-4 h-4 text-red-500" />
-          <span className="font-medium font-mono text-red-600">{formatPercent(holder.totalShortPct)}</span>
-          <span className="text-gray-500">total</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="font-medium font-mono">{formatPercent(holder.totalShortPct / holder.companies.length)}</span>
-          <span className="text-gray-500">snitt</span>
-        </div>
-        {totalValue > 0 && (
-          <div className="flex items-center gap-2">
-            <Banknote className="w-4 h-4 text-blue-500" />
-            <span className="font-medium font-mono">{formatNOK(totalValue)}</span>
+        <h1 className="text-[26px] font-bold tracking-tight mb-2">
+          {holder.name}
+        </h1>
+        <p
+          className="text-[13px]"
+          style={{ color: "var(--an-text-secondary)" }}
+        >
+          Shortposisjoner i norske aksjer
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div
+          className="an-stat-accent rounded-lg p-4 border"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            style={{ color: "var(--an-accent)" }}
+          >
+            {holder.companies.length}
           </div>
-        )}
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Selskaper
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono"
+            style={{ color: "var(--an-red)" }}
+          >
+            {formatPercent(holder.totalShortPct)}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Total short
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+            {formatPercent(avgPct)}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Snitt per selskap
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+            {totalValue > 0 ? formatNOK(totalValue) : "-"}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Total shortverdi
+          </div>
+        </div>
       </div>
 
       {/* Historical Chart */}
-      <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-4">
-        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-          <h2 className="font-semibold text-sm">Historikk per selskap</h2>
+      <div
+        className="rounded-lg overflow-hidden border mt-3"
+        style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+      >
+        <div
+          className="px-[18px] py-3 border-b flex items-center justify-between"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <span
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Short-historikk per selskap
+          </span>
         </div>
-        <div className="p-3">
+        <div className="p-4">
           <LazyHolderChart companies={holder.companies} />
         </div>
       </div>
 
       {/* Positions table */}
-      <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-          <h2 className="font-semibold text-sm">Posisjoner</h2>
+      <div
+        className="rounded-lg overflow-hidden border mt-3 mb-10"
+        style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+      >
+        <div
+          className="px-[18px] py-3 border-b flex items-center justify-between"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <span
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Aktive shortposisjoner
+          </span>
+          <span
+            className="text-[11px]"
+            style={{ color: "var(--an-text-muted)" }}
+          >
+            {holder.companies.length} selskaper
+          </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-800">
-                <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+              <tr>
+                <th
+                  className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
+                >
                   Selskap
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                <th
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "90px" }}
+                >
                   Posisjon
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                <th
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden sm:table-cell"
+                  style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                >
                   Aksjer
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
+                <th
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden lg:table-cell"
+                  style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                >
                   Verdi
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
+                <th
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
+                >
                   Dato
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {holder.companies.map((company) => (
+            <tbody>
+              {holder.companies.map((company, i) => (
                 <tr
                   key={company.isin}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  className="an-table-row transition-colors"
+                  style={{
+                    borderBottom: i < holder.companies.length - 1
+                      ? "1px solid var(--an-border-subtle)"
+                      : "none",
+                  }}
                 >
-                  <td className="px-3 py-2">
+                  <td className="px-[18px] py-3">
                     <Link
                       href={`/${company.companySlug}`}
-                      className="flex items-center gap-2 hover:underline"
+                      className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                      style={{ color: "var(--an-text-primary)" }}
                     >
-                      <TrendingDown className="w-3 h-3 text-red-500 flex-shrink-0" />
-                      <span className="font-medium truncate">{company.issuerName}</span>
+                      {company.issuerName}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 text-right">
-                    <span className="font-mono font-medium text-red-600 dark:text-red-400">
+                  <td className="px-[18px] py-3 text-right">
+                    <span
+                      className="mono text-[13px] font-semibold"
+                      style={{ color: "var(--an-red)" }}
+                    >
                       {formatPercent(company.currentPct)}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right text-gray-500 font-mono hidden sm:table-cell">
+                  <td
+                    className="px-[18px] py-3 text-right mono text-[13px] hidden sm:table-cell"
+                    style={{ color: "var(--an-text-muted)" }}
+                  >
                     {formatNumber(company.currentShares)}
                   </td>
-                  <td className="px-3 py-2 text-right text-gray-500 font-mono hidden lg:table-cell">
+                  <td
+                    className="px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
+                    style={{ color: "var(--an-text-muted)" }}
+                  >
                     {company.positionValue ? formatNOK(company.positionValue) : "-"}
                   </td>
-                  <td className="px-3 py-2 text-right text-gray-500">
-                    {formatDate(company.latestDate)}
+                  <td
+                    className="px-[18px] py-3 text-right text-xs"
+                    style={{ color: "var(--an-text-muted)" }}
+                  >
+                    {formatDateShort(company.latestDate)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
       </div>
     </div>
   );

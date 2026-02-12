@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search } from "lucide-react";
 
 interface SearchableTableProps {
   children: (filteredIndices: number[], query: string) => React.ReactNode;
@@ -44,19 +43,40 @@ export function SearchableTable({
   return (
     <div>
       {/* Search bar */}
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+      <div
+        className="px-[18px] py-3 border-b"
+        style={{ borderColor: "var(--an-border)" }}
+      >
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+            style={{ color: "var(--an-text-muted)" }}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <input
             type="search"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 pr-4 py-2 text-[13px] rounded-lg border focus:outline-none focus:border-[var(--an-accent)] transition-colors"
+            style={{
+              background: "var(--an-bg-raised)",
+              borderColor: "var(--an-border)",
+              color: "var(--an-text-primary)",
+            }}
             aria-label={placeholder}
           />
         </div>
-        <div className="mt-1 text-xs text-gray-500" aria-live="polite">
+        <div
+          className="mt-1.5 text-[11px]"
+          style={{ color: "var(--an-text-muted)" }}
+          aria-live="polite"
+        >
           {filteredIndices.length} {totalLabel}
           {query && ` for "${query}"`}
         </div>
@@ -67,22 +87,36 @@ export function SearchableTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+        <div
+          className="px-[18px] py-3 border-t flex items-center justify-between"
+          style={{ borderColor: "var(--an-border)" }}
+        >
           <button
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+            className="px-3 py-1.5 text-[12px] rounded-lg border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              borderColor: "var(--an-border)",
+              color: "var(--an-text-secondary)",
+            }}
             aria-label="Forrige side"
           >
             Forrige
           </button>
-          <span className="text-sm text-gray-600 dark:text-gray-400">
+          <span
+            className="text-[12px]"
+            style={{ color: "var(--an-text-muted)" }}
+          >
             Side {page + 1} av {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+            className="px-3 py-1.5 text-[12px] rounded-lg border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              borderColor: "var(--an-border)",
+              color: "var(--an-text-secondary)",
+            }}
             aria-label="Neste side"
           >
             Neste

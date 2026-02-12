@@ -301,13 +301,13 @@ export default async function CompanyPage({ params }: PageProps) {
                 className="text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--an-text-secondary)" }}
               >
-                Historikk
+                Short-historikk
               </span>
               <span
                 className="text-[11px]"
                 style={{ color: "var(--an-text-muted)" }}
               >
-                {company.history.length} datapunkter
+                Total short % over tid
               </span>
             </div>
             <div className="p-4">
@@ -332,7 +332,7 @@ export default async function CompanyPage({ params }: PageProps) {
                   className="text-xs font-semibold uppercase tracking-wider"
                   style={{ color: "var(--an-text-secondary)" }}
                 >
-                  Posisjoner
+                  Aktive shortposisjoner
                 </span>
                 <span
                   className="text-[11px]"
@@ -526,7 +526,7 @@ export default async function CompanyPage({ params }: PageProps) {
                   className="text-xs font-semibold uppercase tracking-wider"
                   style={{ color: "var(--an-text-secondary)" }}
                 >
-                  Innsidehandel
+                  Siste innsidehandler
                 </span>
                 <Link
                   href="/innsidehandel"

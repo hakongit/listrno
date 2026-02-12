@@ -121,6 +121,7 @@ export interface PublicAnalystReport {
   investmentBank?: string;
   analystNames?: string[];
   companyName?: string;
+  companyIsin?: string;
   targetPrice?: number;
   targetCurrency: string;
   recommendation?: string;

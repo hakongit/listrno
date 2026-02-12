@@ -398,6 +398,7 @@ export async function getPublicAnalystReports(options?: {
   offset?: number;
   companyIsin?: string;
   companyName?: string;
+  investmentBank?: string;
 }): Promise<PublicAnalystReport[]> {
   const db = getDb();
   const limit = options?.limit ?? 50;
@@ -416,6 +417,11 @@ export async function getPublicAnalystReports(options?: {
     args.push(`%${options.companyName}%`);
   }
 
+  if (options?.investmentBank) {
+    whereClause += ` AND ar.investment_bank = ?`;
+    args.push(options.investmentBank);
+  }
+
   args.push(limit, offset);
 
   const result = await db.execute({
@@ -426,6 +432,7 @@ export async function getPublicAnalystReports(options?: {
         ar.investment_bank,
         ar.analyst_names,
         rec.company_name,
+        rec.company_isin,
         rec.target_price,
         rec.target_currency,
         rec.recommendation,
@@ -448,6 +455,7 @@ export async function getPublicAnalystReports(options?: {
     investmentBank: row.investment_bank ? String(row.investment_bank) : undefined,
     analystNames: row.analyst_names ? JSON.parse(String(row.analyst_names)) : undefined,
     companyName: row.company_name ? String(row.company_name) : undefined,
+    companyIsin: row.company_isin ? String(row.company_isin) : undefined,
     targetPrice: row.target_price != null ? Number(row.target_price) : undefined,
     targetCurrency: String(row.target_currency || 'NOK'),
     recommendation: row.recommendation ? String(row.recommendation) : undefined,
@@ -549,5 +557,42 @@ export const getCachedPublicAnalystReports = unstable_cache(
 export const getCachedAnalystReportCount = unstable_cache(
   async () => getAnalystReportCount('processed'),
   ["analyst-report-count"],
+  { revalidate: 300, tags: ["public-analyst-reports"] }
+);
+
+// Investment bank queries
+
+export interface InvestmentBankSummary {
+  name: string;
+  reportCount: number;
+}
+
+export async function getInvestmentBanks(): Promise<InvestmentBankSummary[]> {
+  const db = getDb();
+  const result = await db.execute(`
+    SELECT ar.investment_bank as name, COUNT(DISTINCT rec.id) as report_count
+    FROM analyst_reports ar
+    JOIN analyst_recommendations rec ON rec.report_id = ar.id
+    WHERE ar.extraction_status = 'processed'
+      AND ar.investment_bank IS NOT NULL
+      AND rec.target_price IS NOT NULL
+    GROUP BY ar.investment_bank
+    ORDER BY report_count DESC
+  `);
+  return result.rows.map((row) => ({
+    name: String(row.name),
+    reportCount: Number(row.report_count),
+  }));
+}
+
+export const getCachedInvestmentBanks = unstable_cache(
+  getInvestmentBanks,
+  ["investment-banks"],
+  { revalidate: 300, tags: ["public-analyst-reports"] }
+);
+
+export const getCachedPublicAnalystReportsByBank = unstable_cache(
+  async (bankName: string) => getPublicAnalystReports({ limit: 200, investmentBank: bankName }),
+  ["public-analyst-reports-by-bank"],
   { revalidate: 300, tags: ["public-analyst-reports"] }
 );

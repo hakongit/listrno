@@ -117,9 +117,13 @@ All user-facing text is in Norwegian (nb). Key terms:
 - Behandle = Process
 - Godkjente domener = Approved domains
 
-## Session Status (2026-02-09)
+## Session Status (2026-02-12)
 
 ### Recently completed
+- POP3 fetch now merges with existing DB-imported emails instead of replacing them
+- Separate "nye på server" badge shows POP3 server count; "totalt" badge shows all known emails
+- Cache preserves real totalOnServer from POP3 LIST command
+- Normal POP3 mode: first fetch gets all available emails, subsequent fetches get only new ones
 - Editable extraction results form in admin dashboard (edit company, bank, recommendation, target price, analysts, summary)
 - LLM feedback loop: re-process reports with one-time feedback, persistent guidance prompt for all extractions
 - Fixed "Behandle" on already-imported emails (was returning 409, now uses reprocess endpoint)
@@ -128,6 +132,7 @@ All user-facing text is in Norwegian (nb). Key terms:
 - `/analyser` page hides reports with no extracted data, hides empty cells
 
 ### Known state
-- 17 emails in mailbox, 4 whitelisted domains configured
-- Most reports are imported but not yet processed (pending status)
+- 431 reports imported in DB, 5 whitelisted domains configured
+- 13 reports processed, 418 pending
+- Gmail POP3 must be set to "Enable POP for all mail" in Gmail settings to expose all historical emails
 - Next step: process imported reports via "Behandle" to populate /analyser page

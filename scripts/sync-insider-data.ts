@@ -544,28 +544,11 @@ async function fetchAnnouncementBody(url: string): Promise<string> {
   }
 }
 
-async function fetchPressReleases(page: number = 0): Promise<EuronextNewsItem[]> {
-  const url = `${EURONEXT_URL}?page=${page}`;
-  console.log(`Fetching page ${page + 1}: ${url}`);
-
-  const response = await fetch(url, {
-    headers: {
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "User-Agent": "Mozilla/5.0 (compatible; listr.no/1.0)",
-      "Accept-Language": "en-US,en;q=0.9,nb;q=0.8",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch press releases: ${response.status}`);
-  }
-
-  const html = await response.text();
+function parseRowsFromHtml(html: string): EuronextNewsItem[] {
   const items: EuronextNewsItem[] = [];
 
   const tbodyMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
   if (!tbodyMatch) {
-    console.log("No table body found");
     return items;
   }
 
@@ -613,11 +596,38 @@ async function fetchPressReleases(page: number = 0): Promise<EuronextNewsItem[]>
   return items;
 }
 
+// Fetch the latest press releases from Euronext
+// Note: Euronext broke server-side pagination (all ?page=N 301-redirect to the base URL).
+// We fetch the base URL which returns the newest ~50 items — sufficient for daily syncing.
+async function fetchPressReleases(): Promise<EuronextNewsItem[]> {
+  console.log(`Fetching press releases: ${EURONEXT_URL}`);
+
+  const response = await fetch(EURONEXT_URL, {
+    headers: {
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "User-Agent": "Mozilla/5.0 (compatible; listr.no/1.0)",
+      "Accept-Language": "en-US,en;q=0.9,nb;q=0.8",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch press releases: ${response.status}`);
+  }
+
+  const html = await response.text();
+  const items = parseRowsFromHtml(html);
+
+  if (items.length === 0 && !html.includes("<tbody")) {
+    console.log("  No table body found — Euronext may have changed their HTML structure");
+  }
+
+  return items;
+}
+
 async function syncInsiderData() {
   const shouldReset = process.argv.includes("--reset");
   const fetchDetails = !process.argv.includes("--skip-details");
   const parsePdfs = process.argv.includes("--with-pdfs");
-  const maxPages = process.argv.includes("--full") ? 500 : 50;
 
   if (shouldReset) {
     console.log("Resetting insider database...");
@@ -629,32 +639,16 @@ async function syncInsiderData() {
 
   console.log("Fetching PDMR notifications from Euronext...");
   console.log(
-    `Mode: ${fetchDetails ? "with details" : "quick"}${parsePdfs ? " + PDFs" : ""}, max pages: ${maxPages}`
+    `Mode: ${fetchDetails ? "with details" : "quick"}${parsePdfs ? " + PDFs" : ""}`
   );
 
   let allItems: EuronextNewsItem[] = [];
-  let page = 0;
-  let emptyPages = 0;
 
-  // Fetch pages until we get no more PDMR items
-  while (page < maxPages && emptyPages < 3) {
-    try {
-      const items = await fetchPressReleases(page);
-
-      if (items.length === 0) {
-        emptyPages++;
-      } else {
-        emptyPages = 0;
-        allItems = allItems.concat(items);
-        console.log(`  Found ${items.length} PDMR items (total: ${allItems.length})`);
-      }
-
-      page++;
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    } catch (error) {
-      console.error(`Error fetching page ${page}:`, error);
-      break;
-    }
+  try {
+    allItems = await fetchPressReleases();
+    console.log(`  Found ${allItems.length} PDMR items`);
+  } catch (error) {
+    console.error("Error fetching press releases:", error);
   }
 
   console.log(`\nTotal PDMR items fetched: ${allItems.length}`);

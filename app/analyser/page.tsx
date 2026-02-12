@@ -236,7 +236,7 @@ export default async function AnalystReportsPage() {
 
         {/* Data source note */}
         <p className="mt-4 text-sm text-gray-500 text-center">
-          Basert p&aring; offentlig tilgjengelige analytikerrapporter. Ikke finansiell r&aring;dgivning.
+          Basert p&aring; tips fra brukere, nyhetsbrev fra meglerhus og offentlig tilgjengelige kilder. Ikke finansiell r&aring;dgivning.
         </p>
       </div>
     </div>

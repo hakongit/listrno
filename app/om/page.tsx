@@ -77,12 +77,12 @@ export default function AboutPage() {
           <p className="text-sm text-gray-500">
             Listr er et prosjekt fra{" "}
             <a
-              href="https://bluecap.no"
+              href="https://blueboxas.no"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
             >
-              Bluecap
+              Bluebox AS
             </a>
             .
           </p>

@@ -66,12 +66,12 @@ export default function RootLayout({
             <p>
               Et prosjekt fra{" "}
               <a
-                href="https://bluecap.no"
+                href="https://blueboxas.no"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-gray-700 dark:hover:text-gray-300"
               >
-                Bluecap
+                Bluebox AS
               </a>
             </p>
           </div>

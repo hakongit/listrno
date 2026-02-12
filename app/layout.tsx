@@ -1,6 +1,19 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 const GA_MEASUREMENT_ID = "G-VH4R20P5L2";
 
@@ -41,7 +54,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className="antialiased min-h-screen flex flex-col">
+      <body className={`antialiased min-h-screen flex flex-col ${inter.variable} ${jetbrainsMono.variable}`}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:dark:bg-gray-900 focus:border focus:border-gray-300 focus:dark:border-gray-700 focus:rounded-lg focus:text-sm focus:font-medium"

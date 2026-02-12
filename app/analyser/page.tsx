@@ -1,22 +1,21 @@
-import { getCachedPublicAnalystReports, getCachedAnalystReportCount, initializeAnalystDatabase } from "@/lib/analyst-db";
-import { getShortData } from "@/lib/data";
-import { formatDate, formatNumber, slugify } from "@/lib/utils";
-import Link from "next/link";
 import {
-  FileText,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Building2,
-} from "lucide-react";
+  getCachedPublicAnalystReports,
+  getCachedAnalystReportCount,
+  getCachedInvestmentBanks,
+  initializeAnalystDatabase,
+} from "@/lib/analyst-db";
+import { getShortData } from "@/lib/data";
+import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
+import { isinToTicker } from "@/lib/tickers";
+import Link from "next/link";
 import type { Metadata } from "next";
-import { Logo } from "@/components/logo";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Analytikerrapporter - Listr",
-  description: "Analytikerrapporter og kursmål for norske aksjer fra ledende investeringsbanker.",
+  description:
+    "Analytikerrapporter og kursmål for norske aksjer fra ledende investeringsbanker.",
   openGraph: {
     title: "Analytikerrapporter - Listr",
     description: "Analytikerrapporter og kursmål for norske aksjer",
@@ -24,21 +23,9 @@ export const metadata: Metadata = {
 };
 
 function RecommendationBadge({ recommendation }: { recommendation?: string }) {
-  if (!recommendation) {
-    return null;
-  }
+  if (!recommendation) return null;
 
   const rec = recommendation.toLowerCase();
-  let color = "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-  let icon = <Minus className="w-3 h-3" />;
-
-  if (rec === "buy" || rec === "overweight" || rec === "outperform") {
-    color = "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-    icon = <TrendingUp className="w-3 h-3" />;
-  } else if (rec === "sell" || rec === "underweight" || rec === "underperform") {
-    color = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-    icon = <TrendingDown className="w-3 h-3" />;
-  }
 
   const labels: Record<string, string> = {
     buy: "Kjøp",
@@ -50,11 +37,79 @@ function RecommendationBadge({ recommendation }: { recommendation?: string }) {
     underperform: "Underperform",
   };
 
+  let colorStyle: React.CSSProperties;
+  if (rec === "buy" || rec === "overweight" || rec === "outperform") {
+    colorStyle = {
+      color: "var(--an-green)",
+      background: "var(--an-green-bg)",
+      borderColor: "var(--an-green-border)",
+    };
+  } else if (rec === "sell" || rec === "underweight" || rec === "underperform") {
+    colorStyle = {
+      color: "var(--an-red)",
+      background: "var(--an-red-bg)",
+      borderColor: "var(--an-red-border)",
+    };
+  } else {
+    colorStyle = {
+      color: "var(--an-amber)",
+      background: "var(--an-amber-bg)",
+      borderColor: "var(--an-amber-border)",
+    };
+  }
+
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {icon}
+    <span
+      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-[3px] rounded border tracking-wide"
+      style={colorStyle}
+    >
       {labels[rec] || recommendation}
     </span>
+  );
+}
+
+function RecommendationBar({
+  label,
+  count,
+  total,
+  type,
+}: {
+  label: string;
+  count: number;
+  total: number;
+  type: "buy" | "hold" | "sell";
+}) {
+  const pct = total > 0 ? (count / total) * 100 : 0;
+
+  const colorMap = {
+    buy: { label: "var(--an-green)", fill: "var(--an-green)", count: "var(--an-green)" },
+    hold: { label: "var(--an-amber)", fill: "var(--an-amber)", count: "var(--an-amber)" },
+    sell: { label: "var(--an-red)", fill: "var(--an-red)", count: "var(--an-red)" },
+  };
+
+  const c = colorMap[type];
+
+  return (
+    <div className="flex items-center gap-3">
+      <span
+        className="text-[13px] font-medium w-[68px] shrink-0"
+        style={{ color: c.label }}
+      >
+        {label}
+      </span>
+      <div className="rec-bar-track flex-1">
+        <div
+          className="rec-bar-fill"
+          style={{ width: `${pct}%`, background: c.fill }}
+        />
+      </div>
+      <span
+        className="text-[13px] font-semibold w-7 text-right shrink-0"
+        style={{ color: c.count }}
+      >
+        {count}
+      </span>
+    </div>
   );
 }
 
@@ -64,16 +119,16 @@ function formatTargetPrice(price?: number, currency?: string): string {
 }
 
 export default async function AnalystReportsPage() {
-  // Ensure tables exist
   await initializeAnalystDatabase();
 
-  const [allReports, totalCount, shortData] = await Promise.all([
-    getCachedPublicAnalystReports({ limit: 50 }),
+  const [allReports, totalCount, banks, shortData] = await Promise.all([
+    getCachedPublicAnalystReports({ limit: 200 }),
     getCachedAnalystReportCount(),
+    getCachedInvestmentBanks(),
     getShortData(),
   ]);
 
-  // Build ISIN → slug and name → slug maps for company linking
+  // Build ISIN → slug and name → slug maps
   const isinToSlug = new Map<string, string>();
   const nameToSlug = new Map<string, string>();
   for (const company of shortData.companies) {
@@ -93,176 +148,460 @@ export default async function AnalystReportsPage() {
     return null;
   }
 
-  // Only show reports that have at least a company name or recommendation
+  function getTickerForReport(isin?: string): string | null {
+    if (!isin) return null;
+    return isinToTicker[isin] || null;
+  }
+
+  // Filter to reports with extracted data
   const reports = allReports.filter(
     (r) => r.companyName || r.recommendation || r.targetPrice
   );
 
+  // Compute stats
+  const uniqueCompanies = new Set(
+    reports.map((r) => r.companyName).filter(Boolean)
+  ).size;
+  const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
+
+  // Recommendation counts
+  const recCounts = { buy: 0, hold: 0, sell: 0 };
+  for (const r of reports) {
+    const rec = r.recommendation?.toLowerCase();
+    if (rec === "buy" || rec === "overweight" || rec === "outperform") {
+      recCounts.buy++;
+    } else if (rec === "sell" || rec === "underweight" || rec === "underperform") {
+      recCounts.sell++;
+    } else if (rec === "hold") {
+      recCounts.hold++;
+    }
+  }
+  const recTotal = recCounts.buy + recCounts.hold + recCounts.sell;
+
+  // Check if latest report is from today
+  const isUpdatedToday = (() => {
+    if (!latestDate) return false;
+    const latest = new Date(latestDate);
+    const now = new Date();
+    return (
+      latest.getFullYear() === now.getFullYear() &&
+      latest.getMonth() === now.getMonth() &&
+      latest.getDate() === now.getDate()
+    );
+  })();
+
   if (reports.length === 0) {
     return (
-      <div>
-        <header className="border-b border-gray-200 dark:border-gray-800">
-          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-            <Link href="/" aria-label="Listr.no - Til forsiden">
-              <Logo />
-            </Link>
-            <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
-              <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-                Shortposisjoner
-              </Link>
-              <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-                Innsidehandel
-              </Link>
-              <Link href="/analyser" className="text-gray-900 dark:text-gray-100 font-medium">
-                Analyser
-              </Link>
-              <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-                Om
-              </Link>
-            </nav>
-          </div>
-        </header>
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg p-8 text-center">
-            <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-700" />
-            <h2 className="text-lg font-semibold mb-2">Ingen rapporter enn&aring;</h2>
-            <p className="text-gray-500 text-sm">
-              Analytikerrapporter vil vises her n&aring;r de er tilgjengelige.
-            </p>
-          </div>
+      <div className="max-w-[1120px] mx-auto px-6 py-6">
+        <div
+          className="rounded-lg p-8 text-center border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <svg
+            className="w-12 h-12 mx-auto mb-4"
+            style={{ color: "var(--an-text-muted)" }}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+            />
+          </svg>
+          <h2
+            className="text-lg font-semibold mb-2"
+            style={{ color: "var(--an-text-primary)" }}
+          >
+            Ingen rapporter enn&aring;
+          </h2>
+          <p className="text-sm" style={{ color: "var(--an-text-secondary)" }}>
+            Analytikerrapporter vil vises her n&aring;r de er tilgjengelige.
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <Link href="/" aria-label="Listr.no - Til forsiden">
-            <Logo />
-          </Link>
-          <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
-            <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Shortposisjoner
-            </Link>
-            <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Innsidehandel
-            </Link>
-            <Link href="/analyser" className="text-gray-900 dark:text-gray-100 font-medium">
-              Analyser
-            </Link>
-            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Om
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Hero */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-1">Analytikerrapporter</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
-            Kursmål og anbefalinger fra analytikere i ledende investeringsbanker.
+    <div className="max-w-[1120px] mx-auto px-6">
+      {/* Hero */}
+      <div className="pt-8 flex justify-between items-end">
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight mb-1">
+            Analytikerrapporter
+          </h1>
+          <p className="text-[13px]" style={{ color: "var(--an-text-secondary)" }}>
+            Kursmål og anbefalinger fra ledende investeringsbanker
           </p>
         </div>
+        {isUpdatedToday && (
+          <span
+            className="text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap border"
+            style={{
+              color: "var(--an-green)",
+              background: "var(--an-green-bg)",
+              borderColor: "var(--an-green-border)",
+            }}
+          >
+            Oppdatert i dag
+          </span>
+        )}
+      </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-            <div className="text-2xl font-bold">{totalCount}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Totalt rapporter</div>
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+        <div
+          className="an-stat-accent rounded-lg p-4 border"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            style={{ color: "var(--an-accent)" }}
+          >
+            {totalCount}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Rapporter
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+            {banks.length}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Investeringsbanker
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+            {uniqueCompanies}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Selskaper dekket
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <div className="text-[20px] font-bold tracking-tight leading-tight mb-0.5 pt-1">
+            {latestDate ? formatDateShort(latestDate) : "-"}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Siste rapport
+          </div>
+        </div>
+      </div>
+
+      {/* Insights: Recommendations + Banks */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+        {/* Recommendations panel */}
+        <div
+          className="rounded-lg overflow-hidden border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <div
+            className="px-[18px] py-3 border-b flex justify-between items-center"
+            style={{ borderColor: "var(--an-border)" }}
+          >
+            <span
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Anbefalinger
+            </span>
+          </div>
+          <div className="px-[18px] py-4 space-y-3.5">
+            <RecommendationBar
+              label="Kjøp"
+              count={recCounts.buy}
+              total={recTotal}
+              type="buy"
+            />
+            <RecommendationBar
+              label="Hold"
+              count={recCounts.hold}
+              total={recTotal}
+              type="hold"
+            />
+            <RecommendationBar
+              label="Selg"
+              count={recCounts.sell}
+              total={recTotal}
+              type="sell"
+            />
           </div>
         </div>
 
-        {/* Reports Table */}
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-            <h2 className="font-semibold">Siste rapporter</h2>
+        {/* Banks panel */}
+        <div
+          className="rounded-lg overflow-hidden border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <div
+            className="px-[18px] py-3 border-b flex justify-between items-center"
+            style={{ borderColor: "var(--an-border)" }}
+          >
+            <span
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Banker
+            </span>
+            <span className="text-[11px]" style={{ color: "var(--an-text-muted)" }}>
+              etter antall
+            </span>
           </div>
+          <div className="px-[18px] py-2">
+            {banks.map((bank, i) => (
+              <div
+                key={bank.name}
+                className="flex items-center justify-between py-[9px]"
+                style={{
+                  borderBottom:
+                    i < banks.length - 1
+                      ? "1px solid var(--an-border-subtle)"
+                      : "none",
+                }}
+              >
+                <Link
+                  href={`/analyser/bank/${slugify(bank.name)}`}
+                  className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                  style={{ color: "var(--an-text-primary)" }}
+                >
+                  {bank.name}
+                </Link>
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-[10px]"
+                  style={{
+                    color: "var(--an-text-muted)",
+                    background: "var(--an-bg-base)",
+                  }}
+                >
+                  {bank.reportCount}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Reports Table */}
+      <div className="mt-3 mb-10">
+        <div
+          className="rounded-lg overflow-hidden border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                <tr>
+                  <th
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                      width: "80px",
+                    }}
+                  >
                     Dato
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                    }}
+                  >
                     Selskap
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                  <th
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12 hidden md:table-cell"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                    }}
+                  >
                     Bank
                   </th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    className="text-center text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                      width: "110px",
+                    }}
+                  >
                     Anbefaling
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                      width: "120px",
+                    }}
+                  >
                     Kursmål
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
-                    Kurs ved rapport
+                  <th
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12 hidden lg:table-cell"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                      width: "120px",
+                    }}
+                  >
+                    Kurs ved rapp.
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {reports.map((report) => (
-                  <tr
-                    key={report.recommendationId}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                  >
-                    <td className="px-4 py-3 text-sm">
-                      {formatDate(report.receivedDate)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {(() => {
-                        const companySlug = getCompanySlug(report.companyIsin, report.companyName);
-                        return companySlug ? (
-                          <Link href={`/${companySlug}`} className="font-medium hover:underline">
+              <tbody>
+                {reports.map((report, i) => {
+                  const companySlug = getCompanySlug(
+                    report.companyIsin,
+                    report.companyName
+                  );
+                  const ticker = getTickerForReport(report.companyIsin);
+
+                  return (
+                    <tr
+                      key={report.recommendationId}
+                      className="an-table-row transition-colors"
+                      style={{
+                        borderBottom:
+                          i < reports.length - 1
+                            ? "1px solid var(--an-border-subtle)"
+                            : "none",
+                      }}
+                    >
+                      <td
+                        className="px-[18px] py-3 text-xs whitespace-nowrap"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(report.receivedDate)}
+                      </td>
+                      <td className="px-[18px] py-3">
+                        {companySlug ? (
+                          <Link
+                            href={`/${companySlug}`}
+                            className="font-semibold text-[13px] transition-colors hover:text-[var(--an-accent)]"
+                            style={{ color: "var(--an-text-primary)" }}
+                          >
                             {report.companyName}
                           </Link>
                         ) : (
-                          <div className="font-medium">{report.companyName || ""}</div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      {report.investmentBank ? (
-                        <Link href={`/analyser/bank/${slugify(report.investmentBank)}`} className="flex items-center gap-2 hover:underline">
-                          <Building2 className="w-4 h-4 text-gray-400" />
-                          <span>{report.investmentBank}</span>
-                        </Link>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <RecommendationBadge recommendation={report.recommendation} />
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm">
-                      {report.targetPrice ? (
-                        <span className="select-none blur-[6px]">
-                          {formatTargetPrice(report.targetPrice, report.targetCurrency)}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm hidden lg:table-cell">
-                      {report.priceAtReport ? (
-                        <span className="select-none blur-[6px]">
-                          {formatNumber(report.priceAtReport)} {report.targetCurrency}
-                        </span>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
+                          <span
+                            className="font-semibold text-[13px]"
+                            style={{ color: "var(--an-text-primary)" }}
+                          >
+                            {report.companyName || ""}
+                          </span>
+                        )}
+                        {ticker && (
+                          <div
+                            className="text-[11px] mt-px"
+                            style={{ color: "var(--an-text-muted)" }}
+                          >
+                            {ticker}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-[18px] py-3 hidden md:table-cell">
+                        {report.investmentBank ? (
+                          <Link
+                            href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                            className="text-[13px] transition-colors"
+                            style={{ color: "var(--an-text-secondary)" }}
+                          >
+                            {report.investmentBank}
+                          </Link>
+                        ) : null}
+                      </td>
+                      <td className="px-[18px] py-3 text-center">
+                        <RecommendationBadge
+                          recommendation={report.recommendation}
+                        />
+                      </td>
+                      <td className="px-[18px] py-3 text-right">
+                        {report.targetPrice ? (
+                          <span
+                            className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
+                            style={{ color: "var(--an-text-secondary)" }}
+                          >
+                            {formatTargetPrice(
+                              report.targetPrice,
+                              report.targetCurrency
+                            )}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-[18px] py-3 text-right hidden lg:table-cell">
+                        {report.priceAtReport ? (
+                          <span
+                            className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
+                            style={{ color: "var(--an-text-secondary)" }}
+                          >
+                            {formatNumber(report.priceAtReport)}{" "}
+                            {report.targetCurrency}
+                          </span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
-
-        {/* Data source note */}
-        <p className="mt-4 text-sm text-gray-500 text-center">
-          Basert p&aring; tips fra brukere, nyhetsbrev fra meglerhus og offentlig tilgjengelige kilder. Ikke finansiell r&aring;dgivning.
-        </p>
       </div>
     </div>
   );

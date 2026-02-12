@@ -1,17 +1,14 @@
-import { getCachedInvestmentBanks, getCachedPublicAnalystReportsByBank, initializeAnalystDatabase } from "@/lib/analyst-db";
+import {
+  getCachedInvestmentBanks,
+  getCachedPublicAnalystReportsByBank,
+  initializeAnalystDatabase,
+} from "@/lib/analyst-db";
 import { getShortData } from "@/lib/data";
-import { formatDate, formatNumber, slugify } from "@/lib/utils";
+import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
+import { isinToTicker } from "@/lib/tickers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import {
-  Building2,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  FileText,
-} from "lucide-react";
 import type { Metadata } from "next";
-import { Logo } from "@/components/logo";
 
 export const revalidate = 3600;
 
@@ -47,16 +44,6 @@ function RecommendationBadge({ recommendation }: { recommendation?: string }) {
   if (!recommendation) return null;
 
   const rec = recommendation.toLowerCase();
-  let color = "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-  let icon = <Minus className="w-3 h-3" />;
-
-  if (rec === "buy" || rec === "overweight" || rec === "outperform") {
-    color = "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-    icon = <TrendingUp className="w-3 h-3" />;
-  } else if (rec === "sell" || rec === "underweight" || rec === "underperform") {
-    color = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-    icon = <TrendingDown className="w-3 h-3" />;
-  }
 
   const labels: Record<string, string> = {
     buy: "Kjøp",
@@ -68,9 +55,32 @@ function RecommendationBadge({ recommendation }: { recommendation?: string }) {
     underperform: "Underperform",
   };
 
+  let colorStyle: React.CSSProperties;
+  if (rec === "buy" || rec === "overweight" || rec === "outperform") {
+    colorStyle = {
+      color: "var(--an-green)",
+      background: "var(--an-green-bg)",
+      borderColor: "var(--an-green-border)",
+    };
+  } else if (rec === "sell" || rec === "underweight" || rec === "underperform") {
+    colorStyle = {
+      color: "var(--an-red)",
+      background: "var(--an-red-bg)",
+      borderColor: "var(--an-red-border)",
+    };
+  } else {
+    colorStyle = {
+      color: "var(--an-amber)",
+      background: "var(--an-amber-bg)",
+      borderColor: "var(--an-amber-border)",
+    };
+  }
+
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {icon}
+    <span
+      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-[3px] rounded border tracking-wide"
+      style={colorStyle}
+    >
       {labels[rec] || recommendation}
     </span>
   );
@@ -99,7 +109,7 @@ export default async function BankProfilePage({ params }: PageProps) {
     (r) => r.companyName || r.recommendation || r.targetPrice
   );
 
-  // Build ISIN → slug and name → slug maps for company linking
+  // Build ISIN → slug and name → slug maps
   const isinToSlug = new Map<string, string>();
   const nameToSlug = new Map<string, string>();
   for (const company of shortData.companies) {
@@ -109,146 +119,247 @@ export default async function BankProfilePage({ params }: PageProps) {
 
   function getCompanySlug(isin?: string, name?: string): string | null {
     if (isin) {
-      const slug = isinToSlug.get(isin);
-      if (slug) return slug;
+      const s = isinToSlug.get(isin);
+      if (s) return s;
     }
     if (name) {
-      const slug = nameToSlug.get(name.toLowerCase());
-      if (slug) return slug;
+      const s = nameToSlug.get(name.toLowerCase());
+      if (s) return s;
     }
     return null;
   }
 
+  function getTickerForReport(isin?: string): string | null {
+    if (!isin) return null;
+    return isinToTicker[isin] || null;
+  }
+
   // Stats
-  const uniqueCompanies = new Set(reports.map((r) => r.companyName).filter(Boolean)).size;
+  const uniqueCompanies = new Set(
+    reports.map((r) => r.companyName).filter(Boolean)
+  ).size;
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
 
   return (
-    <div>
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <Link href="/" aria-label="Listr.no - Til forsiden">
-            <Logo />
-          </Link>
-          <nav className="flex items-center gap-4 text-sm" aria-label="Hovednavigasjon">
-            <Link href="/shortoversikt" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Shortposisjoner
-            </Link>
-            <Link href="/innsidehandel" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Innsidehandel
-            </Link>
-            <Link href="/analyser" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Analyser
-            </Link>
-            <Link href="/om" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
-              Om
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div className="max-w-[1120px] mx-auto px-6">
+      {/* Hero */}
+      <div className="pt-8 pb-6">
+        <h1 className="text-[22px] font-bold tracking-tight mb-1">
+          {bank.name}
+        </h1>
+      </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Bank name + stats */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="w-5 h-5 text-gray-400" />
-            <h1 className="text-2xl font-bold">{bank.name}</h1>
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div
+          className="an-stat-accent rounded-lg p-4 border"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            style={{ color: "var(--an-accent)" }}
+          >
+            {bank.reportCount}
           </div>
-          <div className="flex flex-wrap gap-4 text-sm pb-4 border-b border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-gray-400" />
-              <span className="font-medium">{bank.reportCount}</span>
-              <span className="text-gray-500">rapporter</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-gray-400" />
-              <span className="font-medium">{uniqueCompanies}</span>
-              <span className="text-gray-500">selskaper</span>
-            </div>
-            {latestDate && (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500">Siste rapport:</span>
-                <span className="font-medium">{formatDate(latestDate)}</span>
-              </div>
-            )}
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Rapporter
           </div>
         </div>
-
-        {/* Reports Table */}
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-            <h2 className="font-semibold">Rapporter</h2>
+        <div
+          className="rounded-lg p-4 border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+            {uniqueCompanies}
           </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Selskaper dekket
+          </div>
+        </div>
+        <div
+          className="rounded-lg p-4 border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <div className="text-[20px] font-bold tracking-tight leading-tight mb-0.5 pt-1">
+            {latestDate ? formatDateShort(latestDate) : "-"}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Siste rapport
+          </div>
+        </div>
+      </div>
+
+      {/* Reports Table */}
+      <div className="mt-3 mb-10">
+        <div
+          className="rounded-lg overflow-hidden border"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                <tr>
+                  <th
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                      width: "80px",
+                    }}
+                  >
                     Dato
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                    }}
+                  >
                     Selskap
                   </th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    className="text-center text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                      width: "110px",
+                    }}
+                  >
                     Anbefaling
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                      width: "120px",
+                    }}
+                  >
                     Kursmål
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
-                    Kurs ved rapport
+                  <th
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12 hidden lg:table-cell"
+                    style={{
+                      color: "var(--an-text-muted)",
+                      borderBottom: "1px solid var(--an-border)",
+                      background: "var(--an-bg-surface)",
+                      width: "120px",
+                    }}
+                  >
+                    Kurs ved rapp.
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {reports.map((report) => (
-                  <tr
-                    key={report.recommendationId}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                  >
-                    <td className="px-4 py-3 text-sm">
-                      {formatDate(report.receivedDate)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {(() => {
-                        const companySlug = getCompanySlug(report.companyIsin, report.companyName);
-                        return companySlug ? (
-                          <Link href={`/${companySlug}`} className="font-medium hover:underline">
+              <tbody>
+                {reports.map((report, i) => {
+                  const companySlug = getCompanySlug(
+                    report.companyIsin,
+                    report.companyName
+                  );
+                  const ticker = getTickerForReport(report.companyIsin);
+
+                  return (
+                    <tr
+                      key={report.recommendationId}
+                      className="an-table-row transition-colors"
+                      style={{
+                        borderBottom:
+                          i < reports.length - 1
+                            ? "1px solid var(--an-border-subtle)"
+                            : "none",
+                      }}
+                    >
+                      <td
+                        className="px-[18px] py-3 text-xs whitespace-nowrap"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(report.receivedDate)}
+                      </td>
+                      <td className="px-[18px] py-3">
+                        {companySlug ? (
+                          <Link
+                            href={`/${companySlug}`}
+                            className="font-semibold text-[13px] transition-colors hover:text-[var(--an-accent)]"
+                            style={{ color: "var(--an-text-primary)" }}
+                          >
                             {report.companyName}
                           </Link>
                         ) : (
-                          <div className="font-medium">{report.companyName || ""}</div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <RecommendationBadge recommendation={report.recommendation} />
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm">
-                      {report.targetPrice ? (
-                        <span className="select-none blur-[6px]">
-                          {formatTargetPrice(report.targetPrice, report.targetCurrency)}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm hidden lg:table-cell">
-                      {report.priceAtReport ? (
-                        <span className="select-none blur-[6px]">
-                          {formatNumber(report.priceAtReport)} {report.targetCurrency}
-                        </span>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
+                          <span
+                            className="font-semibold text-[13px]"
+                            style={{ color: "var(--an-text-primary)" }}
+                          >
+                            {report.companyName || ""}
+                          </span>
+                        )}
+                        {ticker && (
+                          <div
+                            className="text-[11px] mt-px"
+                            style={{ color: "var(--an-text-muted)" }}
+                          >
+                            {ticker}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-[18px] py-3 text-center">
+                        <RecommendationBadge
+                          recommendation={report.recommendation}
+                        />
+                      </td>
+                      <td className="px-[18px] py-3 text-right">
+                        {report.targetPrice ? (
+                          <span
+                            className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
+                            style={{ color: "var(--an-text-secondary)" }}
+                          >
+                            {formatTargetPrice(
+                              report.targetPrice,
+                              report.targetCurrency
+                            )}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-[18px] py-3 text-right hidden lg:table-cell">
+                        {report.priceAtReport ? (
+                          <span
+                            className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
+                            style={{ color: "var(--an-text-secondary)" }}
+                          >
+                            {formatNumber(report.priceAtReport)}{" "}
+                            {report.targetCurrency}
+                          </span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
-
-        <p className="mt-4 text-sm text-gray-500 text-center">
-          Basert p&aring; tips fra brukere, nyhetsbrev fra meglerhus og offentlig tilgjengelige kilder. Ikke finansiell r&aring;dgivning.
-        </p>
       </div>
     </div>
   );

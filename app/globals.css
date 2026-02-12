@@ -41,3 +41,77 @@ body {
     background: #374151;
   }
 }
+
+/* ─── Analyser Section Theme ─── */
+.analyser-theme {
+  --an-bg-base: #080c14;
+  --an-bg-surface: #0e1420;
+  --an-bg-raised: #141c2b;
+  --an-bg-hover: #1a2436;
+  --an-border: #1c2638;
+  --an-border-subtle: #151d2a;
+
+  --an-text-primary: #e2e0db;
+  --an-text-secondary: #7a8599;
+  --an-text-muted: #4a5568;
+
+  --an-accent: #c9a84c;
+  --an-accent-dim: rgba(201, 168, 76, 0.12);
+
+  --an-green: #34a06e;
+  --an-green-bg: rgba(52, 160, 110, 0.1);
+  --an-green-border: rgba(52, 160, 110, 0.25);
+
+  --an-amber: #b89040;
+  --an-amber-bg: rgba(184, 144, 64, 0.1);
+  --an-amber-border: rgba(184, 144, 64, 0.25);
+
+  --an-red: #c25050;
+  --an-red-bg: rgba(194, 80, 80, 0.1);
+  --an-red-border: rgba(194, 80, 80, 0.25);
+
+  font-family: var(--font-inter), -apple-system, system-ui, sans-serif;
+  background: var(--an-bg-base);
+  color: var(--an-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+.analyser-theme .mono {
+  font-family: var(--font-mono), "SF Mono", monospace;
+}
+
+/* Gold accent line at top */
+.an-top-accent {
+  height: 2px;
+  background: linear-gradient(90deg, var(--an-accent) 0%, transparent 60%);
+  opacity: 0.5;
+}
+
+/* Gold-tinted stat card */
+.an-stat-accent {
+  border-color: rgba(201, 168, 76, 0.2) !important;
+  background: linear-gradient(135deg, var(--an-bg-surface) 0%, rgba(201, 168, 76, 0.04) 100%) !important;
+}
+
+/* Recommendation bars */
+.rec-bar-track {
+  height: 24px;
+  background: var(--an-bg-base);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.rec-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Table row hover */
+.analyser-theme .an-table-row:hover {
+  background: var(--an-bg-hover);
+}
+
+/* Hide root footer when analyser-theme is active */
+body:has(.analyser-theme) > main + footer {
+  display: none;
+}

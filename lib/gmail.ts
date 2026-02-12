@@ -155,7 +155,7 @@ export async function fetchEmailsWithProgress(
     afterDate?: Date;
   } = {},
   onProgress?: (progress: FetchProgress) => void
-): Promise<EmailMessage[]> {
+): Promise<{ messages: EmailMessage[]; totalOnServer: number }> {
   // Check cache first (only for non-progress requests or when no date filter)
   if (!options.afterDate) {
     const cached = getCachedEmails();
@@ -164,7 +164,7 @@ export async function fetchEmailsWithProgress(
       if (onProgress) {
         onProgress({ stage: "done", current: limited.length, total: limited.length, message: `Ferdig! ${limited.length} e-poster (fra cache).` });
       }
-      return limited;
+      return { messages: limited, totalOnServer: cached.length };
     }
   }
 
@@ -287,13 +287,14 @@ export async function fetchEmailsWithProgress(
       }
     }
 
-    report({ stage: "done", current: messages.length, total: messages.length, message: `Ferdig! Hentet ${messages.length} e-poster.` });
+    const totalOnServer = messageIds.length;
+    report({ stage: "done", current: messages.length, total: messages.length, message: `Ferdig! Hentet ${messages.length} av ${totalOnServer} e-poster.` });
 
     // Cache the fetched emails
     setCachedEmails(messages);
 
     await withTimeout(pop3.QUIT(), 5000, "POP3 QUIT").catch(() => {});
-    return messages;
+    return { messages, totalOnServer };
   } catch (error) {
     try {
       await withTimeout(pop3.QUIT(), 5000, "POP3 QUIT").catch(() => {});
@@ -315,7 +316,8 @@ export async function fetchEmails(options: {
   maxResults?: number;
   afterDate?: Date;
 } = {}): Promise<EmailMessage[]> {
-  return fetchEmailsWithProgress(options);
+  const result = await fetchEmailsWithProgress(options);
+  return result.messages;
 }
 
 // Get a single email by message-id (checks cache first, avoids redundant POP3)

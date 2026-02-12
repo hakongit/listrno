@@ -112,6 +112,7 @@ export default function AdminDashboardClient({
   const [stats, setStats] = useState(initialStats);
   const [domains, setDomains] = useState(initialDomains);
   const [emails, setEmails] = useState<EmailItem[]>(initialEmails);
+  const [totalOnServer, setTotalOnServer] = useState<number | null>(null);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -254,6 +255,7 @@ export default function AdminDashboardClient({
         const data = JSON.parse(e.data);
         const emailList: EmailItem[] = data.emails || [];
         setEmails(emailList);
+        if (data.totalOnServer != null) setTotalOnServer(data.totalOnServer);
 
         const whitelisted = emailList.filter((e) => e.isWhitelisted).length;
         const withAttachments = emailList.filter((e) => e.attachmentCount > 0).length;
@@ -1062,7 +1064,9 @@ export default function AdminDashboardClient({
               {emails.length > 0 && (
                 <>
                   <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                    {emails.length} totalt
+                    {totalOnServer != null && totalOnServer > emails.length
+                      ? `${emails.length} av ${totalOnServer} hentet`
+                      : `${emails.length} totalt`}
                   </span>
                   {whitelistedEmails.length > 0 && (
                     <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">

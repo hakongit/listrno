@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         try {
           send("status", { message: "Kobler til Gmail POP3..." });
 
-          const allEmails = await fetchEmailsWithProgress(
+          const { messages: allEmails, totalOnServer } = await fetchEmailsWithProgress(
             { maxResults },
             (progress) => {
               send("progress", progress);
@@ -149,6 +149,7 @@ export async function GET(request: NextRequest) {
 
           send("complete", {
             emails: emailsWithStatus,
+            totalOnServer,
             domains: domains.map((d) => ({ domain: d.domain, bankName: d.bankName })),
           });
         } catch (error) {
@@ -170,7 +171,7 @@ export async function GET(request: NextRequest) {
 
   // Non-stream mode (fallback)
   try {
-    const allEmails = await fetchEmailsWithProgress({ maxResults });
+    const { messages: allEmails } = await fetchEmailsWithProgress({ maxResults });
 
     const emailsWithStatus = await Promise.all(
       allEmails.map(async (email) => {

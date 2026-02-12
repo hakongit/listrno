@@ -63,6 +63,8 @@ TURSO_AUTH_TOKEN=...
 - `/innsidehandel/[slug]` - Individual insider profile with trades
 - `/topp/[kategori]` - Top lists (biggest shorts, most shorted, etc.)
 - `/analyser` - Public analyst reports page (only shows reports with extracted data)
+- `/analyser/bank/[slug]` - Bank profile with all reports from that bank
+- `/analyser/selskap/[slug]` - Company profile with all analyst reports for that company
 - `/analystatwork` - Admin login
 - `/analystatwork/dashboard` - Admin dashboard for email import, LLM extraction, editing
 
@@ -132,6 +134,11 @@ All user-facing text is in Norwegian (nb). Key terms:
 ## Session Status (2026-02-12)
 
 ### Recently completed
+- Made everything clickable on `/analyser` pages: all company names link to `/{slug}` (if short data) or `/analyser/selskap/{slug}` (new page); bank names visible + clickable on mobile; bank hover styles added
+- Created `/analyser/selskap/[slug]` company profile page — shows all analyst reports for a company with breadcrumb, stats grid, and link to short positions page if available
+- Created `/analyser/bank/[slug]` bank profile page — breadcrumb navigation added
+- Added `getCachedPublicAnalystReportsByCompany`, `getCachedAnalystCompanies` to `analyst-db.ts`
+- Changed `companyName` filter in `getPublicAnalystReports` from `LIKE` to exact `=` match
 - Tailwind dark: overrides in `globals.css` remap all gray/colored utilities to navy palette — full visual consistency across every page
 - Site-wide premium navy-dark design with gold accent, Inter + JetBrains Mono fonts
 - Client-side `<SiteNav />` component with `usePathname()` active state and pill-style hover
@@ -151,4 +158,14 @@ All user-facing text is in Norwegian (nb). Key terms:
 ### Known state
 - 431 reports imported in DB, 5 whitelisted domains configured
 - Gmail POP3 must be set to "Enable POP for all mail" in Gmail settings to expose all historical emails
-- Next step: process imported reports via "Behandle" to populate /analyser page
+
+### Recently completed (cont.)
+- **Company page (`/[ticker]`) revamp** — full redesign with navy-dark theme:
+  - Hero: prominent h1 company name, ticker badge, stock price, ISIN
+  - Stats grid (4 cards): total short %, stock price + 52-week, insider activity, analyst consensus
+  - Short position history chart restyled with `--an-*` CSS vars
+  - Two-column grid (desktop) / stacked (mobile): positions table (left 3/5) + analyst reports + insider trades + company info (right 2/5)
+  - Insider-only fallback with same layout minus short-specific sections
+  - All entities clickable with gold hover, `RecommendationBadge`, `an-stat-accent`, `an-table-row` patterns
+  - Removed all old gray Tailwind classes, uses CSS variables directly via `style={}` props
+  - Dates use `formatDateShort()` (DD.MM format) in compact panels

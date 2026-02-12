@@ -3,14 +3,13 @@ import { getCompanyInsiderTrades } from "@/lib/insider-data";
 import { getCachedPublicAnalystReports, initializeAnalystDatabase } from "@/lib/analyst-db";
 import { getTicker } from "@/lib/tickers";
 import { fetchStockQuotes, StockQuote } from "@/lib/prices";
-import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume } from "@/lib/utils";
+import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume, formatDateShort } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { TrendingDown, Briefcase, Calendar, Users, TrendingUp, Banknote, ArrowUpRight, ArrowDownRight, ExternalLink, BarChart2, Activity, Building2, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import { LazyShortChart } from "@/components/lazy-short-chart";
 
-export const revalidate = 3600; // Cache for 1 hour
+export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ ticker: string }>;
@@ -23,7 +22,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     getCompanyInsiderTrades(ticker),
   ]);
 
-  // Company with short positions
   if (company) {
     return {
       title: `${company.issuerName} - Shortposisjoner | Listr`,
@@ -35,7 +33,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // Company with only insider trades
   if (insiderTrades.length > 0) {
     const companyName = insiderTrades[0].issuerName;
     return {
@@ -51,6 +48,51 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return { title: "Ikke funnet - Listr" };
 }
 
+function RecommendationBadge({ recommendation }: { recommendation?: string }) {
+  if (!recommendation) return null;
+
+  const rec = recommendation.toLowerCase();
+
+  const labels: Record<string, string> = {
+    buy: "Kjøp",
+    hold: "Hold",
+    sell: "Selg",
+    overweight: "Overvekt",
+    underweight: "Undervekt",
+    outperform: "Outperform",
+    underperform: "Underperform",
+  };
+
+  let colorStyle: React.CSSProperties;
+  if (rec === "buy" || rec === "overweight" || rec === "outperform") {
+    colorStyle = {
+      color: "var(--an-green)",
+      background: "var(--an-green-bg)",
+      borderColor: "var(--an-green-border)",
+    };
+  } else if (rec === "sell" || rec === "underweight" || rec === "underperform") {
+    colorStyle = {
+      color: "var(--an-red)",
+      background: "var(--an-red-bg)",
+      borderColor: "var(--an-red-border)",
+    };
+  } else {
+    colorStyle = {
+      color: "var(--an-amber)",
+      background: "var(--an-amber-bg)",
+      borderColor: "var(--an-amber-border)",
+    };
+  }
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-[3px] rounded border tracking-wide"
+      style={colorStyle}
+    >
+      {labels[rec] || recommendation}
+    </span>
+  );
+}
 
 export default async function CompanyPage({ params }: PageProps) {
   const { ticker } = await params;
@@ -59,19 +101,34 @@ export default async function CompanyPage({ params }: PageProps) {
     getCompanyInsiderTrades(ticker),
   ]);
 
-  // No data at all - 404
   if (!company && insiderTrades.length === 0) {
     notFound();
   }
 
-  // Ensure analyst tables exist and get reports for this company
   await initializeAnalystDatabase();
   const companyName = company?.issuerName || insiderTrades[0]?.issuerName;
   const companyIsin = company?.isin || insiderTrades[0]?.isin;
   const analystReports = await getCachedPublicAnalystReports({
-    limit: 5,
+    limit: 10,
     companyIsin: companyIsin || undefined,
   });
+  const filteredReports = analystReports.filter(
+    (r) => r.companyName || r.recommendation || r.targetPrice
+  );
+
+  // Analyst consensus
+  const recCounts = { buy: 0, hold: 0, sell: 0 };
+  for (const r of filteredReports) {
+    const rec = r.recommendation?.toLowerCase();
+    if (rec === "buy" || rec === "overweight" || rec === "outperform") recCounts.buy++;
+    else if (rec === "sell" || rec === "underweight" || rec === "underperform") recCounts.sell++;
+    else if (rec === "hold") recCounts.hold++;
+  }
+  const recTotal = recCounts.buy + recCounts.hold + recCounts.sell;
+
+  // Insider stats
+  const buyTrades = insiderTrades.filter((t) => t.tradeType === "buy").length;
+  const sellTrades = insiderTrades.filter((t) => t.tradeType === "sell").length;
 
   // Company with short positions data
   if (company) {
@@ -83,345 +140,566 @@ export default async function CompanyPage({ params }: PageProps) {
     const changePositive = change > 0;
 
     return (
-      <div>
-        <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Compact Stats */}
-        <div className="flex flex-wrap gap-4 text-sm mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-gray-400" />
-                <span className="font-medium">{company.positions.length}</span>
-                <span className="text-gray-500">aktører</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <TrendingDown className="w-4 h-4 text-red-500" />
-                <span className="font-medium font-mono">
-                  {formatNumber(company.positions.reduce((sum, p) => sum + p.positionShares, 0))}
-                </span>
-                <span className="text-gray-500">aksjer</span>
-              </div>
-              {company.shortValue && (
-                <div className="flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-blue-500" />
-                  <span className="font-medium font-mono">{formatNOK(company.shortValue)}</span>
-                </div>
-              )}
-              {company.regularMarketVolume && (
-                <div className="flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4 text-purple-500" />
-                  <span className="font-medium font-mono">{formatVolume(company.regularMarketVolume)}</span>
-                  <span className="text-gray-500">volum</span>
-                </div>
-              )}
-              {company.fiftyTwoWeekLow !== null && company.fiftyTwoWeekHigh !== null && (
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-orange-500" />
-                  <span className="font-medium font-mono">
-                    {company.fiftyTwoWeekLow.toFixed(2)} - {company.fiftyTwoWeekHigh.toFixed(2)}
-                  </span>
-                  <span className="text-gray-500">52-uke</span>
-                </div>
-              )}
-              {hasHistory && (
-                <div className="flex items-center gap-2">
-                  {changePositive ? (
-                    <TrendingUp className="w-4 h-4 text-red-500" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4 text-green-500" />
-                  )}
-                  <span className={`font-medium font-mono ${changePositive ? "text-red-600" : "text-green-600"}`}>
-                    {changePositive ? "+" : ""}{change.toFixed(2)}%
-                  </span>
-                  <span className="text-gray-500">totalt</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-500">{formatDate(company.latestDate)}</span>
-              </div>
-              {company.ticker && (
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-gray-400" />
-                  <span className="font-mono text-gray-500">{company.ticker.replace(".OL", "")}</span>
-                  <span className="text-gray-400">Oslo Børs</span>
-                </div>
-              )}
-            </div>
+      <div className="max-w-[1120px] mx-auto px-6">
+        {/* Hero */}
+        <div className="pt-8 pb-6">
+          <h1 className="text-[26px] font-bold tracking-tight mb-2">
+            {company.issuerName}
+          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            {company.ticker && (
+              <span
+                className="text-[13px] mono font-medium px-2.5 py-1 rounded border"
+                style={{
+                  color: "var(--an-text-secondary)",
+                  borderColor: "var(--an-border)",
+                  background: "var(--an-bg-surface)",
+                }}
+              >
+                {company.ticker.replace(".OL", "")}
+              </span>
+            )}
+            {company.stockPrice && (
+              <span
+                className="text-[15px] mono font-semibold"
+                style={{ color: "var(--an-text-primary)" }}
+              >
+                {company.stockPrice.toFixed(2)} NOK
+              </span>
+            )}
+            {company.isin && (
+              <span
+                className="text-[12px] mono"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                {company.isin}
+              </span>
+            )}
+          </div>
+        </div>
 
-        {/* Historical Chart */}
-        {company.history.length > 1 && (
-          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-4">
-            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
-              <h2 className="font-semibold text-sm">Historikk</h2>
-              <span className="text-xs text-gray-500">{company.history.length} datapunkter</span>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Total short */}
+          <div
+            className="an-stat-accent rounded-lg p-4 border"
+            style={{ borderColor: "var(--an-border)" }}
+          >
+            <div
+              className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono"
+              style={{ color: "var(--an-accent)" }}
+            >
+              {formatPercent(company.totalShortPct)}
             </div>
-            <div className="p-3">
+            <div
+              className="text-xs font-medium"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Total short
+            </div>
+            {hasHistory && (
+              <div
+                className="text-[11px] mono mt-1"
+                style={{ color: changePositive ? "var(--an-red)" : "var(--an-green)" }}
+              >
+                {changePositive ? "+" : ""}{change.toFixed(2)}%
+              </div>
+            )}
+          </div>
+
+          {/* Stock price + 52-week */}
+          <div
+            className="rounded-lg p-4 border"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+              {company.stockPrice ? `${company.stockPrice.toFixed(2)}` : "-"}
+            </div>
+            <div
+              className="text-xs font-medium"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Aksjekurs (NOK)
+            </div>
+            {company.fiftyTwoWeekLow !== null && company.fiftyTwoWeekHigh !== null && (
+              <div
+                className="text-[11px] mono mt-1"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                52u: {company.fiftyTwoWeekLow.toFixed(2)} – {company.fiftyTwoWeekHigh.toFixed(2)}
+              </div>
+            )}
+          </div>
+
+          {/* Insider activity */}
+          <div
+            className="rounded-lg p-4 border"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+              {insiderTrades.length}
+            </div>
+            <div
+              className="text-xs font-medium"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Innsidehandler
+            </div>
+            {(buyTrades > 0 || sellTrades > 0) && (
+              <div className="text-[11px] mt-1 flex gap-2">
+                {buyTrades > 0 && (
+                  <span style={{ color: "var(--an-green)" }}>{buyTrades} kjøp</span>
+                )}
+                {sellTrades > 0 && (
+                  <span style={{ color: "var(--an-red)" }}>{sellTrades} salg</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Analyst consensus */}
+          <div
+            className="rounded-lg p-4 border"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+              {filteredReports.length}
+            </div>
+            <div
+              className="text-xs font-medium"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Analytikerrapporter
+            </div>
+            {recTotal > 0 && (
+              <div className="text-[11px] mt-1 flex gap-2">
+                {recCounts.buy > 0 && (
+                  <span style={{ color: "var(--an-green)" }}>{recCounts.buy} kjøp</span>
+                )}
+                {recCounts.hold > 0 && (
+                  <span style={{ color: "var(--an-amber)" }}>{recCounts.hold} hold</span>
+                )}
+                {recCounts.sell > 0 && (
+                  <span style={{ color: "var(--an-red)" }}>{recCounts.sell} selg</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* History Chart */}
+        {company.history.length > 1 && (
+          <div
+            className="rounded-lg overflow-hidden border mt-3"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div
+              className="px-[18px] py-3 border-b flex items-center justify-between"
+              style={{ borderColor: "var(--an-border)" }}
+            >
+              <span
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: "var(--an-text-secondary)" }}
+              >
+                Historikk
+              </span>
+              <span
+                className="text-[11px]"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                {company.history.length} datapunkter
+              </span>
+            </div>
+            <div className="p-4">
               <LazyShortChart history={company.history} companyName={company.issuerName} />
             </div>
           </div>
         )}
 
-        {/* Positions table */}
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-            <h2 className="font-semibold text-sm">Posisjoner</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" aria-label={`Shortposisjoner i ${company.issuerName}`}>
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800">
-                  <th scope="col" className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                    Posisjonsholder
-                  </th>
-                  <th scope="col" className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                    Posisjon
-                  </th>
-                  <th scope="col" className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
-                    Aksjer
-                  </th>
-                  <th scope="col" className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
-                    Verdi
-                  </th>
-                  <th scope="col" className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                    Dato
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {company.positions.map((position, index) => (
-                  <tr
-                    key={`${position.positionHolder}-${index}`}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                  >
-                    <td className="px-3 py-2">
-                      <Link
-                        href={`/aktor/${slugify(position.positionHolder)}`}
-                        className="flex items-center gap-2 hover:underline"
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-3 mb-10">
+          {/* Left: Positions table (3/5 width) */}
+          <div className="lg:col-span-3">
+            <div
+              className="rounded-lg overflow-hidden border"
+              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+            >
+              <div
+                className="px-[18px] py-3 border-b flex items-center justify-between"
+                style={{ borderColor: "var(--an-border)" }}
+              >
+                <span
+                  className="text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--an-text-secondary)" }}
+                >
+                  Posisjoner
+                </span>
+                <span
+                  className="text-[11px]"
+                  style={{ color: "var(--an-text-muted)" }}
+                >
+                  {company.positions.length} aktører
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th
+                        className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
                       >
-                        <Briefcase className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                        <span className="font-medium truncate">{position.positionHolder}</span>
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <span className="font-mono font-medium text-red-600 dark:text-red-400">
-                        {formatPercent(position.positionPct)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right text-gray-500 font-mono hidden sm:table-cell">
-                      {formatNumber(position.positionShares)}
-                    </td>
-                    <td className="px-3 py-2 text-right text-gray-500 font-mono hidden lg:table-cell">
-                      {company.stockPrice
-                        ? formatNOK(position.positionShares * company.stockPrice)
-                        : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-right text-gray-500">
-                      {formatDate(position.positionDate)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Company Info */}
-        {company.ticker && (
-          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
-            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-              <h2 className="font-semibold text-sm">Selskapsinfo</h2>
+                        Posisjonsholder
+                      </th>
+                      <th
+                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "90px" }}
+                      >
+                        Posisjon
+                      </th>
+                      <th
+                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden sm:table-cell"
+                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                      >
+                        Aksjer
+                      </th>
+                      <th
+                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden lg:table-cell"
+                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                      >
+                        Verdi
+                      </th>
+                      <th
+                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
+                      >
+                        Dato
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {company.positions.map((position, i) => (
+                      <tr
+                        key={`${position.positionHolder}-${i}`}
+                        className="an-table-row transition-colors"
+                        style={{
+                          borderBottom: i < company.positions.length - 1
+                            ? "1px solid var(--an-border-subtle)"
+                            : "none",
+                        }}
+                      >
+                        <td className="px-[18px] py-3">
+                          <Link
+                            href={`/aktor/${slugify(position.positionHolder)}`}
+                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                            style={{ color: "var(--an-text-primary)" }}
+                          >
+                            {position.positionHolder}
+                          </Link>
+                        </td>
+                        <td className="px-[18px] py-3 text-right">
+                          <span
+                            className="mono text-[13px] font-semibold"
+                            style={{ color: "var(--an-red)" }}
+                          >
+                            {formatPercent(position.positionPct)}
+                          </span>
+                        </td>
+                        <td
+                          className="px-[18px] py-3 text-right mono text-[13px] hidden sm:table-cell"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          {formatNumber(position.positionShares)}
+                        </td>
+                        <td
+                          className="px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          {company.stockPrice
+                            ? formatNOK(position.positionShares * company.stockPrice)
+                            : "-"}
+                        </td>
+                        <td
+                          className="px-[18px] py-3 text-right text-xs"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          {formatDateShort(position.positionDate)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <div className="text-gray-500 dark:text-gray-400">Ticker</div>
-                <div className="font-mono font-medium">{company.ticker.replace(".OL", "")}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 dark:text-gray-400">Markedsplass</div>
-                <div className="font-medium">Oslo Børs</div>
-              </div>
-              {company.stockPrice && (
+          </div>
+
+          {/* Right: Analyst + Insider panels (2/5 width) */}
+          <div className="lg:col-span-2 flex flex-col gap-3">
+            {/* Analyst Reports Panel */}
+            {filteredReports.length > 0 && (
+              <div
+                className="rounded-lg overflow-hidden border"
+                style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+              >
+                <div
+                  className="px-[18px] py-3 border-b flex items-center justify-between"
+                  style={{ borderColor: "var(--an-border)" }}
+                >
+                  <span
+                    className="text-xs font-semibold uppercase tracking-wider"
+                    style={{ color: "var(--an-text-secondary)" }}
+                  >
+                    Analytikerrapporter
+                  </span>
+                  <Link
+                    href="/analyser"
+                    className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                    style={{ color: "var(--an-text-muted)" }}
+                  >
+                    Se alle
+                  </Link>
+                </div>
                 <div>
-                  <div className="text-gray-500 dark:text-gray-400">Aksjekurs</div>
-                  <div className="font-mono font-medium">{company.stockPrice.toFixed(2)} NOK</div>
+                  {filteredReports.slice(0, 5).map((report, i) => (
+                    <div
+                      key={report.recommendationId}
+                      className="an-table-row px-[18px] py-3 transition-colors"
+                      style={{
+                        borderBottom: i < Math.min(filteredReports.length, 5) - 1
+                          ? "1px solid var(--an-border-subtle)"
+                          : "none",
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          {report.investmentBank ? (
+                            <Link
+                              href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                              className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
+                              style={{ color: "var(--an-text-primary)" }}
+                            >
+                              {report.investmentBank}
+                            </Link>
+                          ) : (
+                            <span
+                              className="text-[13px]"
+                              style={{ color: "var(--an-text-muted)" }}
+                            >
+                              Ukjent bank
+                            </span>
+                          )}
+                          <span
+                            className="text-[11px]"
+                            style={{ color: "var(--an-text-muted)" }}
+                          >
+                            {formatDateShort(report.receivedDate)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <RecommendationBadge recommendation={report.recommendation} />
+                          {report.targetPrice && (
+                            <span
+                              className="mono text-[12px] font-medium select-none blur-[5px]"
+                              style={{ color: "var(--an-text-secondary)" }}
+                            >
+                              {formatNumber(report.targetPrice)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Insider Trades Panel */}
+            <div
+              className="rounded-lg overflow-hidden border"
+              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+            >
+              <div
+                className="px-[18px] py-3 border-b flex items-center justify-between"
+                style={{ borderColor: "var(--an-border)" }}
+              >
+                <span
+                  className="text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--an-text-secondary)" }}
+                >
+                  Innsidehandel
+                </span>
+                <Link
+                  href="/innsidehandel"
+                  className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                  style={{ color: "var(--an-text-muted)" }}
+                >
+                  Se alle
+                </Link>
+              </div>
+              {insiderTrades.length > 0 ? (
+                <div>
+                  {insiderTrades.slice(0, 5).map((trade, i) => (
+                    <div
+                      key={trade.messageId}
+                      className="an-table-row px-[18px] py-3 transition-colors"
+                      style={{
+                        borderBottom: i < Math.min(insiderTrades.length, 5) - 1
+                          ? "1px solid var(--an-border-subtle)"
+                          : "none",
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          {trade.insiderName !== trade.issuerName ? (
+                            <Link
+                              href={`/innsidehandel/${trade.insiderSlug}`}
+                              className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
+                              style={{ color: "var(--an-text-primary)" }}
+                            >
+                              {trade.insiderName}
+                            </Link>
+                          ) : (
+                            <span
+                              className="text-[13px]"
+                              style={{ color: "var(--an-text-muted)" }}
+                            >
+                              -
+                            </span>
+                          )}
+                          <div className="flex items-center gap-2">
+                            {trade.insiderRole && (
+                              <span
+                                className="text-[11px]"
+                                style={{ color: "var(--an-text-muted)" }}
+                              >
+                                {trade.insiderRole}
+                              </span>
+                            )}
+                            <span
+                              className="text-[11px]"
+                              style={{ color: "var(--an-text-muted)" }}
+                            >
+                              {formatDateShort(trade.tradeDate)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {trade.tradeType === "buy" ? (
+                            <span
+                              className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+                              style={{
+                                color: "var(--an-green)",
+                                background: "var(--an-green-bg)",
+                                borderColor: "var(--an-green-border)",
+                              }}
+                            >
+                              Kjøp
+                            </span>
+                          ) : trade.tradeType === "sell" ? (
+                            <span
+                              className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+                              style={{
+                                color: "var(--an-red)",
+                                background: "var(--an-red-bg)",
+                                borderColor: "var(--an-red-border)",
+                              }}
+                            >
+                              Salg
+                            </span>
+                          ) : (
+                            <span
+                              className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+                              style={{
+                                color: "var(--an-text-muted)",
+                                background: "var(--an-bg-raised)",
+                                borderColor: "var(--an-border)",
+                              }}
+                            >
+                              Annet
+                            </span>
+                          )}
+                          {trade.totalValue && (
+                            <span
+                              className="mono text-[12px]"
+                              style={{ color: "var(--an-text-muted)" }}
+                            >
+                              {formatNOK(trade.totalValue)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className="px-[18px] py-8 text-center text-[13px]"
+                  style={{ color: "var(--an-text-muted)" }}
+                >
+                  Ingen innsidehandler registrert
                 </div>
               )}
-              <div>
-                <div className="text-gray-500 dark:text-gray-400">ISIN</div>
-                <div className="font-mono text-xs">{company.isin}</div>
+            </div>
+
+            {/* Company Info Card */}
+            <div
+              className="rounded-lg overflow-hidden border"
+              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+            >
+              <div
+                className="px-[18px] py-3 border-b"
+                style={{ borderColor: "var(--an-border)" }}
+              >
+                <span
+                  className="text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--an-text-secondary)" }}
+                >
+                  Selskapsinfo
+                </span>
+              </div>
+              <div className="px-[18px] py-4 grid grid-cols-2 gap-4 text-[13px]">
+                {company.ticker && (
+                  <div>
+                    <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Ticker</div>
+                    <div className="mono font-medium">{company.ticker.replace(".OL", "")}</div>
+                  </div>
+                )}
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Markedsplass</div>
+                  <div className="font-medium">Oslo Børs</div>
+                </div>
+                {company.regularMarketVolume && (
+                  <div>
+                    <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Daglig volum</div>
+                    <div className="mono font-medium">{formatVolume(company.regularMarketVolume)}</div>
+                  </div>
+                )}
+                {company.shortValue && (
+                  <div>
+                    <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Short verdi</div>
+                    <div className="mono font-medium">{formatNOK(company.shortValue)}</div>
+                  </div>
+                )}
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Siste oppdatering</div>
+                  <div>{formatDate(company.latestDate)}</div>
+                </div>
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">ISIN</div>
+                  <div className="mono text-[11px]">{company.isin}</div>
+                </div>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Insider Trades Section */}
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950 flex items-center justify-between">
-            <h2 className="font-semibold text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Innsidehandel
-            </h2>
-            <Link
-              href="/innsidehandel"
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              Se alle
-            </Link>
-          </div>
-          {insiderTrades.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-800">
-                    <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                      Dato
-                    </th>
-                    <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                      Innsider
-                    </th>
-                    <th className="text-center px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                      Type
-                    </th>
-                    <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
-                      Aksjer
-                    </th>
-                    <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                      Kilde
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {insiderTrades.slice(0, 5).map((trade) => (
-                    <tr
-                      key={trade.messageId}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                    >
-                      <td className="px-3 py-2 text-gray-500">
-                        {formatDate(trade.tradeDate)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {trade.insiderName !== trade.issuerName ? (
-                          <Link
-                            href={`/innsidehandel/${trade.insiderSlug}`}
-                            className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline truncate block max-w-[150px]"
-                          >
-                            {trade.insiderName}
-                          </Link>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                        {trade.insiderRole && (
-                          <div className="text-xs text-gray-500">{trade.insiderRole}</div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        {trade.tradeType === "buy" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                            <ArrowUpRight className="w-3 h-3" />
-                            Kjøp
-                          </span>
-                        ) : trade.tradeType === "sell" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                            <ArrowDownRight className="w-3 h-3" />
-                            Salg
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                            Annet
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-gray-500 hidden sm:table-cell">
-                        {trade.shares ? formatNumber(trade.shares) : "-"}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <a
-                          href={trade.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                        >
-                          <ExternalLink className="w-3 h-3" aria-hidden="true" />
-                          <span className="sr-only">Vis kilde</span>
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-              <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Ingen innsidehandler registrert</p>
-            </div>
-          )}
-        </div>
-
-        {/* Analyst Reports Section */}
-        {analystReports.length > 0 && (
-          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mt-4">
-            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-purple-50 dark:bg-purple-950 flex items-center justify-between">
-              <h2 className="font-semibold text-sm text-purple-900 dark:text-purple-100 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Analytikerrapporter
-              </h2>
-              <Link
-                href="/analyser"
-                className="text-xs text-purple-600 dark:text-purple-400 hover:underline"
-              >
-                Se alle
-              </Link>
-            </div>
-            <div className="divide-y divide-gray-200 dark:divide-gray-800">
-              {analystReports.map((report) => (
-                <div
-                  key={report.recommendationId}
-                  className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium">{report.investmentBank || "Ukjent bank"}</div>
-                      {report.summary && (
-                        <div className="text-xs text-gray-500 truncate max-w-sm mt-0.5">{report.summary}</div>
-                      )}
-                    </div>
-                    <div className="text-right flex-shrink-0 ml-4">
-                      {report.recommendation && (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          report.recommendation === "buy" || report.recommendation === "overweight" || report.recommendation === "outperform"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : report.recommendation === "sell" || report.recommendation === "underweight" || report.recommendation === "underperform"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-                        }`}>
-                          {report.recommendation === "buy" ? "Kjøp" :
-                           report.recommendation === "sell" ? "Selg" :
-                           report.recommendation === "hold" ? "Hold" :
-                           report.recommendation}
-                        </span>
-                      )}
-                      {report.targetPrice && (
-                        <div className="font-mono text-sm mt-0.5">
-                          {formatNumber(report.targetPrice)} {report.targetCurrency}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
         </div>
       </div>
     );
   }
 
-  // Company with only insider trades (no short positions)
+  // ─── Insider-only fallback (no short positions) ───
   const insiderOnlyCompanyName = insiderTrades[0].issuerName;
   const isin = insiderTrades[0].isin;
 
-  // Try to get ticker from trades or look it up
   let tickerSymbol = insiderTrades[0].ticker;
   if (!tickerSymbol && isin) {
     tickerSymbol = getTicker(isin, insiderOnlyCompanyName);
@@ -430,7 +708,6 @@ export default async function CompanyPage({ params }: PageProps) {
     tickerSymbol = getTicker("", insiderOnlyCompanyName);
   }
 
-  // Fetch stock data if we have a ticker
   let stockQuote: StockQuote | null = null;
   if (tickerSymbol) {
     const quotes = await fetchStockQuotes([tickerSymbol]);
@@ -438,153 +715,417 @@ export default async function CompanyPage({ params }: PageProps) {
   }
 
   return (
-    <div>
-      <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Company title */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">{insiderOnlyCompanyName}</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-            Ingen aktive shortposisjoner registrert
-          </p>
-        </div>
-
-        {/* Company Info */}
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-4">
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-            <h2 className="font-semibold text-sm">Selskapsinfo</h2>
-          </div>
-          <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            {tickerSymbol && (
-              <>
-                <div>
-                  <div className="text-gray-500 dark:text-gray-400">Ticker</div>
-                  <div className="font-mono font-medium">{tickerSymbol.replace(".OL", "")}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500 dark:text-gray-400">Markedsplass</div>
-                  <div className="font-medium">Oslo Børs</div>
-                </div>
-              </>
-            )}
-            {stockQuote?.price && (
-              <div>
-                <div className="text-gray-500 dark:text-gray-400">Aksjekurs</div>
-                <div className="font-mono font-medium">{stockQuote.price.toFixed(2)} NOK</div>
-              </div>
-            )}
-            {stockQuote?.fiftyTwoWeekLow && stockQuote?.fiftyTwoWeekHigh && (
-              <div>
-                <div className="text-gray-500 dark:text-gray-400">52-uke</div>
-                <div className="font-mono font-medium">{stockQuote.fiftyTwoWeekLow.toFixed(2)} - {stockQuote.fiftyTwoWeekHigh.toFixed(2)}</div>
-              </div>
-            )}
-            {isin && (
-              <div>
-                <div className="text-gray-500 dark:text-gray-400">ISIN</div>
-                <div className="font-mono text-xs">{isin}</div>
-              </div>
-            )}
-            {!tickerSymbol && !isin && (
-              <div className="col-span-2 text-gray-400">
-                Ingen markedsdata tilgjengelig
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Insider Trades Section */}
-        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-blue-50 dark:bg-blue-950 flex items-center justify-between">
-            <h2 className="font-semibold text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Innsidehandel ({insiderTrades.length} handler)
-            </h2>
-            <Link
-              href="/innsidehandel"
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+    <div className="max-w-[1120px] mx-auto px-6">
+      {/* Hero */}
+      <div className="pt-8 pb-6">
+        <h1 className="text-[26px] font-bold tracking-tight mb-2">
+          {insiderOnlyCompanyName}
+        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          {tickerSymbol && (
+            <span
+              className="text-[13px] mono font-medium px-2.5 py-1 rounded border"
+              style={{
+                color: "var(--an-text-secondary)",
+                borderColor: "var(--an-border)",
+                background: "var(--an-bg-surface)",
+              }}
             >
-              Se alle
-            </Link>
+              {tickerSymbol.replace(".OL", "")}
+            </span>
+          )}
+          {stockQuote?.price && (
+            <span
+              className="text-[15px] mono font-semibold"
+              style={{ color: "var(--an-text-primary)" }}
+            >
+              {stockQuote.price.toFixed(2)} NOK
+            </span>
+          )}
+          {isin && (
+            <span
+              className="text-[12px] mono"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              {isin}
+            </span>
+          )}
+          <span
+            className="text-[12px] font-medium px-2.5 py-1 rounded-full border"
+            style={{
+              color: "var(--an-text-muted)",
+              borderColor: "var(--an-border)",
+            }}
+          >
+            Ingen aktive shortposisjoner
+          </span>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Stock price */}
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+            {stockQuote?.price ? `${stockQuote.price.toFixed(2)}` : "-"}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800">
-                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                    Dato
-                  </th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                    Innsider
-                  </th>
-                  <th className="text-center px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                    Type
-                  </th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400">
-                    Verdi
-                  </th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">
-                    Kilde
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {insiderTrades.map((trade) => (
-                  <tr
-                    key={trade.messageId}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                  >
-                    <td className="px-3 py-2 text-gray-500">
-                      {formatDate(trade.tradeDate)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {trade.insiderName !== trade.issuerName ? (
-                        <Link
-                          href={`/innsidehandel/${trade.insiderSlug}`}
-                          className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline truncate block max-w-[150px]"
-                        >
-                          {trade.insiderName}
-                        </Link>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                      {trade.insiderRole && (
-                        <div className="text-xs text-gray-500">{trade.insiderRole}</div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {trade.tradeType === "buy" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                          <ArrowUpRight className="w-3 h-3" />
-                          Kjøp
-                        </span>
-                      ) : trade.tradeType === "sell" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                          <ArrowDownRight className="w-3 h-3" />
-                          Salg
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                          Annet
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-sm">
-                      {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-right hidden sm:table-cell">
-                      <a
-                        href={trade.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </td>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Aksjekurs (NOK)
+          </div>
+          {stockQuote?.fiftyTwoWeekLow && stockQuote?.fiftyTwoWeekHigh && (
+            <div
+              className="text-[11px] mono mt-1"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              52u: {stockQuote.fiftyTwoWeekLow.toFixed(2)} – {stockQuote.fiftyTwoWeekHigh.toFixed(2)}
+            </div>
+          )}
+        </div>
+
+        {/* Insider activity */}
+        <div
+          className="an-stat-accent rounded-lg p-4 border"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            style={{ color: "var(--an-accent)" }}
+          >
+            {insiderTrades.length}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Innsidehandler
+          </div>
+          {(buyTrades > 0 || sellTrades > 0) && (
+            <div className="text-[11px] mt-1 flex gap-2">
+              {buyTrades > 0 && (
+                <span style={{ color: "var(--an-green)" }}>{buyTrades} kjøp</span>
+              )}
+              {sellTrades > 0 && (
+                <span style={{ color: "var(--an-red)" }}>{sellTrades} salg</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Analyst reports */}
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+            {filteredReports.length}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Analytikerrapporter
+          </div>
+          {recTotal > 0 && (
+            <div className="text-[11px] mt-1 flex gap-2">
+              {recCounts.buy > 0 && (
+                <span style={{ color: "var(--an-green)" }}>{recCounts.buy} kjøp</span>
+              )}
+              {recCounts.hold > 0 && (
+                <span style={{ color: "var(--an-amber)" }}>{recCounts.hold} hold</span>
+              )}
+              {recCounts.sell > 0 && (
+                <span style={{ color: "var(--an-red)" }}>{recCounts.sell} selg</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Market info */}
+        <div
+          className="rounded-lg p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[20px] font-bold tracking-tight leading-tight mb-0.5 pt-1">
+            {tickerSymbol ? tickerSymbol.replace(".OL", "") : "-"}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Oslo Børs
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-3 mb-10">
+        {/* Left: Insider Trades table (3/5 width) */}
+        <div className="lg:col-span-3">
+          <div
+            className="rounded-lg overflow-hidden border"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div
+              className="px-[18px] py-3 border-b flex items-center justify-between"
+              style={{ borderColor: "var(--an-border)" }}
+            >
+              <span
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: "var(--an-text-secondary)" }}
+              >
+                Innsidehandel
+              </span>
+              <span
+                className="text-[11px]"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                {insiderTrades.length} handler
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th
+                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                      style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
+                    >
+                      Dato
+                    </th>
+                    <th
+                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                      style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
+                    >
+                      Innsider
+                    </th>
+                    <th
+                      className="text-center text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                      style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
+                    >
+                      Type
+                    </th>
+                    <th
+                      className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                      style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                    >
+                      Verdi
+                    </th>
                   </tr>
+                </thead>
+                <tbody>
+                  {insiderTrades.map((trade, i) => (
+                    <tr
+                      key={trade.messageId}
+                      className="an-table-row transition-colors"
+                      style={{
+                        borderBottom: i < insiderTrades.length - 1
+                          ? "1px solid var(--an-border-subtle)"
+                          : "none",
+                      }}
+                    >
+                      <td
+                        className="px-[18px] py-3 text-xs whitespace-nowrap"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(trade.tradeDate)}
+                      </td>
+                      <td className="px-[18px] py-3">
+                        {trade.insiderName !== trade.issuerName ? (
+                          <Link
+                            href={`/innsidehandel/${trade.insiderSlug}`}
+                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate max-w-[200px]"
+                            style={{ color: "var(--an-text-primary)" }}
+                          >
+                            {trade.insiderName}
+                          </Link>
+                        ) : (
+                          <span style={{ color: "var(--an-text-muted)" }}>-</span>
+                        )}
+                        {trade.insiderRole && (
+                          <div
+                            className="text-[11px]"
+                            style={{ color: "var(--an-text-muted)" }}
+                          >
+                            {trade.insiderRole}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-[18px] py-3 text-center">
+                        {trade.tradeType === "buy" ? (
+                          <span
+                            className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+                            style={{
+                              color: "var(--an-green)",
+                              background: "var(--an-green-bg)",
+                              borderColor: "var(--an-green-border)",
+                            }}
+                          >
+                            Kjøp
+                          </span>
+                        ) : trade.tradeType === "sell" ? (
+                          <span
+                            className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+                            style={{
+                              color: "var(--an-red)",
+                              background: "var(--an-red-bg)",
+                              borderColor: "var(--an-red-border)",
+                            }}
+                          >
+                            Salg
+                          </span>
+                        ) : (
+                          <span
+                            className="text-[11px] font-semibold px-2 py-[2px] rounded border"
+                            style={{
+                              color: "var(--an-text-muted)",
+                              background: "var(--an-bg-raised)",
+                              borderColor: "var(--an-border)",
+                            }}
+                          >
+                            Annet
+                          </span>
+                        )}
+                      </td>
+                      <td
+                        className="px-[18px] py-3 text-right mono text-[13px]"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Analyst reports + Company info (2/5 width) */}
+        <div className="lg:col-span-2 flex flex-col gap-3">
+          {/* Analyst Reports Panel */}
+          {filteredReports.length > 0 && (
+            <div
+              className="rounded-lg overflow-hidden border"
+              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+            >
+              <div
+                className="px-[18px] py-3 border-b flex items-center justify-between"
+                style={{ borderColor: "var(--an-border)" }}
+              >
+                <span
+                  className="text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--an-text-secondary)" }}
+                >
+                  Analytikerrapporter
+                </span>
+                <Link
+                  href="/analyser"
+                  className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                  style={{ color: "var(--an-text-muted)" }}
+                >
+                  Se alle
+                </Link>
+              </div>
+              <div>
+                {filteredReports.slice(0, 5).map((report, i) => (
+                  <div
+                    key={report.recommendationId}
+                    className="an-table-row px-[18px] py-3 transition-colors"
+                    style={{
+                      borderBottom: i < Math.min(filteredReports.length, 5) - 1
+                        ? "1px solid var(--an-border-subtle)"
+                        : "none",
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        {report.investmentBank ? (
+                          <Link
+                            href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
+                            style={{ color: "var(--an-text-primary)" }}
+                          >
+                            {report.investmentBank}
+                          </Link>
+                        ) : (
+                          <span
+                            className="text-[13px]"
+                            style={{ color: "var(--an-text-muted)" }}
+                          >
+                            Ukjent bank
+                          </span>
+                        )}
+                        <span
+                          className="text-[11px]"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          {formatDateShort(report.receivedDate)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <RecommendationBadge recommendation={report.recommendation} />
+                        {report.targetPrice && (
+                          <span
+                            className="mono text-[12px] font-medium select-none blur-[5px]"
+                            style={{ color: "var(--an-text-secondary)" }}
+                          >
+                            {formatNumber(report.targetPrice)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          )}
+
+          {/* Company Info Card */}
+          <div
+            className="rounded-lg overflow-hidden border"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div
+              className="px-[18px] py-3 border-b"
+              style={{ borderColor: "var(--an-border)" }}
+            >
+              <span
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: "var(--an-text-secondary)" }}
+              >
+                Selskapsinfo
+              </span>
+            </div>
+            <div className="px-[18px] py-4 grid grid-cols-2 gap-4 text-[13px]">
+              {tickerSymbol && (
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Ticker</div>
+                  <div className="mono font-medium">{tickerSymbol.replace(".OL", "")}</div>
+                </div>
+              )}
+              <div>
+                <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Markedsplass</div>
+                <div className="font-medium">Oslo Børs</div>
+              </div>
+              {stockQuote?.price && (
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Aksjekurs</div>
+                  <div className="mono font-medium">{stockQuote.price.toFixed(2)} NOK</div>
+                </div>
+              )}
+              {isin && (
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">ISIN</div>
+                  <div className="mono text-[11px]">{isin}</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

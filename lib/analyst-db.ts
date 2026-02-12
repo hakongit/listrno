@@ -413,8 +413,8 @@ export async function getPublicAnalystReports(options?: {
   }
 
   if (options?.companyName) {
-    whereClause += ` AND rec.company_name LIKE ?`;
-    args.push(`%${options.companyName}%`);
+    whereClause += ` AND rec.company_name = ?`;
+    args.push(options.companyName);
   }
 
   if (options?.investmentBank) {
@@ -594,5 +594,40 @@ export const getCachedInvestmentBanks = unstable_cache(
 export const getCachedPublicAnalystReportsByBank = unstable_cache(
   async (bankName: string) => getPublicAnalystReports({ limit: 200, investmentBank: bankName }),
   ["public-analyst-reports-by-bank"],
+  { revalidate: 300, tags: ["public-analyst-reports"] }
+);
+
+export const getCachedPublicAnalystReportsByCompany = unstable_cache(
+  async (companyName: string) => getPublicAnalystReports({ limit: 200, companyName }),
+  ["public-analyst-reports-by-company"],
+  { revalidate: 300, tags: ["public-analyst-reports"] }
+);
+
+export interface AnalystCompanySummary {
+  name: string;
+  reportCount: number;
+}
+
+export async function getAnalystCompanies(): Promise<AnalystCompanySummary[]> {
+  const db = getDb();
+  const result = await db.execute(`
+    SELECT rec.company_name as name, COUNT(DISTINCT rec.id) as report_count
+    FROM analyst_recommendations rec
+    JOIN analyst_reports ar ON ar.id = rec.report_id
+    WHERE ar.extraction_status = 'processed'
+      AND rec.company_name IS NOT NULL
+      AND rec.target_price IS NOT NULL
+    GROUP BY rec.company_name
+    ORDER BY report_count DESC
+  `);
+  return result.rows.map((row) => ({
+    name: String(row.name),
+    reportCount: Number(row.report_count),
+  }));
+}
+
+export const getCachedAnalystCompanies = unstable_cache(
+  getAnalystCompanies,
+  ["analyst-companies"],
   { revalidate: 300, tags: ["public-analyst-reports"] }
 );

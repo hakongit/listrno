@@ -1,6 +1,6 @@
 import {
-  getCachedInvestmentBanks,
-  getCachedPublicAnalystReportsByBank,
+  getCachedAnalystCompanies,
+  getCachedPublicAnalystReportsByCompany,
   initializeAnalystDatabase,
 } from "@/lib/analyst-db";
 import { getShortData } from "@/lib/data";
@@ -16,26 +16,26 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-async function resolveBank(slug: string) {
-  const banks = await getCachedInvestmentBanks();
-  return banks.find((b) => slugify(b.name) === slug) ?? null;
+async function resolveCompany(slug: string) {
+  const companies = await getCachedAnalystCompanies();
+  return companies.find((c) => slugify(c.name) === slug) ?? null;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   await initializeAnalystDatabase();
-  const bank = await resolveBank(slug);
+  const company = await resolveCompany(slug);
 
-  if (!bank) {
+  if (!company) {
     return { title: "Ikke funnet - Listr" };
   }
 
   return {
-    title: `${bank.name} - Analytikerrapporter | Listr`,
-    description: `Se alle analytikerrapporter fra ${bank.name}. ${bank.reportCount} rapporter med kursmål for norske aksjer.`,
+    title: `${company.name} - Analytikerrapporter | Listr`,
+    description: `Se alle analytikerrapporter for ${company.name}. ${company.reportCount} rapporter med kursmål fra ledende investeringsbanker.`,
     openGraph: {
-      title: `${bank.name} - Analytikerrapporter`,
-      description: `${bank.reportCount} rapporter med kursmål for norske aksjer`,
+      title: `${company.name} - Analytikerrapporter`,
+      description: `${company.reportCount} rapporter med kursmål fra ledende investeringsbanker`,
     },
   };
 }
@@ -91,46 +91,30 @@ function formatTargetPrice(price?: number, currency?: string): string {
   return `${formatNumber(price)} ${currency || "NOK"}`;
 }
 
-export default async function BankProfilePage({ params }: PageProps) {
+export default async function CompanyProfilePage({ params }: PageProps) {
   const { slug } = await params;
   await initializeAnalystDatabase();
 
-  const [bank, shortData] = await Promise.all([
-    resolveBank(slug),
+  const [company, shortData] = await Promise.all([
+    resolveCompany(slug),
     getShortData(),
   ]);
 
-  if (!bank) {
+  if (!company) {
     notFound();
   }
 
-  const allReports = await getCachedPublicAnalystReportsByBank(bank.name);
+  const allReports = await getCachedPublicAnalystReportsByCompany(company.name);
   const reports = allReports.filter(
     (r) => r.companyName || r.recommendation || r.targetPrice
   );
 
-  // Build ISIN → slug and name → slug maps
-  const isinToSlug = new Map<string, string>();
-  const nameToSlug = new Map<string, string>();
-  for (const company of shortData.companies) {
-    isinToSlug.set(company.isin, company.slug);
-    nameToSlug.set(company.issuerName.toLowerCase(), company.slug);
-  }
-
-  function getCompanyLink(isin?: string, name?: string): string | null {
-    if (isin) {
-      const s = isinToSlug.get(isin);
-      if (s) return `/${s}`;
-    }
-    if (name) {
-      const s = nameToSlug.get(name.toLowerCase());
-      if (s) return `/${s}`;
-    }
-    if (name) {
-      return `/analyser/selskap/${slugify(name)}`;
-    }
-    return null;
-  }
+  // Check if company has a short-data page
+  const shortCompany = shortData.companies.find(
+    (c) => c.issuerName.toLowerCase() === company.name.toLowerCase()
+  ) || shortData.companies.find(
+    (c) => reports.some((r) => r.companyIsin && c.isin === r.companyIsin)
+  );
 
   function getTickerForReport(isin?: string): string | null {
     if (!isin) return null;
@@ -138,10 +122,11 @@ export default async function BankProfilePage({ params }: PageProps) {
   }
 
   // Stats
-  const uniqueCompanies = new Set(
-    reports.map((r) => r.companyName).filter(Boolean)
+  const uniqueBanks = new Set(
+    reports.map((r) => r.investmentBank).filter(Boolean)
   ).size;
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
+  const ticker = reports.length > 0 ? getTickerForReport(reports[0].companyIsin) : null;
 
   return (
     <div className="max-w-[1120px] mx-auto px-6">
@@ -158,8 +143,30 @@ export default async function BankProfilePage({ params }: PageProps) {
           <span style={{ color: "var(--an-text-muted)" }}>/</span>
         </div>
         <h1 className="text-[22px] font-bold tracking-tight mb-1">
-          {bank.name}
+          {company.name}
         </h1>
+        <div className="flex items-center gap-3">
+          {ticker && (
+            <span
+              className="text-[13px] mono"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              {ticker}
+            </span>
+          )}
+          {shortCompany && (
+            <Link
+              href={`/${shortCompany.slug}`}
+              className="text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors hover:text-[var(--an-accent)] hover:border-[var(--an-accent)]"
+              style={{
+                color: "var(--an-text-secondary)",
+                borderColor: "var(--an-border)",
+              }}
+            >
+              Se shortposisjoner
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Stats grid */}
@@ -172,7 +179,7 @@ export default async function BankProfilePage({ params }: PageProps) {
             className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
-            {bank.reportCount}
+            {company.reportCount}
           </div>
           <div
             className="text-xs font-medium"
@@ -189,13 +196,13 @@ export default async function BankProfilePage({ params }: PageProps) {
           }}
         >
           <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
-            {uniqueCompanies}
+            {uniqueBanks}
           </div>
           <div
             className="text-xs font-medium"
             style={{ color: "var(--an-text-secondary)" }}
           >
-            Selskaper dekket
+            Investeringsbanker
           </div>
         </div>
         <div
@@ -249,7 +256,7 @@ export default async function BankProfilePage({ params }: PageProps) {
                       background: "var(--an-bg-surface)",
                     }}
                   >
-                    Selskap
+                    Bank
                   </th>
                   <th
                     className="text-center text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
@@ -287,88 +294,65 @@ export default async function BankProfilePage({ params }: PageProps) {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((report, i) => {
-                  const companyLink = getCompanyLink(
-                    report.companyIsin,
-                    report.companyName
-                  );
-                  const ticker = getTickerForReport(report.companyIsin);
-
-                  return (
-                    <tr
-                      key={report.recommendationId}
-                      className="an-table-row transition-colors"
-                      style={{
-                        borderBottom:
-                          i < reports.length - 1
-                            ? "1px solid var(--an-border-subtle)"
-                            : "none",
-                      }}
+                {reports.map((report, i) => (
+                  <tr
+                    key={report.recommendationId}
+                    className="an-table-row transition-colors"
+                    style={{
+                      borderBottom:
+                        i < reports.length - 1
+                          ? "1px solid var(--an-border-subtle)"
+                          : "none",
+                    }}
+                  >
+                    <td
+                      className="px-[18px] py-3 text-xs whitespace-nowrap"
+                      style={{ color: "var(--an-text-muted)" }}
                     >
-                      <td
-                        className="px-[18px] py-3 text-xs whitespace-nowrap"
-                        style={{ color: "var(--an-text-muted)" }}
-                      >
-                        {formatDateShort(report.receivedDate)}
-                      </td>
-                      <td className="px-[18px] py-3">
-                        {companyLink ? (
-                          <Link
-                            href={companyLink}
-                            className="font-semibold text-[13px] transition-colors hover:text-[var(--an-accent)]"
-                            style={{ color: "var(--an-text-primary)" }}
-                          >
-                            {report.companyName}
-                          </Link>
-                        ) : (
-                          <span
-                            className="font-semibold text-[13px]"
-                            style={{ color: "var(--an-text-primary)" }}
-                          >
-                            {report.companyName || ""}
-                          </span>
-                        )}
-                        {ticker && (
-                          <div
-                            className="text-[11px] mt-px"
-                            style={{ color: "var(--an-text-muted)" }}
-                          >
-                            {ticker}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-[18px] py-3 text-center">
-                        <RecommendationBadge
-                          recommendation={report.recommendation}
-                        />
-                      </td>
-                      <td className="px-[18px] py-3 text-right">
-                        {report.targetPrice ? (
-                          <span
-                            className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
-                            style={{ color: "var(--an-text-secondary)" }}
-                          >
-                            {formatTargetPrice(
-                              report.targetPrice,
-                              report.targetCurrency
-                            )}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-[18px] py-3 text-right hidden lg:table-cell">
-                        {report.priceAtReport ? (
-                          <span
-                            className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
-                            style={{ color: "var(--an-text-secondary)" }}
-                          >
-                            {formatNumber(report.priceAtReport)}{" "}
-                            {report.targetCurrency}
-                          </span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  );
-                })}
+                      {formatDateShort(report.receivedDate)}
+                    </td>
+                    <td className="px-[18px] py-3">
+                      {report.investmentBank ? (
+                        <Link
+                          href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                          className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                          style={{ color: "var(--an-text-primary)" }}
+                        >
+                          {report.investmentBank}
+                        </Link>
+                      ) : null}
+                    </td>
+                    <td className="px-[18px] py-3 text-center">
+                      <RecommendationBadge
+                        recommendation={report.recommendation}
+                      />
+                    </td>
+                    <td className="px-[18px] py-3 text-right">
+                      {report.targetPrice ? (
+                        <span
+                          className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
+                          style={{ color: "var(--an-text-secondary)" }}
+                        >
+                          {formatTargetPrice(
+                            report.targetPrice,
+                            report.targetCurrency
+                          )}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-[18px] py-3 text-right hidden lg:table-cell">
+                      {report.priceAtReport ? (
+                        <span
+                          className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
+                          style={{ color: "var(--an-text-secondary)" }}
+                        >
+                          {formatNumber(report.priceAtReport)}{" "}
+                          {report.targetCurrency}
+                        </span>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

@@ -136,14 +136,19 @@ export default async function AnalystReportsPage() {
     nameToSlug.set(company.issuerName.toLowerCase(), company.slug);
   }
 
-  function getCompanySlug(isin?: string, name?: string): string | null {
+  function getCompanyLink(isin?: string, name?: string): string | null {
+    // First try short-data pages
     if (isin) {
       const slug = isinToSlug.get(isin);
-      if (slug) return slug;
+      if (slug) return `/${slug}`;
     }
     if (name) {
       const slug = nameToSlug.get(name.toLowerCase());
-      if (slug) return slug;
+      if (slug) return `/${slug}`;
+    }
+    // Fall back to analyst company page
+    if (name) {
+      return `/analyser/selskap/${slugify(name)}`;
     }
     return null;
   }
@@ -506,7 +511,7 @@ export default async function AnalystReportsPage() {
               </thead>
               <tbody>
                 {reports.map((report, i) => {
-                  const companySlug = getCompanySlug(
+                  const companyLink = getCompanyLink(
                     report.companyIsin,
                     report.companyName
                   );
@@ -530,9 +535,9 @@ export default async function AnalystReportsPage() {
                         {formatDateShort(report.receivedDate)}
                       </td>
                       <td className="px-[18px] py-3">
-                        {companySlug ? (
+                        {companyLink ? (
                           <Link
-                            href={`/${companySlug}`}
+                            href={companyLink}
                             className="font-semibold text-[13px] transition-colors hover:text-[var(--an-accent)]"
                             style={{ color: "var(--an-text-primary)" }}
                           >
@@ -554,12 +559,22 @@ export default async function AnalystReportsPage() {
                             {ticker}
                           </div>
                         )}
+                        {/* Bank name on mobile */}
+                        {report.investmentBank && (
+                          <Link
+                            href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                            className="text-[11px] mt-0.5 block md:hidden transition-colors hover:text-[var(--an-accent)]"
+                            style={{ color: "var(--an-text-muted)" }}
+                          >
+                            {report.investmentBank}
+                          </Link>
+                        )}
                       </td>
                       <td className="px-[18px] py-3 hidden md:table-cell">
                         {report.investmentBank ? (
                           <Link
                             href={`/analyser/bank/${slugify(report.investmentBank)}`}
-                            className="text-[13px] transition-colors"
+                            className="text-[13px] transition-colors hover:text-[var(--an-accent)]"
                             style={{ color: "var(--an-text-secondary)" }}
                           >
                             {report.investmentBank}

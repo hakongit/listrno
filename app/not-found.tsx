@@ -9,7 +9,12 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="inline-flex items-center justify-center px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+        className="inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors"
+        style={{
+          background: "var(--an-bg-raised)",
+          color: "var(--an-text-primary)",
+          border: "1px solid var(--an-border)",
+        }}
       >
         Tilbake til forsiden
       </Link>

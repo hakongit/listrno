@@ -35,10 +35,10 @@ export function SiteNav() {
             aria-hidden="true"
             className="opacity-90"
           >
-            <rect x="2" y="14" width="4" height="8" rx="1" fill="#4a5568" />
-            <rect x="8" y="9" width="4" height="13" rx="1" fill="#7a8599" />
-            <rect x="14" y="5" width="4" height="17" rx="1" fill="#c9a84c" />
-            <rect x="20" y="2" width="4" height="20" rx="1" fill="#e2e0db" />
+            <rect x="2" y="14" width="4" height="8" rx="1" fill="var(--an-text-muted)" />
+            <rect x="8" y="9" width="4" height="13" rx="1" fill="var(--an-text-secondary)" />
+            <rect x="14" y="5" width="4" height="17" rx="1" fill="var(--an-accent)" />
+            <rect x="20" y="2" width="4" height="20" rx="1" fill="var(--an-text-primary)" />
           </svg>
           <span className="font-bold text-[15px] tracking-tight">
             listr

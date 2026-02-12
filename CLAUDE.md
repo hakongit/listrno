@@ -105,8 +105,9 @@ TURSO_AUTH_TOKEN=...
 The entire site uses a premium navy-dark design with gold accent:
 - **Dark mode**: `class="dark"` on `<html>` activates Tailwind `dark:` variants; `darkMode: "class"` in `tailwind.config.ts`
 - **CSS variables**: `--an-*` custom properties on `:root` in `globals.css` (navy palette, gold accent, muted rec colors)
+- **Tailwind overrides**: CSS rules at the end of `globals.css` remap all Tailwind `dark:` utilities (backgrounds, text, borders, hover, colored accents) to `--an-*` values — this ensures all pages use the navy palette without editing individual files
 - **Fonts**: Inter (`--font-inter`) and JetBrains Mono (`--font-mono`) loaded in root layout via `next/font/google`
-- **Navigation**: `components/site-nav.tsx` (client component) with `usePathname()` for active state, pill-style hover via `.nav-link` CSS
+- **Navigation**: `components/site-nav.tsx` (client component) with `usePathname()` for active state, pill-style hover via `.nav-link` CSS; logo uses CSS variables for colors
 - **Layout**: Root `app/layout.tsx` provides gold accent line (`.an-top-accent`), `<SiteNav />`, main content, and themed footer
 - **Key classes**: `.an-top-accent` (gold gradient), `.an-stat-accent` (gold-tinted card), `.rec-bar-track`/`.rec-bar-fill` (recommendation bars), `.an-table-row` (hover effect), `.mono` (JetBrains Mono)
 
@@ -131,6 +132,7 @@ All user-facing text is in Norwegian (nb). Key terms:
 ## Session Status (2026-02-12)
 
 ### Recently completed
+- Tailwind dark: overrides in `globals.css` remap all gray/colored utilities to navy palette — full visual consistency across every page
 - Site-wide premium navy-dark design with gold accent, Inter + JetBrains Mono fonts
 - Client-side `<SiteNav />` component with `usePathname()` active state and pill-style hover
 - All page inline headers removed — nav, accent line, and footer now in root layout

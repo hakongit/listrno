@@ -138,6 +138,12 @@ export default function AdminDashboardClient({
   const logIdRef = useRef(0);
   const completedRef = useRef(false);
 
+  // Pre-loading: process next email in background while user reviews current one
+  const preloadRef = useRef<{
+    emailId: string;
+    promise: Promise<{ result: ProcessResult; importedEmail?: Partial<EmailItem> } | null>;
+  } | null>(null);
+
   function addLog(level: LogEntry["level"], message: string, detail?: string) {
     const entry: LogEntry = {
       id: logIdRef.current++,
@@ -436,6 +442,8 @@ export default function AdminDashboardClient({
     } finally {
       setProcessing(null);
       setReviewEmail(messageId);
+      // Start pre-loading the next email while user reviews this one
+      preloadNextEmail(messageId);
     }
   }
 
@@ -620,14 +628,109 @@ export default function AdminDashboardClient({
       );
   }
 
+  // Fetch-only version of processEmail (no UI state changes) for pre-loading
+  async function doProcessEmailFetch(
+    email: EmailItem
+  ): Promise<{ result: ProcessResult; importedEmail?: Partial<EmailItem> } | null> {
+    try {
+      if (!email.imported) {
+        const response = await fetch("/api/admin/reports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageId: email.id, autoProcess: true }),
+        });
+        const data = await response.json();
+        if (!response.ok) return null;
+
+        return {
+          result: {
+            emailId: email.id,
+            reportId: data.report?.id,
+            success: !data.extractionFailed,
+            extracted: data.extracted,
+            error: data.extractionError,
+            extractionFailed: data.extractionFailed,
+          },
+          importedEmail: { imported: true, reportId: data.report?.id },
+        };
+      } else {
+        const reportId = email.reportId;
+        if (!reportId) return null;
+
+        const response = await fetch("/api/admin/extraction/reprocess", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reportId }),
+        });
+        const data = await response.json();
+        if (!response.ok) return null;
+
+        return {
+          result: {
+            emailId: email.id,
+            reportId,
+            success: true,
+            extracted: data.extracted,
+          },
+        };
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  function preloadNextEmail(excludeId?: string) {
+    const next = findNextPendingEmail(excludeId);
+    if (!next || preloadRef.current?.emailId === next.id) return;
+
+    const promise = doProcessEmailFetch(next);
+    preloadRef.current = { emailId: next.id, promise };
+  }
+
   async function handleApproveAndNext() {
     const next = findNextPendingEmail(reviewEmail || undefined);
-    if (next) {
-      await processEmail(next.id);
-    } else {
+    if (!next) {
       setReviewEmail(null);
       addLog("success", "Ferdig! Alle e-poster fra godkjente domener er behandlet.");
+      return;
     }
+
+    // Check if we have a preloaded result for this email
+    if (preloadRef.current?.emailId === next.id) {
+      const { promise } = preloadRef.current;
+      preloadRef.current = null;
+
+      const preloaded = await promise;
+      if (preloaded) {
+        const { result, importedEmail } = preloaded;
+
+        // Update emails state if it was imported
+        if (importedEmail) {
+          setEmails((prev) =>
+            prev.map((e) =>
+              e.id === next.id ? { ...e, ...importedEmail } : e
+            )
+          );
+        }
+
+        // Apply the result
+        setProcessResults((prev) => {
+          const nextMap = new Map(prev);
+          nextMap.set(next.id, result);
+          return nextMap;
+        });
+
+        setReviewEmail(next.id);
+        refreshStats();
+
+        // Preload the next one
+        preloadNextEmail(next.id);
+        return;
+      }
+      // If preload failed, fall through to regular processing
+    }
+
+    await processEmail(next.id);
   }
 
   function handleProcessNext() {
@@ -1202,7 +1305,10 @@ export default function AdminDashboardClient({
           key={reviewEmail}
           email={reviewEmailItem}
           processResult={processResults.get(reviewEmail)}
-          onClose={() => setReviewEmail(null)}
+          onClose={() => {
+            preloadRef.current = null;
+            setReviewEmail(null);
+          }}
           onApproveAndNext={handleApproveAndNext}
           onSkipAndNext={async () => {
             const item = reviewEmailItem;

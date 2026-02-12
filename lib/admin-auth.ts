@@ -145,7 +145,7 @@ export async function getSession(): Promise<{ expiresAt: Date } | null> {
 export async function requireAuth(): Promise<{ authenticated: true } | { authenticated: false; redirectTo: string }> {
   const authenticated = await isAuthenticated();
   if (!authenticated) {
-    return { authenticated: false, redirectTo: "/admin" };
+    return { authenticated: false, redirectTo: "/analystatwork" };
   }
   return { authenticated: true };
 }

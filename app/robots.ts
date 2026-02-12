@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/api/"],
+        disallow: ["/analystatwork", "/api/"],
       },
     ],
     sitemap: "https://listr.no/sitemap.xml",

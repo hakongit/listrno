@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
       });
 
       if (response.ok) {
-        router.push("/admin/dashboard");
+        router.push("/analystatwork/dashboard");
       } else {
         const data = await response.json();
         setError(data.error || "Login failed");

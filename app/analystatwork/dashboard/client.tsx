@@ -201,7 +201,7 @@ export default function AdminDashboardClient({
 
   async function handleLogout() {
     await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin");
+    router.push("/analystatwork");
   }
 
   async function fetchEmails() {

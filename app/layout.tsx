@@ -5,16 +5,16 @@ import "./globals.css";
 const GA_MEASUREMENT_ID = "G-VH4R20P5L2";
 
 export const metadata: Metadata = {
-  title: "Listr - Norske shortposisjoner",
+  title: "Listr - Shortposisjoner, innsidehandel og analyser",
   description:
-    "Oversikt over alle shortposisjoner i norske aksjer. Data fra Finanstilsynet, oppdatert daglig.",
-  keywords: ["short", "shortposisjoner", "aksjer", "norge", "finanstilsynet", "børs"],
+    "Shortposisjoner, innsidehandel og analytikerrapporter for norske aksjer. Data fra Finanstilsynet og Euronext Oslo.",
+  keywords: ["short", "shortposisjoner", "innsidehandel", "analytikerrapporter", "aksjer", "norge", "finanstilsynet", "børs"],
   icons: {
     icon: "/icon.svg",
   },
   openGraph: {
-    title: "Listr - Norske shortposisjoner",
-    description: "Oversikt over alle shortposisjoner i norske aksjer",
+    title: "Listr - Shortposisjoner, innsidehandel og analyser",
+    description: "Shortposisjoner, innsidehandel og analytikerrapporter for norske aksjer",
     type: "website",
     locale: "nb_NO",
   },
@@ -61,6 +61,15 @@ export default function RootLayout({
                 className="underline hover:text-gray-700 dark:hover:text-gray-300"
               >
                 Finanstilsynet
+              </a>
+              {" "}og{" "}
+              <a
+                href="https://live.euronext.com/nb/markets/oslo/insider-disclosure"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                Euronext Oslo
               </a>
             </p>
             <p>

@@ -1,5 +1,6 @@
 import { getInsiderPerson, getInsiderTradesByPerson } from "@/lib/insider-data";
 import { formatNumber, formatNOK, slugify, formatDateShort } from "@/lib/utils";
+import { TradeTypeBadge } from "@/components/ui/trade-type-badge";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -29,48 +30,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-function TradeTypeBadge({ type }: { type: string }) {
-  if (type === "buy") {
-    return (
-      <span
-        className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-        style={{
-          color: "var(--an-green)",
-          background: "var(--an-green-bg)",
-          borderColor: "var(--an-green-border)",
-        }}
-      >
-        Kjøp
-      </span>
-    );
-  } else if (type === "sell") {
-    return (
-      <span
-        className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-        style={{
-          color: "var(--an-red)",
-          background: "var(--an-red-bg)",
-          borderColor: "var(--an-red-border)",
-        }}
-      >
-        Salg
-      </span>
-    );
-  }
-  return (
-    <span
-      className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-      style={{
-        color: "var(--an-text-muted)",
-        background: "var(--an-bg-raised)",
-        borderColor: "var(--an-border)",
-      }}
-    >
-      Annet
-    </span>
-  );
-}
-
 export default async function InsiderDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const [insider, trades] = await Promise.all([
@@ -97,7 +56,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-[1120px] mx-auto px-6">
+    <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
       {/* Hero */}
       <div className="pt-8 pb-6">
         <div
@@ -125,7 +84,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
             />
           )}
           <div className="flex-1">
-            <h1 className="text-[26px] font-bold tracking-tight mb-1">
+            <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-1">
               {insider.name}
             </h1>
             <div className="flex flex-wrap items-center gap-3">
@@ -165,11 +124,11 @@ export default async function InsiderDetailPage({ params }: PageProps) {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
-          className="an-stat-accent rounded-lg p-4 border"
+          className="an-stat-accent rounded-lg p-3 sm:p-4 border"
           style={{ borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
             {insider.totalTrades}
@@ -182,11 +141,11 @@ export default async function InsiderDetailPage({ params }: PageProps) {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-green)" }}
           >
             {insider.buyCount}
@@ -207,11 +166,11 @@ export default async function InsiderDetailPage({ params }: PageProps) {
           )}
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-red)" }}
           >
             {insider.sellCount}
@@ -232,10 +191,10 @@ export default async function InsiderDetailPage({ params }: PageProps) {
           )}
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
             {insider.companies.length}
           </div>
           <div
@@ -253,7 +212,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
         style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
       >
         <div
-          className="px-[18px] py-3 border-b"
+          className="px-3 sm:px-[18px] py-3 border-b"
           style={{ borderColor: "var(--an-border)" }}
         >
           <span
@@ -263,7 +222,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
             Selskaper
           </span>
         </div>
-        <div className="px-[18px] py-4 flex flex-wrap gap-2">
+        <div className="px-3 sm:px-[18px] py-4 flex flex-wrap gap-2">
           {insider.companies.map((company) => {
             const companySlug = companySlugMap.get(company) || slugify(company);
             return (
@@ -289,7 +248,7 @@ export default async function InsiderDetailPage({ params }: PageProps) {
         style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
       >
         <div
-          className="px-[18px] py-3 border-b flex items-center justify-between"
+          className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
           style={{ borderColor: "var(--an-border)" }}
         >
           <span
@@ -310,43 +269,43 @@ export default async function InsiderDetailPage({ params }: PageProps) {
             <thead>
               <tr>
                 <th
-                  className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "70px" }}
                 >
                   Dato
                 </th>
                 <th
-                  className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
                 >
                   Selskap
                 </th>
                 <th
-                  className="text-center text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden sm:table-cell"
+                  className="text-center text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden sm:table-cell"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
                 >
                   Type
                 </th>
                 <th
-                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden md:table-cell"
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden md:table-cell"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                 >
                   Aksjer
                 </th>
                 <th
-                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden lg:table-cell"
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden lg:table-cell"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                 >
                   Pris
                 </th>
                 <th
-                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                 >
                   Verdi
                 </th>
                 <th
-                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden sm:table-cell"
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden sm:table-cell"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "40px" }}
                 >
                   <span className="sr-only">Kilde</span>
@@ -365,12 +324,12 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                   }}
                 >
                   <td
-                    className="px-[18px] py-3 text-xs whitespace-nowrap"
+                    className="px-3 sm:px-[18px] py-3 text-xs whitespace-nowrap"
                     style={{ color: "var(--an-text-muted)" }}
                   >
                     {formatDateShort(trade.tradeDate)}
                   </td>
-                  <td className="px-[18px] py-3">
+                  <td className="px-3 sm:px-[18px] py-3">
                     {trade.companySlug ? (
                       <Link
                         href={`/${trade.companySlug}`}
@@ -390,28 +349,28 @@ export default async function InsiderDetailPage({ params }: PageProps) {
                       </span>
                     )}
                   </td>
-                  <td className="px-[18px] py-3 text-center hidden sm:table-cell">
+                  <td className="px-3 sm:px-[18px] py-3 text-center hidden sm:table-cell">
                     <TradeTypeBadge type={trade.tradeType} />
                   </td>
                   <td
-                    className="px-[18px] py-3 text-right mono text-[13px] hidden md:table-cell"
+                    className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden md:table-cell"
                     style={{ color: "var(--an-text-muted)" }}
                   >
                     {trade.shares ? formatNumber(trade.shares) : "-"}
                   </td>
                   <td
-                    className="px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
+                    className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
                     style={{ color: "var(--an-text-muted)" }}
                   >
                     {trade.price ? `${trade.currency} ${trade.price.toFixed(2)}` : "-"}
                   </td>
                   <td
-                    className="px-[18px] py-3 text-right mono text-[13px] whitespace-nowrap"
+                    className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] whitespace-nowrap"
                     style={{ color: "var(--an-text-muted)" }}
                   >
                     {trade.totalValue ? `${trade.currency} ${formatNOK(trade.totalValue)}` : "-"}
                   </td>
-                  <td className="px-[18px] py-3 text-right hidden sm:table-cell">
+                  <td className="px-3 sm:px-[18px] py-3 text-right hidden sm:table-cell">
                     <a
                       href={trade.sourceUrl}
                       target="_blank"

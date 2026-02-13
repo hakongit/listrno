@@ -128,7 +128,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
   }
 
   return (
-    <div className="max-w-[1120px] mx-auto px-6">
+    <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
       {/* Hero */}
       <div className="pt-8 pb-6">
         <div
@@ -144,7 +144,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
           <span className="mx-1.5">/</span>
           <span style={{ color: "var(--an-text-secondary)" }}>Toppliste</span>
         </div>
-        <h1 className="text-[26px] font-bold tracking-tight mb-1">
+        <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-1">
           {category.title}
         </h1>
         <p
@@ -189,7 +189,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
         style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
       >
         <div
-          className="px-[18px] py-3 border-b flex items-center justify-between"
+          className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
           style={{ borderColor: "var(--an-border)" }}
         >
           <span
@@ -213,37 +213,37 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
               <thead>
                 <tr>
                   <th
-                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                     style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "40px" }}
                   >
                     #
                   </th>
                   <th
-                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                     style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
                   >
                     Selskap
                   </th>
                   <th
-                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}
+                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}
                     style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "90px" }}
                   >
                     Short
                   </th>
                   <th
-                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}
+                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}
                     style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                   >
                     Endring
                   </th>
                   <th
-                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}
+                    className={`text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}
                     style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                   >
                     Verdi
                   </th>
                   <th
-                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                     style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "70px" }}
                   >
                     Dato
@@ -264,12 +264,12 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                       }}
                     >
                       <td
-                        className="px-[18px] py-3 text-[13px]"
+                        className="px-3 sm:px-[18px] py-3 text-[13px]"
                         style={{ color: "var(--an-text-muted)" }}
                       >
                         {index + 1}
                       </td>
-                      <td className="px-[18px] py-3">
+                      <td className="px-3 sm:px-[18px] py-3">
                         <Link
                           href={`/${company.slug}`}
                           className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] truncate block"
@@ -278,7 +278,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                           {company.issuerName}
                         </Link>
                       </td>
-                      <td className={`px-[18px] py-3 text-right ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>
+                      <td className={`px-3 sm:px-[18px] py-3 text-right ${kategori !== "hoyest-short" ? "hidden sm:table-cell" : ""}`}>
                         <span
                           className="mono text-[13px] font-semibold"
                           style={{ color: "var(--an-red)" }}
@@ -286,7 +286,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                           {formatPercent(company.totalShortPct)}
                         </span>
                       </td>
-                      <td className={`px-[18px] py-3 text-right ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>
+                      <td className={`px-3 sm:px-[18px] py-3 text-right ${kategori === "storst-okning" || kategori === "storst-nedgang" ? "" : "hidden sm:table-cell"}`}>
                         {displayChange > 0.01 ? (
                           <span
                             className="mono text-[13px] font-semibold"
@@ -305,7 +305,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                           <span style={{ color: "var(--an-text-muted)" }}>-</span>
                         )}
                       </td>
-                      <td className={`px-[18px] py-3 text-right ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>
+                      <td className={`px-3 sm:px-[18px] py-3 text-right ${kategori === "hoyest-verdi" ? "" : "hidden md:table-cell"}`}>
                         <span
                           className="mono text-[13px]"
                           style={{ color: "var(--an-text-muted)" }}
@@ -314,7 +314,7 @@ export default async function TopListPage({ params, searchParams }: PageProps) {
                         </span>
                       </td>
                       <td
-                        className="px-[18px] py-3 text-right text-xs"
+                        className="px-3 sm:px-[18px] py-3 text-right text-xs"
                         style={{ color: "var(--an-text-muted)" }}
                       >
                         {formatDateShort(company.latestDate)}

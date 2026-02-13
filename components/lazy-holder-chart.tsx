@@ -5,7 +5,7 @@ import type { HolderCompanyPosition } from "@/lib/types";
 
 const HolderHistoryChart = dynamic(
   () => import("@/components/holder-history-chart").then(mod => mod.HolderHistoryChart),
-  { ssr: false, loading: () => <div className="h-72 flex items-center justify-center text-gray-400">Laster graf...</div> }
+  { ssr: false, loading: () => <div className="h-72 flex items-center justify-center text-[13px]" style={{ color: "var(--an-text-muted)" }}>Laster graf...</div> }
 );
 
 interface LazyHolderChartProps {

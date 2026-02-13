@@ -194,5 +194,38 @@ All pages now use navy CSS vars (`--an-*`) via `style={}` props:
 - `components/insider-table.tsx` — navy redesign ✓ (removed lucide icons, CSS var badges)
 - `components/searchable-table.tsx` — navy redesign ✓ (inline SVG search icon, CSS var styling)
 
+### Mobile responsive fixes (2026-02-12)
+All pages optimized for iPhone-class screens (~393px):
+- **Nav**: Shortened labels on mobile (Short/Innside/Analyse/Om), `overflow-x-auto no-scrollbar`, `shrink-0` on logo
+- **Page containers**: `px-4 sm:px-6` everywhere (was `px-6`)
+- **Stat cards**: `p-3 sm:p-4`, numbers `text-[20px] sm:text-[26px]`
+- **Table cells**: `px-3 sm:px-[18px]` everywhere (was `px-[18px]`)
+- **Company/holder names**: `truncate` with `max-w-[120px]-[160px] sm:max-w-none` on mobile
+- **Hero sections**: ISIN hidden on mobile (`hidden sm:inline`), reduced gaps and font sizes
+- **Footer**: responsive padding
+- CSS utility `.no-scrollbar` added to `globals.css`
+
 ### Completed: Full site navy redesign
 All pages and shared components now use `--an-*` CSS variables via `style={}` props. No pages remain on old gray Tailwind styling. Lucide icons removed from redesigned components in favor of CSS-based styling and inline SVGs.
+
+### Completed: Consistency pass + shared component extraction (2026-02-12)
+
+Extracted 4 shared UI components and ensured navy theme everywhere:
+
+**Shared components (`components/ui/`):**
+- `trade-type-badge.tsx` — Kjøp/Salg/Annet badge (was duplicated 4×)
+- `recommendation-badge.tsx` — Buy/Hold/Sell analyst badge (was duplicated 4×)
+- `change-indicator.tsx` — Short % change with arrow + date (was duplicated 2× with old Tailwind)
+- `period-selector.tsx` — Chart period buttons with gold accent active state (was duplicated 2×)
+
+**Chart components restyled:**
+- `short-history-chart.tsx` — COLORS const matching CSS vars, PeriodSelector, navy tooltips
+- `holder-history-chart.tsx` — CHART_THEME/LINE_COLORS for dark backgrounds, PeriodSelector, navy tooltips
+- `lazy-short-chart.tsx` / `lazy-holder-chart.tsx` — loading state uses CSS vars
+
+**Pages restyled:**
+- `shortoversikt/page.tsx` — full navy redesign with HighlightCard component, removed lucide icons
+- `short-table.tsx` — full navy redesign with ChangeIndicator, removed local format functions
+- `page.tsx` — added SEO metadata (Metadata export)
+
+**All duplicated components replaced** — single source of truth for each UI pattern

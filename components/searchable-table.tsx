@@ -44,7 +44,7 @@ export function SearchableTable({
     <div>
       {/* Search bar */}
       <div
-        className="px-[18px] py-3 border-b"
+        className="px-3 sm:px-[18px] py-3 border-b"
         style={{ borderColor: "var(--an-border)" }}
       >
         <div className="relative">
@@ -88,7 +88,7 @@ export function SearchableTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div
-          className="px-[18px] py-3 border-t flex items-center justify-between"
+          className="px-3 sm:px-[18px] py-3 border-t flex items-center justify-between"
           style={{ borderColor: "var(--an-border)" }}
         >
           <button

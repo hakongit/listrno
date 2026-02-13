@@ -27,10 +27,10 @@ export default async function InsiderTradesPage() {
   );
 
   return (
-    <div className="max-w-[1120px] mx-auto px-6">
+    <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
       {/* Hero */}
       <div className="pt-8 pb-6">
-        <h1 className="text-[26px] font-bold tracking-tight mb-1">
+        <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-1">
           Innsidehandel
         </h1>
         <p
@@ -44,11 +44,11 @@ export default async function InsiderTradesPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
-          className="an-stat-accent rounded-lg p-4 border"
+          className="an-stat-accent rounded-lg p-3 sm:p-4 border"
           style={{ borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
             {stats.totalTrades}
@@ -61,11 +61,11 @@ export default async function InsiderTradesPage() {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-green)" }}
           >
             {stats.buyCount}
@@ -78,11 +78,11 @@ export default async function InsiderTradesPage() {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-red)" }}
           >
             {stats.sellCount}
@@ -95,10 +95,10 @@ export default async function InsiderTradesPage() {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
             {stats.otherCount}
           </div>
           <div
@@ -117,7 +117,7 @@ export default async function InsiderTradesPage() {
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
           <div
-            className="px-[18px] py-3 border-b flex items-center justify-between"
+            className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
             style={{ borderColor: "var(--an-border)" }}
           >
             <span
@@ -132,7 +132,7 @@ export default async function InsiderTradesPage() {
               <Link
                 key={insider.slug}
                 href={`/innsidehandel/${insider.slug}`}
-                className="an-table-row flex items-center justify-between px-[18px] py-3 transition-colors"
+                className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
                 style={{
                   borderBottom: i < Math.min(realInsiders.length, 5) - 1
                     ? "1px solid var(--an-border-subtle)"

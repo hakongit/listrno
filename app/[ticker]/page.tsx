@@ -8,6 +8,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { LazyShortChart } from "@/components/lazy-short-chart";
+import { TradeTypeBadge } from "@/components/ui/trade-type-badge";
+import { RecommendationBadge } from "@/components/ui/recommendation-badge";
 
 export const revalidate = 3600;
 
@@ -46,52 +48,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return { title: "Ikke funnet - Listr" };
-}
-
-function RecommendationBadge({ recommendation }: { recommendation?: string }) {
-  if (!recommendation) return null;
-
-  const rec = recommendation.toLowerCase();
-
-  const labels: Record<string, string> = {
-    buy: "Kjøp",
-    hold: "Hold",
-    sell: "Selg",
-    overweight: "Overvekt",
-    underweight: "Undervekt",
-    outperform: "Outperform",
-    underperform: "Underperform",
-  };
-
-  let colorStyle: React.CSSProperties;
-  if (rec === "buy" || rec === "overweight" || rec === "outperform") {
-    colorStyle = {
-      color: "var(--an-green)",
-      background: "var(--an-green-bg)",
-      borderColor: "var(--an-green-border)",
-    };
-  } else if (rec === "sell" || rec === "underweight" || rec === "underperform") {
-    colorStyle = {
-      color: "var(--an-red)",
-      background: "var(--an-red-bg)",
-      borderColor: "var(--an-red-border)",
-    };
-  } else {
-    colorStyle = {
-      color: "var(--an-amber)",
-      background: "var(--an-amber-bg)",
-      borderColor: "var(--an-amber-border)",
-    };
-  }
-
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-[3px] rounded border tracking-wide"
-      style={colorStyle}
-    >
-      {labels[rec] || recommendation}
-    </span>
-  );
 }
 
 export default async function CompanyPage({ params }: PageProps) {
@@ -140,16 +96,16 @@ export default async function CompanyPage({ params }: PageProps) {
     const changePositive = change > 0;
 
     return (
-      <div className="max-w-[1120px] mx-auto px-6">
+      <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
         {/* Hero */}
         <div className="pt-8 pb-6">
-          <h1 className="text-[26px] font-bold tracking-tight mb-2">
+          <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-2">
             {company.issuerName}
           </h1>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {company.ticker && (
               <span
-                className="text-[13px] mono font-medium px-2.5 py-1 rounded border"
+                className="text-[12px] sm:text-[13px] mono font-medium px-2 sm:px-2.5 py-1 rounded border"
                 style={{
                   color: "var(--an-text-secondary)",
                   borderColor: "var(--an-border)",
@@ -161,7 +117,7 @@ export default async function CompanyPage({ params }: PageProps) {
             )}
             {company.stockPrice && (
               <span
-                className="text-[15px] mono font-semibold"
+                className="text-[14px] sm:text-[15px] mono font-semibold"
                 style={{ color: "var(--an-text-primary)" }}
               >
                 {company.stockPrice.toFixed(2)} NOK
@@ -169,7 +125,7 @@ export default async function CompanyPage({ params }: PageProps) {
             )}
             {company.isin && (
               <span
-                className="text-[12px] mono"
+                className="text-[11px] sm:text-[12px] mono hidden sm:inline"
                 style={{ color: "var(--an-text-muted)" }}
               >
                 {company.isin}
@@ -182,11 +138,11 @@ export default async function CompanyPage({ params }: PageProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* Total short */}
           <div
-            className="an-stat-accent rounded-lg p-4 border"
+            className="an-stat-accent rounded-lg p-3 sm:p-4 border"
             style={{ borderColor: "var(--an-border)" }}
           >
             <div
-              className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono"
+              className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono"
               style={{ color: "var(--an-accent)" }}
             >
               {formatPercent(company.totalShortPct)}
@@ -209,10 +165,10 @@ export default async function CompanyPage({ params }: PageProps) {
 
           {/* Stock price + 52-week */}
           <div
-            className="rounded-lg p-4 border"
+            className="rounded-lg p-3 sm:p-4 border"
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
-            <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+            <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
               {company.stockPrice ? `${company.stockPrice.toFixed(2)}` : "-"}
             </div>
             <div
@@ -233,10 +189,10 @@ export default async function CompanyPage({ params }: PageProps) {
 
           {/* Insider activity */}
           <div
-            className="rounded-lg p-4 border"
+            className="rounded-lg p-3 sm:p-4 border"
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
-            <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+            <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
               {insiderTrades.length}
             </div>
             <div
@@ -259,10 +215,10 @@ export default async function CompanyPage({ params }: PageProps) {
 
           {/* Analyst consensus */}
           <div
-            className="rounded-lg p-4 border"
+            className="rounded-lg p-3 sm:p-4 border"
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
-            <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+            <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
               {filteredReports.length}
             </div>
             <div
@@ -294,7 +250,7 @@ export default async function CompanyPage({ params }: PageProps) {
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
             <div
-              className="px-[18px] py-3 border-b flex items-center justify-between"
+              className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
               style={{ borderColor: "var(--an-border)" }}
             >
               <span
@@ -325,7 +281,7 @@ export default async function CompanyPage({ params }: PageProps) {
               style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
             >
               <div
-                className="px-[18px] py-3 border-b flex items-center justify-between"
+                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
                 style={{ borderColor: "var(--an-border)" }}
               >
                 <span
@@ -346,31 +302,31 @@ export default async function CompanyPage({ params }: PageProps) {
                   <thead>
                     <tr>
                       <th
-                        className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                        className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                         style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
                       >
                         Posisjonsholder
                       </th>
                       <th
-                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                         style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "90px" }}
                       >
                         Posisjon
                       </th>
                       <th
-                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden sm:table-cell"
+                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden sm:table-cell"
                         style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                       >
                         Aksjer
                       </th>
                       <th
-                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden lg:table-cell"
+                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden lg:table-cell"
                         style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                       >
                         Verdi
                       </th>
                       <th
-                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                         style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
                       >
                         Dato
@@ -388,16 +344,17 @@ export default async function CompanyPage({ params }: PageProps) {
                             : "none",
                         }}
                       >
-                        <td className="px-[18px] py-3">
+                        <td className="px-3 sm:px-[18px] py-3">
                           <Link
                             href={`/aktor/${slugify(position.positionHolder)}`}
-                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] truncate block max-w-[140px] sm:max-w-none"
                             style={{ color: "var(--an-text-primary)" }}
+                            title={position.positionHolder}
                           >
                             {position.positionHolder}
                           </Link>
                         </td>
-                        <td className="px-[18px] py-3 text-right">
+                        <td className="px-3 sm:px-[18px] py-3 text-right">
                           <span
                             className="mono text-[13px] font-semibold"
                             style={{ color: "var(--an-red)" }}
@@ -406,13 +363,13 @@ export default async function CompanyPage({ params }: PageProps) {
                           </span>
                         </td>
                         <td
-                          className="px-[18px] py-3 text-right mono text-[13px] hidden sm:table-cell"
+                          className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden sm:table-cell"
                           style={{ color: "var(--an-text-muted)" }}
                         >
                           {formatNumber(position.positionShares)}
                         </td>
                         <td
-                          className="px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
+                          className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
                           style={{ color: "var(--an-text-muted)" }}
                         >
                           {company.stockPrice
@@ -420,7 +377,7 @@ export default async function CompanyPage({ params }: PageProps) {
                             : "-"}
                         </td>
                         <td
-                          className="px-[18px] py-3 text-right text-xs"
+                          className="px-3 sm:px-[18px] py-3 text-right text-xs"
                           style={{ color: "var(--an-text-muted)" }}
                         >
                           {formatDateShort(position.positionDate)}
@@ -442,7 +399,7 @@ export default async function CompanyPage({ params }: PageProps) {
                 style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
               >
                 <div
-                  className="px-[18px] py-3 border-b flex items-center justify-between"
+                  className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
                   style={{ borderColor: "var(--an-border)" }}
                 >
                   <span
@@ -463,7 +420,7 @@ export default async function CompanyPage({ params }: PageProps) {
                   {filteredReports.slice(0, 5).map((report, i) => (
                     <div
                       key={report.recommendationId}
-                      className="an-table-row px-[18px] py-3 transition-colors"
+                      className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
                       style={{
                         borderBottom: i < Math.min(filteredReports.length, 5) - 1
                           ? "1px solid var(--an-border-subtle)"
@@ -519,7 +476,7 @@ export default async function CompanyPage({ params }: PageProps) {
               style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
             >
               <div
-                className="px-[18px] py-3 border-b flex items-center justify-between"
+                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
                 style={{ borderColor: "var(--an-border)" }}
               >
                 <span
@@ -541,7 +498,7 @@ export default async function CompanyPage({ params }: PageProps) {
                   {insiderTrades.slice(0, 5).map((trade, i) => (
                     <div
                       key={trade.messageId}
-                      className="an-table-row px-[18px] py-3 transition-colors"
+                      className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
                       style={{
                         borderBottom: i < Math.min(insiderTrades.length, 5) - 1
                           ? "1px solid var(--an-border-subtle)"
@@ -584,40 +541,7 @@ export default async function CompanyPage({ params }: PageProps) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          {trade.tradeType === "buy" ? (
-                            <span
-                              className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-                              style={{
-                                color: "var(--an-green)",
-                                background: "var(--an-green-bg)",
-                                borderColor: "var(--an-green-border)",
-                              }}
-                            >
-                              Kjøp
-                            </span>
-                          ) : trade.tradeType === "sell" ? (
-                            <span
-                              className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-                              style={{
-                                color: "var(--an-red)",
-                                background: "var(--an-red-bg)",
-                                borderColor: "var(--an-red-border)",
-                              }}
-                            >
-                              Salg
-                            </span>
-                          ) : (
-                            <span
-                              className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-                              style={{
-                                color: "var(--an-text-muted)",
-                                background: "var(--an-bg-raised)",
-                                borderColor: "var(--an-border)",
-                              }}
-                            >
-                              Annet
-                            </span>
-                          )}
+                          <TradeTypeBadge type={trade.tradeType} />
                           {trade.totalValue && (
                             <span
                               className="mono text-[12px]"
@@ -633,7 +557,7 @@ export default async function CompanyPage({ params }: PageProps) {
                 </div>
               ) : (
                 <div
-                  className="px-[18px] py-8 text-center text-[13px]"
+                  className="px-3 sm:px-[18px] py-8 text-center text-[13px]"
                   style={{ color: "var(--an-text-muted)" }}
                 >
                   Ingen innsidehandler registrert
@@ -647,7 +571,7 @@ export default async function CompanyPage({ params }: PageProps) {
               style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
             >
               <div
-                className="px-[18px] py-3 border-b"
+                className="px-3 sm:px-[18px] py-3 border-b"
                 style={{ borderColor: "var(--an-border)" }}
               >
                 <span
@@ -657,7 +581,7 @@ export default async function CompanyPage({ params }: PageProps) {
                   Selskapsinfo
                 </span>
               </div>
-              <div className="px-[18px] py-4 grid grid-cols-2 gap-4 text-[13px]">
+              <div className="px-3 sm:px-[18px] py-4 grid grid-cols-2 gap-4 text-[13px]">
                 {company.ticker && (
                   <div>
                     <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Ticker</div>
@@ -715,16 +639,16 @@ export default async function CompanyPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-[1120px] mx-auto px-6">
+    <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
       {/* Hero */}
       <div className="pt-8 pb-6">
-        <h1 className="text-[26px] font-bold tracking-tight mb-2">
+        <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-2">
           {insiderOnlyCompanyName}
         </h1>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {tickerSymbol && (
             <span
-              className="text-[13px] mono font-medium px-2.5 py-1 rounded border"
+              className="text-[12px] sm:text-[13px] mono font-medium px-2 sm:px-2.5 py-1 rounded border"
               style={{
                 color: "var(--an-text-secondary)",
                 borderColor: "var(--an-border)",
@@ -736,7 +660,7 @@ export default async function CompanyPage({ params }: PageProps) {
           )}
           {stockQuote?.price && (
             <span
-              className="text-[15px] mono font-semibold"
+              className="text-[14px] sm:text-[15px] mono font-semibold"
               style={{ color: "var(--an-text-primary)" }}
             >
               {stockQuote.price.toFixed(2)} NOK
@@ -744,14 +668,14 @@ export default async function CompanyPage({ params }: PageProps) {
           )}
           {isin && (
             <span
-              className="text-[12px] mono"
+              className="hidden sm:inline text-[12px] mono"
               style={{ color: "var(--an-text-muted)" }}
             >
               {isin}
             </span>
           )}
           <span
-            className="text-[12px] font-medium px-2.5 py-1 rounded-full border"
+            className="text-[11px] sm:text-[12px] font-medium px-2 sm:px-2.5 py-1 rounded-full border"
             style={{
               color: "var(--an-text-muted)",
               borderColor: "var(--an-border)",
@@ -766,10 +690,10 @@ export default async function CompanyPage({ params }: PageProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Stock price */}
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
             {stockQuote?.price ? `${stockQuote.price.toFixed(2)}` : "-"}
           </div>
           <div
@@ -790,11 +714,11 @@ export default async function CompanyPage({ params }: PageProps) {
 
         {/* Insider activity */}
         <div
-          className="an-stat-accent rounded-lg p-4 border"
+          className="an-stat-accent rounded-lg p-3 sm:p-4 border"
           style={{ borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
             {insiderTrades.length}
@@ -819,10 +743,10 @@ export default async function CompanyPage({ params }: PageProps) {
 
         {/* Analyst reports */}
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
             {filteredReports.length}
           </div>
           <div
@@ -848,7 +772,7 @@ export default async function CompanyPage({ params }: PageProps) {
 
         {/* Market info */}
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
           <div className="text-[20px] font-bold tracking-tight leading-tight mb-0.5 pt-1">
@@ -872,7 +796,7 @@ export default async function CompanyPage({ params }: PageProps) {
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
             <div
-              className="px-[18px] py-3 border-b flex items-center justify-between"
+              className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
               style={{ borderColor: "var(--an-border)" }}
             >
               <span
@@ -893,25 +817,25 @@ export default async function CompanyPage({ params }: PageProps) {
                 <thead>
                   <tr>
                     <th
-                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                       style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
                     >
                       Dato
                     </th>
                     <th
-                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                       style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
                     >
                       Innsider
                     </th>
                     <th
-                      className="text-center text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                      className="text-center text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                       style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
                     >
                       Type
                     </th>
                     <th
-                      className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                      className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                       style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                     >
                       Verdi
@@ -930,16 +854,16 @@ export default async function CompanyPage({ params }: PageProps) {
                       }}
                     >
                       <td
-                        className="px-[18px] py-3 text-xs whitespace-nowrap"
+                        className="px-3 sm:px-[18px] py-3 text-xs whitespace-nowrap"
                         style={{ color: "var(--an-text-muted)" }}
                       >
                         {formatDateShort(trade.tradeDate)}
                       </td>
-                      <td className="px-[18px] py-3">
+                      <td className="px-3 sm:px-[18px] py-3">
                         {trade.insiderName !== trade.issuerName ? (
                           <Link
                             href={`/innsidehandel/${trade.insiderSlug}`}
-                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate max-w-[200px]"
+                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate max-w-[120px] sm:max-w-[200px]"
                             style={{ color: "var(--an-text-primary)" }}
                           >
                             {trade.insiderName}
@@ -956,44 +880,11 @@ export default async function CompanyPage({ params }: PageProps) {
                           </div>
                         )}
                       </td>
-                      <td className="px-[18px] py-3 text-center">
-                        {trade.tradeType === "buy" ? (
-                          <span
-                            className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-                            style={{
-                              color: "var(--an-green)",
-                              background: "var(--an-green-bg)",
-                              borderColor: "var(--an-green-border)",
-                            }}
-                          >
-                            Kjøp
-                          </span>
-                        ) : trade.tradeType === "sell" ? (
-                          <span
-                            className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-                            style={{
-                              color: "var(--an-red)",
-                              background: "var(--an-red-bg)",
-                              borderColor: "var(--an-red-border)",
-                            }}
-                          >
-                            Salg
-                          </span>
-                        ) : (
-                          <span
-                            className="text-[11px] font-semibold px-2 py-[2px] rounded border"
-                            style={{
-                              color: "var(--an-text-muted)",
-                              background: "var(--an-bg-raised)",
-                              borderColor: "var(--an-border)",
-                            }}
-                          >
-                            Annet
-                          </span>
-                        )}
+                      <td className="px-3 sm:px-[18px] py-3 text-center">
+                        <TradeTypeBadge type={trade.tradeType} />
                       </td>
                       <td
-                        className="px-[18px] py-3 text-right mono text-[13px]"
+                        className="px-3 sm:px-[18px] py-3 text-right mono text-[13px]"
                         style={{ color: "var(--an-text-muted)" }}
                       >
                         {trade.totalValue ? formatNOK(trade.totalValue) : "-"}
@@ -1015,7 +906,7 @@ export default async function CompanyPage({ params }: PageProps) {
               style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
             >
               <div
-                className="px-[18px] py-3 border-b flex items-center justify-between"
+                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
                 style={{ borderColor: "var(--an-border)" }}
               >
                 <span
@@ -1036,7 +927,7 @@ export default async function CompanyPage({ params }: PageProps) {
                 {filteredReports.slice(0, 5).map((report, i) => (
                   <div
                     key={report.recommendationId}
-                    className="an-table-row px-[18px] py-3 transition-colors"
+                    className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
                     style={{
                       borderBottom: i < Math.min(filteredReports.length, 5) - 1
                         ? "1px solid var(--an-border-subtle)"
@@ -1092,7 +983,7 @@ export default async function CompanyPage({ params }: PageProps) {
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
             <div
-              className="px-[18px] py-3 border-b"
+              className="px-3 sm:px-[18px] py-3 border-b"
               style={{ borderColor: "var(--an-border)" }}
             >
               <span

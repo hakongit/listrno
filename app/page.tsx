@@ -1,9 +1,23 @@
 import { getShortData } from "@/lib/data";
 import { getInsiderTrades, getInsiderStats, getTopInsiders } from "@/lib/insider-data";
-import { formatPercent, formatDate, formatNOK, formatDateShort } from "@/lib/utils";
+import { formatPercent, formatNOK, formatDateShort } from "@/lib/utils";
+import { TradeTypeBadge } from "@/components/ui/trade-type-badge";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Listr - Shortposisjoner, innsidehandel og analyser",
+  description:
+    "Shortposisjoner, innsidehandel og analytikerrapporter for norske aksjer. Data fra Finanstilsynet og Euronext Oslo.",
+  openGraph: {
+    title: "Listr - Shortposisjoner, innsidehandel og analyser",
+    description: "Shortposisjoner, innsidehandel og analytikerrapporter for norske aksjer",
+    type: "website",
+    locale: "nb_NO",
+  },
+};
 
 export default async function DashboardPage() {
   const [shortData, insiderTrades, insiderStats, topInsiders] = await Promise.all([
@@ -51,10 +65,10 @@ export default async function DashboardPage() {
     .slice(0, 3);
 
   return (
-    <div className="max-w-[1120px] mx-auto px-6">
+    <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
       {/* Hero */}
       <div className="pt-8 pb-6 text-center">
-        <h1 className="text-[26px] font-bold tracking-tight mb-1">
+        <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-1">
           Norsk aksjemarked
         </h1>
         <p
@@ -68,11 +82,11 @@ export default async function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
-          className="an-stat-accent rounded-lg p-4 border"
+          className="an-stat-accent rounded-lg p-3 sm:p-4 border"
           style={{ borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
             {shortData.totalCompanies}
@@ -85,10 +99,10 @@ export default async function DashboardPage() {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
             {totalShortValue > 0 ? formatNOK(totalShortValue) : "-"}
           </div>
           <div
@@ -99,10 +113,10 @@ export default async function DashboardPage() {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
             {insiderStats.totalTrades}
           </div>
           <div
@@ -113,10 +127,10 @@ export default async function DashboardPage() {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
             <span style={{ color: "var(--an-green)" }}>{insiderStats.buyCount}</span>
             <span style={{ color: "var(--an-text-muted)" }} className="mx-1 text-[18px]">/</span>
             <span style={{ color: "var(--an-red)" }}>{insiderStats.sellCount}</span>
@@ -158,7 +172,7 @@ export default async function DashboardPage() {
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
             <div
-              className="px-[18px] py-3 border-b flex items-center justify-between"
+              className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
               style={{ borderColor: "var(--an-border)" }}
             >
               <span
@@ -173,7 +187,7 @@ export default async function DashboardPage() {
                 <Link
                   key={company.isin}
                   href={`/${company.slug}`}
-                  className="an-table-row flex items-center justify-between px-[18px] py-3 transition-colors"
+                  className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
                   style={{
                     borderBottom: i < highestShorts.length - 1
                       ? "1px solid var(--an-border-subtle)"
@@ -212,7 +226,7 @@ export default async function DashboardPage() {
               style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
             >
               <div
-                className="px-[18px] py-3 border-b flex items-center justify-between"
+                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
                 style={{ borderColor: "var(--an-border)" }}
               >
                 <span
@@ -227,7 +241,7 @@ export default async function DashboardPage() {
                   <Link
                     key={company.isin}
                     href={`/${company.slug}`}
-                    className="an-table-row flex items-center justify-between px-[18px] py-3 transition-colors"
+                    className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
                     style={{
                       borderBottom: i < biggestIncreases.length - 1
                         ? "1px solid var(--an-border-subtle)"
@@ -266,7 +280,7 @@ export default async function DashboardPage() {
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
             <div
-              className="px-[18px] py-3 border-b flex items-center justify-between"
+              className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
               style={{ borderColor: "var(--an-border)" }}
             >
               <span
@@ -281,7 +295,7 @@ export default async function DashboardPage() {
                 <Link
                   key={holder.slug}
                   href={`/aktor/${holder.slug}`}
-                  className="an-table-row flex items-center justify-between px-[18px] py-3 transition-colors"
+                  className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
                   style={{
                     borderBottom: i < topHolders.length - 1
                       ? "1px solid var(--an-border-subtle)"
@@ -332,7 +346,7 @@ export default async function DashboardPage() {
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
             <div
-              className="px-[18px] py-3 border-b flex items-center justify-between"
+              className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
               style={{ borderColor: "var(--an-border)" }}
             >
               <span
@@ -347,7 +361,7 @@ export default async function DashboardPage() {
                 <Link
                   key={trade.messageId}
                   href={trade.companySlug ? `/${trade.companySlug}` : "#"}
-                  className="an-table-row flex items-center justify-between px-[18px] py-3 transition-colors"
+                  className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
                   style={{
                     borderBottom: i < insiderTrades.length - 1
                       ? "1px solid var(--an-border-subtle)"
@@ -355,29 +369,7 @@ export default async function DashboardPage() {
                   }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    {trade.tradeType === "buy" ? (
-                      <span
-                        className="text-[11px] font-semibold px-2 py-[2px] rounded border shrink-0"
-                        style={{
-                          color: "var(--an-green)",
-                          background: "var(--an-green-bg)",
-                          borderColor: "var(--an-green-border)",
-                        }}
-                      >
-                        Kjøp
-                      </span>
-                    ) : trade.tradeType === "sell" ? (
-                      <span
-                        className="text-[11px] font-semibold px-2 py-[2px] rounded border shrink-0"
-                        style={{
-                          color: "var(--an-red)",
-                          background: "var(--an-red-bg)",
-                          borderColor: "var(--an-red-border)",
-                        }}
-                      >
-                        Salg
-                      </span>
-                    ) : null}
+                    <span className="shrink-0"><TradeTypeBadge type={trade.tradeType} /></span>
                     <div className="min-w-0">
                       <div
                         className="text-[13px] font-medium truncate"
@@ -425,7 +417,7 @@ export default async function DashboardPage() {
               style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
             >
               <div
-                className="px-[18px] py-3 border-b flex items-center justify-between"
+                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
                 style={{ borderColor: "var(--an-border)" }}
               >
                 <span
@@ -440,7 +432,7 @@ export default async function DashboardPage() {
                   <Link
                     key={trade.messageId}
                     href={trade.companySlug ? `/${trade.companySlug}` : "#"}
-                    className="an-table-row flex items-center justify-between px-[18px] py-3 transition-colors"
+                    className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
                     style={{
                       borderBottom: i < biggestTrades.length - 1
                         ? "1px solid var(--an-border-subtle)"
@@ -448,29 +440,7 @@ export default async function DashboardPage() {
                     }}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      {trade.tradeType === "buy" ? (
-                        <span
-                          className="text-[11px] font-semibold px-2 py-[2px] rounded border shrink-0"
-                          style={{
-                            color: "var(--an-green)",
-                            background: "var(--an-green-bg)",
-                            borderColor: "var(--an-green-border)",
-                          }}
-                        >
-                          Kjøp
-                        </span>
-                      ) : (
-                        <span
-                          className="text-[11px] font-semibold px-2 py-[2px] rounded border shrink-0"
-                          style={{
-                            color: "var(--an-red)",
-                            background: "var(--an-red-bg)",
-                            borderColor: "var(--an-red-border)",
-                          }}
-                        >
-                          Salg
-                        </span>
-                      )}
+                      <span className="shrink-0"><TradeTypeBadge type={trade.tradeType} /></span>
                       <span
                         className="text-[13px] font-medium truncate"
                         style={{ color: "var(--an-text-primary)" }}
@@ -509,7 +479,7 @@ export default async function DashboardPage() {
               style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
             >
               <div
-                className="px-[18px] py-3 border-b flex items-center justify-between"
+                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
                 style={{ borderColor: "var(--an-border)" }}
               >
                 <span
@@ -524,7 +494,7 @@ export default async function DashboardPage() {
                   <Link
                     key={insider.slug}
                     href={`/innsidehandel/${insider.slug}`}
-                    className="an-table-row flex items-center justify-between px-[18px] py-3 transition-colors"
+                    className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
                     style={{
                       borderBottom: i < Math.min(realInsiders.length, 3) - 1
                         ? "1px solid var(--an-border-subtle)"

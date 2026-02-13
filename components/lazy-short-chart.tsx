@@ -5,7 +5,7 @@ import type { HistoricalDataPoint } from "@/lib/types";
 
 const ShortHistoryChart = dynamic(
   () => import("@/components/short-history-chart").then(mod => mod.ShortHistoryChart),
-  { ssr: false, loading: () => <div className="h-72 flex items-center justify-center text-gray-400">Laster graf...</div> }
+  { ssr: false, loading: () => <div className="h-72 flex items-center justify-center text-[13px]" style={{ color: "var(--an-text-muted)" }}>Laster graf...</div> }
 );
 
 interface LazyShortChartProps {

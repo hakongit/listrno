@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navLinks = [
-  { href: "/shortoversikt", label: "Shortposisjoner" },
-  { href: "/innsidehandel", label: "Innsidehandel" },
-  { href: "/analyser", label: "Analyser" },
-  { href: "/om", label: "Om" },
+  { href: "/shortoversikt", label: "Short", labelFull: "Shortposisjoner" },
+  { href: "/innsidehandel", label: "Innside", labelFull: "Innsidehandel" },
+  { href: "/analyser", label: "Analyse", labelFull: "Analyser" },
+  { href: "/om", label: "Om", labelFull: "Om" },
 ];
 
 export function SiteNav() {
@@ -21,10 +21,10 @@ export function SiteNav() {
         background: "var(--an-bg-surface)",
       }}
     >
-      <div className="max-w-[1120px] mx-auto px-6 h-12 flex items-center justify-between">
+      <div className="max-w-[1120px] mx-auto px-4 sm:px-6 h-12 flex items-center justify-between gap-2">
         <Link
           href="/"
-          className="flex items-center gap-[7px]"
+          className="flex items-center gap-[7px] shrink-0"
           aria-label="Listr.no - Til forsiden"
         >
           <svg
@@ -45,7 +45,7 @@ export function SiteNav() {
             <span style={{ color: "var(--an-text-secondary)" }}>.no</span>
           </span>
         </Link>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1 overflow-x-auto no-scrollbar">
           {navLinks.map((link) => {
             const isActive =
               pathname === link.href || pathname.startsWith(link.href + "/");
@@ -54,11 +54,12 @@ export function SiteNav() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`nav-link text-[13px] font-medium px-3 py-1.5 rounded-[5px] ${
+                className={`nav-link text-[13px] font-medium px-2.5 sm:px-3 py-1.5 rounded-[5px] whitespace-nowrap shrink-0 ${
                   isActive ? "active" : ""
                 }`}
               >
-                {link.label}
+                <span className="sm:hidden">{link.label}</span>
+                <span className="hidden sm:inline">{link.labelFull}</span>
               </Link>
             );
           })}

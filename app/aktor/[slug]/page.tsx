@@ -41,7 +41,7 @@ export default async function HolderPage({ params }: PageProps) {
   const avgPct = holder.companies.length > 0 ? holder.totalShortPct / holder.companies.length : 0;
 
   return (
-    <div className="max-w-[1120px] mx-auto px-6">
+    <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
       {/* Hero */}
       <div className="pt-8 pb-6">
         <div
@@ -57,7 +57,7 @@ export default async function HolderPage({ params }: PageProps) {
           <span className="mx-1.5">/</span>
           <span style={{ color: "var(--an-text-secondary)" }}>Aktør</span>
         </div>
-        <h1 className="text-[26px] font-bold tracking-tight mb-2">
+        <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-2">
           {holder.name}
         </h1>
         <p
@@ -71,11 +71,11 @@ export default async function HolderPage({ params }: PageProps) {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
-          className="an-stat-accent rounded-lg p-4 border"
+          className="an-stat-accent rounded-lg p-3 sm:p-4 border"
           style={{ borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
             {holder.companies.length}
@@ -88,11 +88,11 @@ export default async function HolderPage({ params }: PageProps) {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono"
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono"
             style={{ color: "var(--an-red)" }}
           >
             {formatPercent(holder.totalShortPct)}
@@ -105,10 +105,10 @@ export default async function HolderPage({ params }: PageProps) {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
             {formatPercent(avgPct)}
           </div>
           <div
@@ -119,10 +119,10 @@ export default async function HolderPage({ params }: PageProps) {
           </div>
         </div>
         <div
-          className="rounded-lg p-4 border"
+          className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
             {totalValue > 0 ? formatNOK(totalValue) : "-"}
           </div>
           <div
@@ -140,7 +140,7 @@ export default async function HolderPage({ params }: PageProps) {
         style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
       >
         <div
-          className="px-[18px] py-3 border-b flex items-center justify-between"
+          className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
           style={{ borderColor: "var(--an-border)" }}
         >
           <span
@@ -161,7 +161,7 @@ export default async function HolderPage({ params }: PageProps) {
         style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
       >
         <div
-          className="px-[18px] py-3 border-b flex items-center justify-between"
+          className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
           style={{ borderColor: "var(--an-border)" }}
         >
           <span
@@ -182,31 +182,31 @@ export default async function HolderPage({ params }: PageProps) {
             <thead>
               <tr>
                 <th
-                  className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
                 >
                   Selskap
                 </th>
                 <th
-                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "90px" }}
                 >
                   Posisjon
                 </th>
                 <th
-                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden sm:table-cell"
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden sm:table-cell"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                 >
                   Aksjer
                 </th>
                 <th
-                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] hidden lg:table-cell"
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden lg:table-cell"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
                 >
                   Verdi
                 </th>
                 <th
-                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px]"
+                  className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                   style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
                 >
                   Dato
@@ -224,16 +224,17 @@ export default async function HolderPage({ params }: PageProps) {
                       : "none",
                   }}
                 >
-                  <td className="px-[18px] py-3">
+                  <td className="px-3 sm:px-[18px] py-3">
                     <Link
                       href={`/${company.companySlug}`}
-                      className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                      className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] truncate block max-w-[160px] sm:max-w-none"
                       style={{ color: "var(--an-text-primary)" }}
+                      title={company.issuerName}
                     >
                       {company.issuerName}
                     </Link>
                   </td>
-                  <td className="px-[18px] py-3 text-right">
+                  <td className="px-3 sm:px-[18px] py-3 text-right">
                     <span
                       className="mono text-[13px] font-semibold"
                       style={{ color: "var(--an-red)" }}
@@ -242,19 +243,19 @@ export default async function HolderPage({ params }: PageProps) {
                     </span>
                   </td>
                   <td
-                    className="px-[18px] py-3 text-right mono text-[13px] hidden sm:table-cell"
+                    className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden sm:table-cell"
                     style={{ color: "var(--an-text-muted)" }}
                   >
                     {formatNumber(company.currentShares)}
                   </td>
                   <td
-                    className="px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
+                    className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
                     style={{ color: "var(--an-text-muted)" }}
                   >
                     {company.positionValue ? formatNOK(company.positionValue) : "-"}
                   </td>
                   <td
-                    className="px-[18px] py-3 text-right text-xs"
+                    className="px-3 sm:px-[18px] py-3 text-right text-xs"
                     style={{ color: "var(--an-text-muted)" }}
                   >
                     {formatDateShort(company.latestDate)}

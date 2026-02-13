@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { HistoricalDataPoint } from "@/lib/types";
+import { PeriodSelector, defaultPeriods } from "./ui/period-selector";
 import {
   AreaChart,
   Area,
@@ -12,29 +13,27 @@ import {
   CartesianGrid,
 } from "recharts";
 
+// Navy theme colors (match --an-* CSS vars)
+const COLORS = {
+  red: "#c25050",
+  border: "#1c2638",
+  textMuted: "#4a5568",
+  surface: "#0e1420",
+};
+
 interface ShortHistoryChartProps {
   history: HistoricalDataPoint[];
   companyName: string;
 }
 
-const periods = [
-  { key: "1M", label: "1M", days: 30 },
-  { key: "3M", label: "3M", days: 90 },
-  { key: "6M", label: "6M", days: 180 },
-  { key: "1Y", label: "1Å", days: 365 },
-  { key: "ALL", label: "Alle", days: null },
-] as const;
-
-type PeriodKey = typeof periods[number]["key"];
-
 export function ShortHistoryChart({ history, companyName }: ShortHistoryChartProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("1M");
+  const [selectedPeriod, setSelectedPeriod] = useState("1M");
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   // Filter data based on selected period
-  const periodConfig = periods.find(p => p.key === selectedPeriod);
+  const periodConfig = defaultPeriods.find(p => p.key === selectedPeriod);
   let filteredHistory = history;
 
   if (periodConfig?.days) {
@@ -77,7 +76,10 @@ export function ShortHistoryChart({ history, companyName }: ShortHistoryChartPro
 
   if (chartData.length < 2) {
     return (
-      <div className="h-64 flex items-center justify-center text-gray-500">
+      <div
+        className="h-64 flex items-center justify-center text-[13px]"
+        style={{ color: "var(--an-text-muted)" }}
+      >
         Ikke nok historiske data for graf
       </div>
     );
@@ -85,23 +87,8 @@ export function ShortHistoryChart({ history, companyName }: ShortHistoryChartPro
 
   return (
     <div>
-      {/* Period selector */}
-      <div className="flex gap-1 mb-3" role="group" aria-label="Velg tidsperiode">
-        {periods.map((period) => (
-          <button
-            key={period.key}
-            onClick={() => setSelectedPeriod(period.key)}
-            aria-pressed={selectedPeriod === period.key}
-            aria-label={`Vis ${period.label === "Alle" ? "all historikk" : `siste ${period.label}`}`}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              selectedPeriod === period.key
-                ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-            }`}
-          >
-            {period.label}
-          </button>
-        ))}
+      <div className="mb-3">
+        <PeriodSelector selected={selectedPeriod} onSelect={setSelectedPeriod} />
       </div>
 
       <div className="h-72">
@@ -109,21 +96,21 @@ export function ShortHistoryChart({ history, companyName }: ShortHistoryChartPro
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorShort" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                <stop offset="5%" stopColor={COLORS.red} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={COLORS.red} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
             <XAxis
               dataKey="displayDate"
-              tick={{ fontSize: 12, fill: "#6b7280" }}
+              tick={{ fontSize: 12, fill: COLORS.textMuted }}
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
               minTickGap={50}
             />
             <YAxis
-              tick={{ fontSize: 12, fill: "#6b7280" }}
+              tick={{ fontSize: 12, fill: COLORS.textMuted }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => `${value}%`}
@@ -135,12 +122,22 @@ export function ShortHistoryChart({ history, companyName }: ShortHistoryChartPro
                 if (active && payload && payload.length) {
                   const data = payload[0].payload;
                   return (
-                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-                      <p className="text-sm text-gray-500">{data.displayDate}</p>
-                      <p className="text-lg font-bold text-red-600">
+                    <div
+                      className="rounded-lg shadow-lg p-3 border"
+                      style={{
+                        background: "var(--an-bg-surface)",
+                        borderColor: "var(--an-border)",
+                      }}
+                    >
+                      <p className="text-[12px]" style={{ color: "var(--an-text-muted)" }}>
+                        {data.displayDate}
+                      </p>
+                      <p className="text-lg font-bold mono" style={{ color: "var(--an-red)" }}>
                         {data.total.toFixed(2)}%
                       </p>
-                      <p className="text-xs text-gray-400">Total short</p>
+                      <p className="text-[11px]" style={{ color: "var(--an-text-muted)" }}>
+                        Total short
+                      </p>
                     </div>
                   );
                 }
@@ -150,7 +147,7 @@ export function ShortHistoryChart({ history, companyName }: ShortHistoryChartPro
             <Area
               type="monotone"
               dataKey="total"
-              stroke="#ef4444"
+              stroke={COLORS.red}
               strokeWidth={2}
               fill="url(#colorShort)"
             />

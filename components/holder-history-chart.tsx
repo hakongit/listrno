@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { HolderCompanyPosition } from "@/lib/types";
+import { PeriodSelector, defaultPeriods } from "./ui/period-selector";
 import {
   LineChart,
   Line,
@@ -13,42 +14,39 @@ import {
   Legend,
 } from "recharts";
 
-interface HolderHistoryChartProps {
-  companies: HolderCompanyPosition[];
-}
+// Navy theme colors (match --an-* CSS vars)
+const CHART_THEME = {
+  border: "#1c2638",
+  textMuted: "#4a5568",
+  textSecondary: "#7a8599",
+};
 
-// Color palette for different companies
-const COLORS = [
-  "#ef4444", // red
-  "#f97316", // orange
-  "#eab308", // yellow
-  "#22c55e", // green
+// Color palette for different companies (works on dark backgrounds)
+const LINE_COLORS = [
+  "#c25050", // red
+  "#c9a84c", // gold
+  "#34a06e", // green
+  "#5b8def", // blue
+  "#b89040", // amber
   "#14b8a6", // teal
-  "#3b82f6", // blue
   "#8b5cf6", // violet
   "#ec4899", // pink
   "#6366f1", // indigo
   "#06b6d4", // cyan
 ];
 
-const periods = [
-  { key: "1M", label: "1M", days: 30 },
-  { key: "3M", label: "3M", days: 90 },
-  { key: "6M", label: "6M", days: 180 },
-  { key: "1Y", label: "1Å", days: 365 },
-  { key: "ALL", label: "Alle", days: null },
-] as const;
-
-type PeriodKey = typeof periods[number]["key"];
+interface HolderHistoryChartProps {
+  companies: HolderCompanyPosition[];
+}
 
 export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("1M");
+  const [selectedPeriod, setSelectedPeriod] = useState("1M");
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   // Filter companies history based on selected period
-  const periodConfig = periods.find(p => p.key === selectedPeriod);
+  const periodConfig = defaultPeriods.find(p => p.key === selectedPeriod);
   let cutoffDate: Date | null = null;
 
   if (periodConfig?.days) {
@@ -73,7 +71,10 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
 
   if (sortedDates.length < 2) {
     return (
-      <div className="h-64 flex items-center justify-center text-gray-500">
+      <div
+        className="h-64 flex items-center justify-center text-[13px]"
+        style={{ color: "var(--an-text-muted)" }}
+      >
         Ikke nok historiske data for graf
       </div>
     );
@@ -92,7 +93,6 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
 
     companies.forEach((company) => {
       const historyPoint = company.history.find((h) => h.date === date);
-      // Use the last known value if no data for this date
       if (historyPoint) {
         point[company.issuerName] = historyPoint.pct;
       }
@@ -129,7 +129,6 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
         }),
       };
 
-      // Copy last known values for each company
       companies.forEach((company) => {
         if (lastPoint[company.issuerName] !== undefined) {
           todayPoint[company.issuerName] = lastPoint[company.issuerName];
@@ -142,39 +141,24 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
 
   return (
     <div>
-      {/* Period selector */}
-      <div className="flex gap-1 mb-3" role="group" aria-label="Velg tidsperiode">
-        {periods.map((period) => (
-          <button
-            key={period.key}
-            onClick={() => setSelectedPeriod(period.key)}
-            aria-pressed={selectedPeriod === period.key}
-            aria-label={`Vis ${period.label === "Alle" ? "all historikk" : `siste ${period.label}`}`}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              selectedPeriod === period.key
-                ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-            }`}
-          >
-            {period.label}
-          </button>
-        ))}
+      <div className="mb-3">
+        <PeriodSelector selected={selectedPeriod} onSelect={setSelectedPeriod} />
       </div>
 
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_THEME.border} vertical={false} />
             <XAxis
               dataKey="displayDate"
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: CHART_THEME.textMuted }}
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
               minTickGap={50}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: CHART_THEME.textMuted }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => `${value}%`}
@@ -185,8 +169,17 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 max-w-xs">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    <div
+                      className="rounded-lg shadow-lg p-3 max-w-xs border"
+                      style={{
+                        background: "var(--an-bg-surface)",
+                        borderColor: "var(--an-border)",
+                      }}
+                    >
+                      <p
+                        className="text-[12px] font-medium mb-2"
+                        style={{ color: "var(--an-text-primary)" }}
+                      >
                         {label}
                       </p>
                       <div className="space-y-1">
@@ -194,14 +187,14 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
                           .filter((p) => p.value !== undefined)
                           .sort((a, b) => (b.value as number) - (a.value as number))
                           .map((p, i) => (
-                            <div key={i} className="flex items-center justify-between gap-4 text-sm">
+                            <div key={i} className="flex items-center justify-between gap-4 text-[12px]">
                               <span
                                 className="truncate max-w-[150px]"
                                 style={{ color: p.color }}
                               >
                                 {p.name}
                               </span>
-                              <span className="font-mono font-medium">
+                              <span className="mono font-medium" style={{ color: "var(--an-text-primary)" }}>
                                 {(p.value as number).toFixed(2)}%
                               </span>
                             </div>
@@ -216,7 +209,10 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
             <Legend
               wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
               formatter={(value) => (
-                <span className="text-gray-600 dark:text-gray-400 truncate max-w-[100px] inline-block align-middle">
+                <span
+                  className="truncate max-w-[100px] inline-block align-middle"
+                  style={{ color: CHART_THEME.textSecondary }}
+                >
                   {value}
                 </span>
               )}
@@ -226,7 +222,7 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
                 key={company.isin}
                 type="monotone"
                 dataKey={company.issuerName}
-                stroke={COLORS[index % COLORS.length]}
+                stroke={LINE_COLORS[index % LINE_COLORS.length]}
                 strokeWidth={2}
                 dot={false}
                 connectNulls

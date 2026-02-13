@@ -72,7 +72,7 @@ export default function RootLayout({
           className="border-t mt-auto py-5"
           style={{ borderColor: "var(--an-border)" }}
         >
-          <div className="max-w-[1120px] mx-auto px-6">
+          <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
             <p
               className="text-[11px] text-center leading-relaxed"
               style={{ color: "var(--an-text-muted)" }}

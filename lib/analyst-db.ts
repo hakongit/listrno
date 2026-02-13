@@ -11,6 +11,19 @@ import {
 } from "./analyst-types";
 import { unstable_cache } from "next/cache";
 
+// Newspapers/newsletters that aggregate reports from actual banks — never show as a bank source
+const AGGREGATOR_SOURCES = [
+  "finansavisen",
+  "børsxtra",
+  "borsxtra",
+  "børsbjellen",
+  "borsbjellen",
+];
+
+export function isAggregatorSource(name: string): boolean {
+  return AGGREGATOR_SOURCES.includes(name.toLowerCase());
+}
+
 // Initialize analyst reports schema
 export async function initializeAnalystDatabase() {
   const db = getDb();
@@ -129,6 +142,28 @@ export async function initializeAnalystDatabase() {
     }
   }
 
+  // Add new columns to analyst_recommendations (idempotent)
+  for (const col of [
+    'investment_bank TEXT',
+    'previous_target_price REAL',
+    'previous_recommendation TEXT',
+  ]) {
+    try {
+      await db.execute(`ALTER TABLE analyst_recommendations ADD COLUMN ${col}`);
+    } catch {
+      // Column already exists
+    }
+  }
+
+  // Sync state table (for IMAP sync checkpointing)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS sync_state (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
   // Create indexes
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_date ON analyst_reports(received_date)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_company ON analyst_reports(company_name)`);
@@ -136,6 +171,7 @@ export async function initializeAnalystDatabase() {
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_status ON analyst_reports(extraction_status)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_reports_domain ON analyst_reports(from_domain)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_recommendations_report ON analyst_recommendations(report_id)`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_analyst_recommendations_company_bank ON analyst_recommendations(company_name, investment_bank)`);
 }
 
 // Convert recommendation row to Recommendation
@@ -151,6 +187,9 @@ function rowToRecommendation(row: RecommendationRow): Recommendation {
     summary: row.summary ?? undefined,
     priceAtReport: row.price_at_report ?? undefined,
     priceAtReportDate: row.price_at_report_date ?? undefined,
+    investmentBank: row.investment_bank ?? undefined,
+    previousTargetPrice: row.previous_target_price ?? undefined,
+    previousRecommendation: row.previous_recommendation ?? undefined,
   };
 }
 
@@ -312,8 +351,8 @@ export async function updateAnalystReportExtraction(
   for (const rec of data.recommendations) {
     if (!rec.targetPrice) continue;
     await db.execute({
-      sql: `INSERT INTO analyst_recommendations (report_id, company_name, company_isin, recommendation, target_price, target_currency, summary)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO analyst_recommendations (report_id, company_name, company_isin, recommendation, target_price, target_currency, summary, investment_bank, previous_target_price, previous_recommendation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         rec.companyName ?? null,
@@ -322,6 +361,9 @@ export async function updateAnalystReportExtraction(
         rec.targetPrice,
         rec.targetCurrency ?? 'NOK',
         rec.summary ?? null,
+        rec.investmentBank ?? null,
+        rec.previousTargetPrice ?? null,
+        rec.previousRecommendation ?? null,
       ],
     });
   }
@@ -418,7 +460,7 @@ export async function getPublicAnalystReports(options?: {
   }
 
   if (options?.investmentBank) {
-    whereClause += ` AND ar.investment_bank = ?`;
+    whereClause += ` AND COALESCE(rec.investment_bank, ar.investment_bank) = ?`;
     args.push(options.investmentBank);
   }
 
@@ -439,7 +481,10 @@ export async function getPublicAnalystReports(options?: {
         rec.summary,
         rec.price_at_report,
         ar.received_date,
-        ar.created_at
+        ar.created_at,
+        rec.investment_bank as rec_investment_bank,
+        rec.previous_target_price,
+        rec.previous_recommendation
       FROM analyst_recommendations rec
       JOIN analyst_reports ar ON ar.id = rec.report_id
       WHERE ${whereClause}
@@ -463,6 +508,9 @@ export async function getPublicAnalystReports(options?: {
     priceAtReport: row.price_at_report != null ? Number(row.price_at_report) : undefined,
     receivedDate: String(row.received_date),
     createdAt: String(row.created_at),
+    recInvestmentBank: row.rec_investment_bank ? String(row.rec_investment_bank) : undefined,
+    previousTargetPrice: row.previous_target_price != null ? Number(row.previous_target_price) : undefined,
+    previousRecommendation: row.previous_recommendation ? String(row.previous_recommendation) : undefined,
   }));
 }
 
@@ -546,6 +594,59 @@ export async function updateExtractionGuidance(text: string): Promise<void> {
   });
 }
 
+// Sync state operations (for IMAP sync checkpointing)
+
+export async function getSyncState(key: string): Promise<string | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `SELECT value FROM sync_state WHERE key = ?`,
+    args: [key],
+  });
+  if (result.rows.length === 0) return null;
+  return String(result.rows[0].value);
+}
+
+export async function setSyncState(key: string, value: string): Promise<void> {
+  const db = getDb();
+  await db.execute({
+    sql: `
+      INSERT INTO sync_state (key, value, updated_at)
+      VALUES (?, ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = excluded.updated_at
+    `,
+    args: [key, value],
+  });
+}
+
+export async function getPreviousRecommendation(
+  companyName: string,
+  bank: string,
+  beforeDate: string
+): Promise<{ targetPrice?: number; recommendation?: string } | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `
+      SELECT rec.target_price, rec.recommendation
+      FROM analyst_recommendations rec
+      JOIN analyst_reports ar ON ar.id = rec.report_id
+      WHERE rec.company_name = ?
+        AND COALESCE(rec.investment_bank, ar.investment_bank) = ?
+        AND ar.received_date < ?
+        AND rec.target_price IS NOT NULL
+      ORDER BY ar.received_date DESC
+      LIMIT 1
+    `,
+    args: [companyName, bank, beforeDate],
+  });
+  if (result.rows.length === 0) return null;
+  return {
+    targetPrice: result.rows[0].target_price != null ? Number(result.rows[0].target_price) : undefined,
+    recommendation: result.rows[0].recommendation ? String(result.rows[0].recommendation) : undefined,
+  };
+}
+
 // Cached versions for public pages
 export const getCachedPublicAnalystReports = unstable_cache(
   async (options?: { limit?: number; companyIsin?: string }) =>
@@ -569,16 +670,21 @@ export interface InvestmentBankSummary {
 
 export async function getInvestmentBanks(): Promise<InvestmentBankSummary[]> {
   const db = getDb();
-  const result = await db.execute(`
-    SELECT ar.investment_bank as name, COUNT(DISTINCT rec.id) as report_count
-    FROM analyst_reports ar
-    JOIN analyst_recommendations rec ON rec.report_id = ar.id
-    WHERE ar.extraction_status = 'processed'
-      AND ar.investment_bank IS NOT NULL
-      AND rec.target_price IS NOT NULL
-    GROUP BY ar.investment_bank
-    ORDER BY report_count DESC
-  `);
+  const placeholders = AGGREGATOR_SOURCES.map(() => '?').join(',');
+  const result = await db.execute({
+    sql: `
+      SELECT COALESCE(rec.investment_bank, ar.investment_bank) as name, COUNT(DISTINCT rec.id) as report_count
+      FROM analyst_reports ar
+      JOIN analyst_recommendations rec ON rec.report_id = ar.id
+      WHERE ar.extraction_status = 'processed'
+        AND COALESCE(rec.investment_bank, ar.investment_bank) IS NOT NULL
+        AND rec.target_price IS NOT NULL
+        AND LOWER(COALESCE(rec.investment_bank, ar.investment_bank)) NOT IN (${placeholders})
+      GROUP BY COALESCE(rec.investment_bank, ar.investment_bank)
+      ORDER BY report_count DESC
+    `,
+    args: AGGREGATOR_SOURCES,
+  });
   return result.rows.map((row) => ({
     name: String(row.name),
     reportCount: Number(row.report_count),

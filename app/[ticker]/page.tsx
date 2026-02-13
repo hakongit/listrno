@@ -1,6 +1,6 @@
 import { getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
-import { getCachedPublicAnalystReports, initializeAnalystDatabase } from "@/lib/analyst-db";
+import { getCachedPublicAnalystReports, initializeAnalystDatabase, isAggregatorSource } from "@/lib/analyst-db";
 import { getTicker } from "@/lib/tickers";
 import { fetchStockQuotes, StockQuote } from "@/lib/prices";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume, formatDateShort } from "@/lib/utils";
@@ -417,7 +417,10 @@ export default async function CompanyPage({ params }: PageProps) {
                   </Link>
                 </div>
                 <div>
-                  {filteredReports.slice(0, 5).map((report, i) => (
+                  {filteredReports.slice(0, 5).map((report, i) => {
+                    const effectiveBank = report.recInvestmentBank || report.investmentBank;
+                    const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
+                    return (
                     <div
                       key={report.recommendationId}
                       className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
@@ -429,13 +432,13 @@ export default async function CompanyPage({ params }: PageProps) {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          {report.investmentBank ? (
+                          {bankName ? (
                             <Link
-                              href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                              href={`/analyser/bank/${slugify(bankName)}`}
                               className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
                               style={{ color: "var(--an-text-primary)" }}
                             >
-                              {report.investmentBank}
+                              {bankName}
                             </Link>
                           ) : (
                             <span
@@ -460,12 +463,18 @@ export default async function CompanyPage({ params }: PageProps) {
                               style={{ color: "var(--an-text-secondary)" }}
                             >
                               {formatNumber(report.targetPrice)}
+                              {report.previousTargetPrice && (
+                                <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
+                                  ({formatNumber(report.previousTargetPrice)})
+                                </span>
+                              )}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -924,7 +933,10 @@ export default async function CompanyPage({ params }: PageProps) {
                 </Link>
               </div>
               <div>
-                {filteredReports.slice(0, 5).map((report, i) => (
+                {filteredReports.slice(0, 5).map((report, i) => {
+                  const effectiveBank = report.recInvestmentBank || report.investmentBank;
+                  const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
+                  return (
                   <div
                     key={report.recommendationId}
                     className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
@@ -936,13 +948,13 @@ export default async function CompanyPage({ params }: PageProps) {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        {report.investmentBank ? (
+                        {bankName ? (
                           <Link
-                            href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                            href={`/analyser/bank/${slugify(bankName)}`}
                             className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
                             style={{ color: "var(--an-text-primary)" }}
                           >
-                            {report.investmentBank}
+                            {bankName}
                           </Link>
                         ) : (
                           <span
@@ -967,12 +979,18 @@ export default async function CompanyPage({ params }: PageProps) {
                             style={{ color: "var(--an-text-secondary)" }}
                           >
                             {formatNumber(report.targetPrice)}
+                            {report.previousTargetPrice && (
+                              <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
+                                ({formatNumber(report.previousTargetPrice)})
+                              </span>
+                            )}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

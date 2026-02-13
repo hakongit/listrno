@@ -71,6 +71,9 @@ export interface Recommendation {
   summary?: string;
   priceAtReport?: number;
   priceAtReportDate?: string;
+  investmentBank?: string;
+  previousTargetPrice?: number;
+  previousRecommendation?: string;
 }
 
 export interface RecommendationRow {
@@ -84,6 +87,9 @@ export interface RecommendationRow {
   summary: string | null;
   price_at_report: number | null;
   price_at_report_date: string | null;
+  investment_bank: string | null;
+  previous_target_price: number | null;
+  previous_recommendation: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -107,6 +113,9 @@ export interface ExtractedRecommendation {
   targetCurrency?: string;
   recommendation?: string;
   summary?: string;
+  investmentBank?: string;
+  previousTargetPrice?: number;
+  previousRecommendation?: string;
 }
 
 export interface ExtractedReportData {
@@ -129,4 +138,7 @@ export interface PublicAnalystReport {
   priceAtReport?: number;
   receivedDate: string;
   createdAt: string;
+  recInvestmentBank?: string;
+  previousTargetPrice?: number;
+  previousRecommendation?: string;
 }

@@ -2,6 +2,7 @@ import {
   getCachedAnalystCompanies,
   getCachedPublicAnalystReportsByCompany,
   initializeAnalystDatabase,
+  isAggregatorSource,
 } from "@/lib/analyst-db";
 import { getShortData } from "@/lib/data";
 import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
@@ -78,7 +79,9 @@ export default async function CompanyProfilePage({ params }: PageProps) {
 
   // Stats
   const uniqueBanks = new Set(
-    reports.map((r) => r.investmentBank).filter(Boolean)
+    reports
+      .map((r) => r.recInvestmentBank || r.investmentBank)
+      .filter((b): b is string => !!b && !isAggregatorSource(b))
   ).size;
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
   const ticker = reports.length > 0 ? getTickerForReport(reports[0].companyIsin) : null;
@@ -249,7 +252,11 @@ export default async function CompanyProfilePage({ params }: PageProps) {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((report, i) => (
+                {reports.map((report, i) => {
+                  const effectiveBank = report.recInvestmentBank || report.investmentBank;
+                  const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
+
+                  return (
                   <tr
                     key={report.recommendationId}
                     className="an-table-row transition-colors"
@@ -267,13 +274,13 @@ export default async function CompanyProfilePage({ params }: PageProps) {
                       {formatDateShort(report.receivedDate)}
                     </td>
                     <td className="px-[18px] py-3">
-                      {report.investmentBank ? (
+                      {bankName ? (
                         <Link
-                          href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                          href={`/analyser/bank/${slugify(bankName)}`}
                           className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
                           style={{ color: "var(--an-text-primary)" }}
                         >
-                          {report.investmentBank}
+                          {bankName}
                         </Link>
                       ) : null}
                     </td>
@@ -292,6 +299,11 @@ export default async function CompanyProfilePage({ params }: PageProps) {
                             report.targetPrice,
                             report.targetCurrency
                           )}
+                          {report.previousTargetPrice && (
+                            <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
+                              ({formatNumber(report.previousTargetPrice)})
+                            </span>
+                          )}
                         </span>
                       ) : null}
                     </td>
@@ -307,7 +319,8 @@ export default async function CompanyProfilePage({ params }: PageProps) {
                       ) : null}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

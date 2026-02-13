@@ -14,6 +14,9 @@ Per-company fields (one entry per company covered):
 2. Target price and currency
 3. Recommendation (e.g., buy, hold, sell, overweight, underweight, outperform, underperform)
 4. A brief 1-2 sentence summary of the key thesis for that company
+5. investmentBank: if this recommendation is attributed to a DIFFERENT bank than the report-level investmentBank (e.g., aggregator emails like Børsextra that summarize recommendations from multiple banks), include the actual originating bank name per recommendation. Omit if same as report-level bank.
+6. previousTargetPrice: if the text mentions the previous/old target price (e.g., "raised from 150 to 180", "previously 120"), include the previous target price as a number.
+7. previousRecommendation: if the text mentions a change in recommendation (e.g., "upgraded from hold to buy", "reiterated buy"), include the previous recommendation.
 
 Return your response as a JSON object with these fields:
 - investmentBank: string (the investment bank name)
@@ -24,6 +27,9 @@ Return your response as a JSON object with these fields:
   - targetCurrency: string (e.g., "NOK", "USD", "EUR")
   - recommendation: string (normalized to: buy, hold, sell, overweight, underweight, outperform, underperform)
   - summary: string (1-2 sentence summary)
+  - investmentBank: string (only if different from report-level bank, e.g., for aggregator emails)
+  - previousTargetPrice: number (previous target price if mentioned)
+  - previousRecommendation: string (previous recommendation if mentioned)
 
 If a field cannot be determined from the content, omit it from the response.
 Only include a company in the recommendations array if you can determine a specific, non-zero target price for it. Do NOT include entries with targetPrice 0 or without a target price.
@@ -170,6 +176,15 @@ export async function extractReportData(
           if (typeof rec.summary === "string" && rec.summary) {
             extracted.summary = (rec.summary as string).trim();
           }
+          if (typeof rec.investmentBank === "string" && rec.investmentBank) {
+            extracted.investmentBank = (rec.investmentBank as string).trim();
+          }
+          if (typeof rec.previousTargetPrice === "number" && !isNaN(rec.previousTargetPrice) && rec.previousTargetPrice > 0) {
+            extracted.previousTargetPrice = rec.previousTargetPrice;
+          }
+          if (typeof rec.previousRecommendation === "string" && rec.previousRecommendation) {
+            extracted.previousRecommendation = normalizeRecommendation(rec.previousRecommendation as string);
+          }
           return extracted;
         })
         .filter((rec: ExtractedRecommendation) => rec.targetPrice);
@@ -206,7 +221,7 @@ export async function extractReportData(
 }
 
 // Normalize recommendation to standard values
-function normalizeRecommendation(rec: string): string {
+export function normalizeRecommendation(rec: string): string {
   const normalized = rec.toLowerCase().trim();
 
   // Map various recommendation terms to standard values

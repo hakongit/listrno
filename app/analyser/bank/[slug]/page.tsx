@@ -307,6 +307,11 @@ export default async function BankProfilePage({ params }: PageProps) {
                               report.targetPrice,
                               report.targetCurrency
                             )}
+                            {report.previousTargetPrice && (
+                              <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
+                                ({formatNumber(report.previousTargetPrice)})
+                              </span>
+                            )}
                           </span>
                         ) : null}
                       </td>

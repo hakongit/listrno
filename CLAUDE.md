@@ -30,6 +30,7 @@ npm run build            # Sync data + build (requires DB credentials)
 npm run lint             # ESLint
 npm run db:sync          # Sync short positions from Finanstilsynet
 npm run db:sync-insider  # Sync insider trades from Euronext
+npm run db:bulk-import   # Bulk import emails via IMAP (resumes from checkpoint)
 ```
 
 For local development with database, create `.env.local`:
@@ -49,6 +50,8 @@ TURSO_AUTH_TOKEN=...
 - `analyst-types.ts` - Types: `AnalystReport`, `ExtractedReportData`, `PublicAnalystReport`
 - `gmail.ts` - Gmail POP3 fetcher with progress streaming and 5-min cache
 - `pdf-extract.ts` - PDF text extraction for email attachments
+- `imap.ts` - IMAP client (imapflow) for Gmail: connect, mailbox state, UID-based fetch
+- `email-processor.ts` - Shared email processing pipeline: dedup, PDF extraction, LLM extraction, previous rec enrichment, retry logic
 - `prices.ts` - Yahoo Finance API for stock quotes (price, volume, 52-week range)
 - `tickers.ts` - ISIN/company name to Yahoo Finance ticker mapping
 - `insider-profiles.ts` - Manual profile data (Twitter handles, bios)
@@ -75,9 +78,13 @@ TURSO_AUTH_TOKEN=...
 - `extraction/reprocess/` - Re-run LLM extraction with feedback on existing report
 - `extraction/guidance/` - GET/PATCH persistent LLM guidance prompt
 
+### Cron Routes (`app/api/cron/`)
+- `sync-emails/` - Hourly IMAP sync: fetches new emails since last UID checkpoint, processes them, revalidates cache. Authenticated via `CRON_SECRET` bearer token. Configured in `vercel.json`.
+
 ### Data Sync Scripts (`scripts/`)
 - `sync-data.ts` - Fetches from Finanstilsynet, updates positions table
 - `sync-insider-data.ts` - Scrapes Euronext PDFs, extracts trade details
+- `bulk-import.ts` - IMAP-based bulk email import with checkpointing (run locally with `npm run db:bulk-import`)
 
 ## Data Flow
 
@@ -116,8 +123,10 @@ The entire site uses a premium navy-dark design with gold accent:
 ## Key DB Tables (Analyst)
 
 - `analyst_reports` - Imported emails with extracted data, source content stored for re-processing
+- `analyst_recommendations` - Per-company recommendations (1:N with analyst_reports). Includes `investment_bank` (per-rec bank for aggregator emails like Børsextra), `previous_target_price`, `previous_recommendation`
 - `analyst_domains` - Whitelisted sender domains (auto-import)
 - `extraction_guidance` - Single-row table for persistent LLM instructions
+- `sync_state` - Key-value store for IMAP sync checkpointing (`imap_last_uid`, `imap_uid_validity`, `last_sync_at`)
 
 ## Language
 
@@ -131,9 +140,23 @@ All user-facing text is in Norwegian (nb). Key terms:
 - Behandle = Process
 - Godkjente domener = Approved domains
 
-## Session Status (2026-02-12)
+## Session Status (2026-02-13)
 
 ### Recently completed
+- **IMAP email sync + historical recommendations + per-rec bank attribution** (2026-02-13):
+  - `lib/imap.ts` — IMAP client using `imapflow` for Gmail (UID-based fetch, mailbox state)
+  - `lib/email-processor.ts` — Shared pipeline: dedup, PDF extraction, LLM extraction, previous rec enrichment, exponential backoff retry
+  - `scripts/bulk-import.ts` — Bulk IMAP import with batch processing (50 UIDs/batch, 5 concurrent), checkpoint/resume via `sync_state` table
+  - `app/api/cron/sync-emails/route.ts` — Hourly Vercel cron for new email sync (authenticated via `CRON_SECRET`)
+  - `vercel.json` — Cron schedule configuration
+  - `analyst_recommendations` extended with `investment_bank`, `previous_target_price`, `previous_recommendation` columns
+  - `sync_state` table for IMAP UID checkpointing (`imap_last_uid`, `imap_uid_validity`, `last_sync_at`)
+  - LLM extraction prompt updated to extract per-rec `investmentBank` (for aggregator emails like Børsextra), `previousTargetPrice`, `previousRecommendation`
+  - `getPreviousRecommendation()` DB function for historical lookups
+  - `getInvestmentBanks()` and `getPublicAnalystReports()` use `COALESCE(rec.investment_bank, ar.investment_bank)` for proper Børsextra attribution
+  - All analyser pages + company page updated to show `recInvestmentBank || investmentBank` and previous target price in parentheses
+  - Admin dashboard: per-rec `investmentBank` field in edit form for aggregator-type emails
+  - Gmail IMAP must be enabled in Gmail settings; env vars: `GMAIL_EMAIL`, `GMAIL_APP_PASSWORD`, `CRON_SECRET`
 - Made everything clickable on `/analyser` pages: all company names link to `/{slug}` (if short data) or `/analyser/selskap/{slug}` (new page); bank names visible + clickable on mobile; bank hover styles added
 - Created `/analyser/selskap/[slug]` company profile page — shows all analyst reports for a company with breadcrumb, stats grid, and link to short positions page if available
 - Created `/analyser/bank/[slug]` bank profile page — breadcrumb navigation added
@@ -168,6 +191,10 @@ All user-facing text is in Norwegian (nb). Key terms:
 ### Known state
 - 431 reports imported in DB, 5 whitelisted domains configured
 - Gmail POP3 must be set to "Enable POP for all mail" in Gmail settings to expose all historical emails
+- Gmail IMAP must be enabled for bulk import and cron sync
+- IMAP bulk import processes ALL emails (no domain filter), uses `sync_state` table for UID checkpointing
+- Vercel cron requires `CRON_SECRET` env var, runs hourly at `0 * * * *`
+- `imapflow` added as dependency for IMAP support
 
 ### Clickability audit (2026-02-12)
 All core entities are properly clickable across every page:

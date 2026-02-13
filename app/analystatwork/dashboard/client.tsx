@@ -73,6 +73,9 @@ interface ExtractedRec {
   targetPrice?: number;
   targetCurrency?: string;
   summary?: string;
+  investmentBank?: string;
+  previousTargetPrice?: number;
+  previousRecommendation?: string;
 }
 
 interface ProcessResult {
@@ -94,6 +97,7 @@ interface RecEditFields {
   targetPrice: string;
   targetCurrency: string;
   summary: string;
+  investmentBank: string;
 }
 
 interface ReportEditFields {
@@ -1371,6 +1375,15 @@ function RecommendationCard({
           className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
         />
 
+        <label className="text-gray-500">Bank:</label>
+        <input
+          type="text"
+          value={rec.investmentBank}
+          onChange={(e) => onChange({ ...rec, investmentBank: e.target.value })}
+          className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-sm"
+          placeholder="Kun for aggregator-e-poster (f.eks. Børsextra)"
+        />
+
         <label className="text-gray-500">Anbefaling:</label>
         <select
           value={rec.recommendation}
@@ -1439,6 +1452,7 @@ function extractedToEditState(extracted: ProcessResult["extracted"]): {
       targetPrice: r.targetPrice?.toString() || "",
       targetCurrency: r.targetCurrency || "NOK",
       summary: r.summary || "",
+      investmentBank: r.investmentBank || "",
     })),
   };
 }
@@ -1455,6 +1469,7 @@ function editStateToPayload(reportFields: ReportEditFields, recFields: RecEditFi
       targetCurrency: r.targetCurrency || "NOK",
       recommendation: r.recommendation || undefined,
       summary: r.summary || undefined,
+      investmentBank: r.investmentBank || undefined,
     })),
   };
 }
@@ -1471,6 +1486,7 @@ function editStateToExtracted(reportFields: ReportEditFields, recFields: RecEdit
       targetCurrency: r.targetCurrency || "NOK",
       recommendation: r.recommendation || undefined,
       summary: r.summary || undefined,
+      investmentBank: r.investmentBank || undefined,
     })),
   };
 }
@@ -1773,7 +1789,7 @@ function EmailRow({
               </div>
 
               <button
-                onClick={() => setRecFields([...recFields, { companyName: "", recommendation: "", targetPrice: "", targetCurrency: "NOK", summary: "" }])}
+                onClick={() => setRecFields([...recFields, { companyName: "", recommendation: "", targetPrice: "", targetCurrency: "NOK", summary: "", investmentBank: "" }])}
                 className="mt-2 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
               >
                 <Plus className="w-3 h-3" />
@@ -2140,7 +2156,7 @@ function ReviewPanel({
                 </div>
 
                 <button
-                  onClick={() => setRecFields([...recFields, { companyName: "", recommendation: "", targetPrice: "", targetCurrency: "NOK", summary: "" }])}
+                  onClick={() => setRecFields([...recFields, { companyName: "", recommendation: "", targetPrice: "", targetCurrency: "NOK", summary: "", investmentBank: "" }])}
                   className="mt-3 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
                 >
                   <Plus className="w-3 h-3" />

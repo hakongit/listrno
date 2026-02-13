@@ -8,12 +8,14 @@
     "start": "next start",
     "lint": "next lint",
     "db:sync": "node --env-file=.env.local --import tsx scripts/sync-data.ts",
-    "db:sync-insider": "node --env-file=.env.local --import tsx scripts/sync-insider-data.ts"
+    "db:sync-insider": "node --env-file=.env.local --import tsx scripts/sync-insider-data.ts",
+    "db:bulk-import": "node --env-file=.env.local --import tsx scripts/bulk-import.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "imapflow": "^1.2.9",
     "jose": "^6.1.3",
     "lucide-react": "^0.469.0",
     "mailparser": "^3.7.1",

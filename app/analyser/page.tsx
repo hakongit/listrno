@@ -3,6 +3,7 @@ import {
   getCachedAnalystReportCount,
   getCachedInvestmentBanks,
   initializeAnalystDatabase,
+  isAggregatorSource,
 } from "@/lib/analyst-db";
 import { getShortData } from "@/lib/data";
 import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
@@ -471,6 +472,8 @@ export default async function AnalystReportsPage() {
                     report.companyName
                   );
                   const ticker = getTickerForReport(report.companyIsin);
+                  const effectiveBank = report.recInvestmentBank || report.investmentBank;
+                  const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
 
                   return (
                     <tr
@@ -515,24 +518,24 @@ export default async function AnalystReportsPage() {
                           </div>
                         )}
                         {/* Bank name on mobile */}
-                        {report.investmentBank && (
+                        {bankName && (
                           <Link
-                            href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                            href={`/analyser/bank/${slugify(bankName)}`}
                             className="text-[11px] mt-0.5 block md:hidden transition-colors hover:text-[var(--an-accent)]"
                             style={{ color: "var(--an-text-muted)" }}
                           >
-                            {report.investmentBank}
+                            {bankName}
                           </Link>
                         )}
                       </td>
                       <td className="px-[18px] py-3 hidden md:table-cell">
-                        {report.investmentBank ? (
+                        {bankName ? (
                           <Link
-                            href={`/analyser/bank/${slugify(report.investmentBank)}`}
+                            href={`/analyser/bank/${slugify(bankName)}`}
                             className="text-[13px] transition-colors hover:text-[var(--an-accent)]"
                             style={{ color: "var(--an-text-secondary)" }}
                           >
-                            {report.investmentBank}
+                            {bankName}
                           </Link>
                         ) : null}
                       </td>
@@ -550,6 +553,11 @@ export default async function AnalystReportsPage() {
                             {formatTargetPrice(
                               report.targetPrice,
                               report.targetCurrency
+                            )}
+                            {report.previousTargetPrice && (
+                              <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
+                                ({formatNumber(report.previousTargetPrice)})
+                              </span>
                             )}
                           </span>
                         ) : null}

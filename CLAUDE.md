@@ -145,38 +145,43 @@ All user-facing text is in Norwegian (nb). Key terms:
 - When user says "save" or "exit" or "save and quit": always update this Session Status section with current progress, pending tasks, and blockers before stopping
 - Save ongoing/new tasks to this file automatically
 
-## Session Status (2026-02-13)
+## Session Status (2026-02-13, evening)
 
 ### Pending deployment (pushed to main, awaiting Vercel build)
-Vercel appears to be out of credits — builds failing since commit `5bc1d7e`. The following commits are pushed but NOT yet deployed:
+Vercel Hobby plan limits cron to daily. Cron schedule changed from hourly to daily at 6 AM UTC (`0 6 * * *`) in commit `b40f289` to unblock builds.
 
-- **`41672ea`** — `/analyser` page improvements:
-  - `formatDateShort()` changed from `DD.MM` to `DD.MM.YY` site-wide (`lib/utils.ts`)
-  - `/analyser` shows only latest 15 reports (no more search/pagination)
-  - Recommendation bars split into "Siste 30 dager" + "Totalt" sections
-  - Removed report count badges from banks panel on public page
-  - Added "Rapporter per bank" card to admin dashboard (`analystatwork/dashboard`)
-- **`9e5c292`** — Aggregator source filtering fix:
-  - Switched from exact match to prefix matching (`startsWith` / SQL `LIKE`)
-  - Catches "Finansavisen", "Finansavisen+", any variant with trailing chars
-  - Also filters CoinMarketCap as non-bank source
-  - `isAggregatorSource()` and `getInvestmentBanks()` SQL both updated
+Latest commit on main: **`ed76845`**
+
+### Recent commits (this session)
+- **`b40f289`** — Change cron to daily (`0 6 * * *`) for Vercel Hobby plan
+- **`22feae8`** — Group analyst company reports by ISIN (not exact company name) so all recommendations show on company profile pages regardless of name variant
+- **`dc85e1b`** — Consolidate bank names + move banks panel to admin only:
+  - `BANK_NAME_MAP` normalizes variants (Arctic/Arctic Securities, Pareto/Pareto Securities AB/AS, BNP/BNP Paribas, Citi/Citigroup, Fearnley/Fearnley Securities, SB1 Markets/SpareBank 1 Markets, Clarksons/Clarksons Securities, DNB/DNB Carnegie)
+  - `getInvestmentBanks()` merges counts for normalized names
+  - Bank profile pages query all name variants via case-insensitive matching
+  - Removed banks panel from public `/analyser` page (stays in admin dashboard)
+  - Recommendations panel now full-width with side-by-side layout on desktop
+- **`ed76845`** — Fix insider sync: Norwegian PDMR topic detection + date parsing timezone fix
 
 ### Pending tasks
-- Verify deployment works once Vercel billing is resolved
-- Data quality: "Sparebank 1 Markets" / "SpareBank 1 Markets" appear as two separate banks (capitalization mismatch) — may need DB normalization or case-insensitive grouping in `getInvestmentBanks()`
+- Verify deployment works once Vercel build completes
+- Bank name normalization map (`BANK_NAME_MAP` in `lib/analyst-db.ts`) may need additions as new bank variants appear in data
+- Euronext pagination is broken (all pages return same data) — insider sync only captures current day's items; running daily via build keeps data fresh but can't backfill gaps
+- Consider adding more Euronext data sources or alternative scraping approach for historical insider data
 
 ### Recently completed
+- ISIN-based grouping for `/analyser/selskap/[slug]` — all recommendations for a company show regardless of name variant
+- Bank name consolidation — duplicates like "Pareto Securities" / "Pareto Securities AB" merged into single canonical names
+- Banks panel moved from public `/analyser` to admin dashboard only
+- Insider sync fixes: Norwegian PDMR topics ("meldepliktig handel", "primærinnsider") now detected; date parsing avoids timezone shift
+- Fixed 154 existing insider_trades records with wrong dates (timezone bug)
 - IMAP email sync + historical recommendations + per-rec bank attribution
 - Full site navy-dark redesign with gold accent
-- All pages clickable, mobile responsive, shared component extraction
 - `/analyser/bank/[slug]` and `/analyser/selskap/[slug]` profile pages
-- Company page (`/[ticker]`) two-column layout revamp
 
 ### Known state
-- ~2651 reports in DB, 5 whitelisted domains configured
+- ~2651 analyst reports in DB, 5 whitelisted domains configured
+- 185 insider trades in DB, range 2026-01-01 to 2026-02-13
 - Gmail IMAP enabled for bulk import and cron sync
-- IMAP bulk import uses `sync_state` table for UID checkpointing
-- Vercel cron requires `CRON_SECRET` env var, runs hourly at `0 * * * *`
+- Vercel cron: daily at 6 AM UTC (`0 6 * * *`), requires `CRON_SECRET` env var
 - `imapflow` added as dependency for IMAP support
-- Production currently serving commit `32ba1e9` (4+ hours old)

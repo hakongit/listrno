@@ -3,6 +3,7 @@ import {
   getCachedPublicAnalystReportsByCompany,
   initializeAnalystDatabase,
   isAggregatorSource,
+  normalizeBankName,
 } from "@/lib/analyst-db";
 import { getShortData } from "@/lib/data";
 import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
@@ -83,6 +84,7 @@ export default async function CompanyProfilePage({ params }: PageProps) {
     reports
       .map((r) => r.recInvestmentBank || r.investmentBank)
       .filter((b): b is string => !!b && !isAggregatorSource(b))
+      .map(normalizeBankName)
   ).size;
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
   const ticker = reports.length > 0 ? getTickerForReport(reports[0].companyIsin) : null;
@@ -255,7 +257,7 @@ export default async function CompanyProfilePage({ params }: PageProps) {
               <tbody>
                 {reports.map((report, i) => {
                   const effectiveBank = report.recInvestmentBank || report.investmentBank;
-                  const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
+                  const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? normalizeBankName(effectiveBank) : null;
 
                   return (
                   <tr

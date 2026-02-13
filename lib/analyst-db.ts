@@ -26,6 +26,49 @@ export function isAggregatorSource(name: string): boolean {
   return AGGREGATOR_PREFIXES.some((prefix) => lower.startsWith(prefix));
 }
 
+// Normalize bank names to canonical form (consolidate variants)
+const BANK_NAME_MAP: Record<string, string> = {
+  "arctic": "Arctic Securities",
+  "arctic securities": "Arctic Securities",
+  "pareto": "Pareto Securities",
+  "pareto securities": "Pareto Securities",
+  "pareto securities ab": "Pareto Securities",
+  "pareto securities as": "Pareto Securities",
+  "fearnley": "Fearnley Securities",
+  "fearnley securities": "Fearnley Securities",
+  "bnp": "BNP Paribas",
+  "bnp paribas": "BNP Paribas",
+  "citi": "Citi",
+  "citigroup": "Citi",
+  "sb1 markets": "SpareBank 1 Markets",
+  "sb1 markets as": "SpareBank 1 Markets",
+  "sparebank 1 markets": "SpareBank 1 Markets",
+  "sparebank1 markets": "SpareBank 1 Markets",
+  "clarksons securities": "Clarksons Securities",
+  "clarksons": "Clarksons Securities",
+  "dnb carnegie": "DNB Carnegie",
+  "dnb": "DNB Carnegie",
+};
+
+export function normalizeBankName(name: string): string {
+  const key = name.toLowerCase().trim();
+  return BANK_NAME_MAP[key] ?? name.trim();
+}
+
+/** Get all raw bank name variants that map to a given canonical name */
+function getBankNameVariants(canonicalName: string): string[] {
+  const variants = new Set<string>();
+  variants.add(canonicalName);
+  for (const [raw, canonical] of Object.entries(BANK_NAME_MAP)) {
+    if (canonical === canonicalName) {
+      // Add the raw key in its original casing from the map values won't help,
+      // but we need to match DB values — use case-insensitive SQL instead
+      variants.add(raw);
+    }
+  }
+  return Array.from(variants);
+}
+
 // Initialize analyst reports schema
 export async function initializeAnalystDatabase() {
   const db = getDb();
@@ -462,8 +505,10 @@ export async function getPublicAnalystReports(options?: {
   }
 
   if (options?.investmentBank) {
-    whereClause += ` AND COALESCE(rec.investment_bank, ar.investment_bank) = ?`;
-    args.push(options.investmentBank);
+    const variants = getBankNameVariants(options.investmentBank);
+    const placeholders = variants.map(() => "LOWER(TRIM(COALESCE(rec.investment_bank, ar.investment_bank))) = ?").join(" OR ");
+    whereClause += ` AND (${placeholders})`;
+    args.push(...variants.map(v => v.toLowerCase()));
   }
 
   args.push(limit, offset);
@@ -688,10 +733,18 @@ export async function getInvestmentBanks(): Promise<InvestmentBankSummary[]> {
     `,
     args: likeArgs,
   });
-  return result.rows.map((row) => ({
-    name: String(row.name),
-    reportCount: Number(row.report_count),
-  }));
+
+  // Normalize and merge bank name variants
+  const merged = new Map<string, number>();
+  for (const row of result.rows) {
+    const rawName = String(row.name);
+    const canonical = normalizeBankName(rawName);
+    merged.set(canonical, (merged.get(canonical) ?? 0) + Number(row.report_count));
+  }
+
+  return Array.from(merged.entries())
+    .map(([name, reportCount]) => ({ name, reportCount }))
+    .sort((a, b) => b.reportCount - a.reportCount);
 }
 
 export const getCachedInvestmentBanks = unstable_cache(
@@ -701,7 +754,7 @@ export const getCachedInvestmentBanks = unstable_cache(
 );
 
 export const getCachedPublicAnalystReportsByBank = unstable_cache(
-  async (bankName: string) => getPublicAnalystReports({ limit: 200, investmentBank: bankName }),
+  async (bankName: string) => getPublicAnalystReports({ limit: 500, investmentBank: bankName }),
   ["public-analyst-reports-by-bank"],
   { revalidate: 300, tags: ["public-analyst-reports"] }
 );

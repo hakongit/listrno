@@ -1,9 +1,9 @@
 import {
   getCachedPublicAnalystReports,
   getCachedAnalystReportCount,
-  getCachedInvestmentBanks,
   initializeAnalystDatabase,
   isAggregatorSource,
+  normalizeBankName,
 } from "@/lib/analyst-db";
 import { getShortData } from "@/lib/data";
 import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
@@ -85,10 +85,9 @@ function classifyRec(rec?: string): "buy" | "hold" | "sell" | null {
 export default async function AnalystReportsPage() {
   await initializeAnalystDatabase();
 
-  const [allReports, totalCount, banks, shortData] = await Promise.all([
+  const [allReports, totalCount, shortData] = await Promise.all([
     getCachedPublicAnalystReports(),
     getCachedAnalystReportCount(),
-    getCachedInvestmentBanks(),
     getShortData(),
   ]);
 
@@ -230,7 +229,7 @@ export default async function AnalystReportsPage() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+      <div className="grid grid-cols-3 gap-3 mt-6">
         <div
           className="an-stat-accent rounded-lg p-4 border"
           style={{ borderColor: "var(--an-border)" }}
@@ -246,23 +245,6 @@ export default async function AnalystReportsPage() {
             style={{ color: "var(--an-text-secondary)" }}
           >
             Rapporter
-          </div>
-        </div>
-        <div
-          className="rounded-lg p-4 border"
-          style={{
-            background: "var(--an-bg-surface)",
-            borderColor: "var(--an-border)",
-          }}
-        >
-          <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
-            {banks.length}
-          </div>
-          <div
-            className="text-xs font-medium"
-            style={{ color: "var(--an-text-secondary)" }}
-          >
-            Investeringsbanker
           </div>
         </div>
         <div
@@ -301,9 +283,8 @@ export default async function AnalystReportsPage() {
         </div>
       </div>
 
-      {/* Insights: Recommendations + Banks */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-        {/* Recommendations panel */}
+      {/* Recommendations panel */}
+      <div className="mt-3">
         <div
           className="rounded-lg overflow-hidden border"
           style={{
@@ -322,9 +303,9 @@ export default async function AnalystReportsPage() {
               Anbefalinger
             </span>
           </div>
-          <div className="px-[18px] py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-6 px-[18px] py-4">
             {/* Last 30 days */}
-            <div className="mb-4">
+            <div>
               <div
                 className="text-[11px] font-medium uppercase tracking-wider mb-2.5"
                 style={{ color: "var(--an-text-muted)" }}
@@ -354,7 +335,7 @@ export default async function AnalystReportsPage() {
             </div>
             {/* Total */}
             <div
-              className="pt-4"
+              className="pt-4 md:pt-0 mt-4 md:mt-0"
               style={{ borderTop: "1px solid var(--an-border-subtle)" }}
             >
               <div
@@ -384,49 +365,6 @@ export default async function AnalystReportsPage() {
                 />
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Banks panel */}
-        <div
-          className="rounded-lg overflow-hidden border"
-          style={{
-            background: "var(--an-bg-surface)",
-            borderColor: "var(--an-border)",
-          }}
-        >
-          <div
-            className="px-[18px] py-3 border-b"
-            style={{ borderColor: "var(--an-border)" }}
-          >
-            <span
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--an-text-secondary)" }}
-            >
-              Banker
-            </span>
-          </div>
-          <div className="px-[18px] py-2">
-            {banks.map((bank, i) => (
-              <div
-                key={bank.name}
-                className="py-[9px]"
-                style={{
-                  borderBottom:
-                    i < banks.length - 1
-                      ? "1px solid var(--an-border-subtle)"
-                      : "none",
-                }}
-              >
-                <Link
-                  href={`/analyser/bank/${slugify(bank.name)}`}
-                  className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
-                  style={{ color: "var(--an-text-primary)" }}
-                >
-                  {bank.name}
-                </Link>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -523,7 +461,7 @@ export default async function AnalystReportsPage() {
                   );
                   const ticker = getTickerForReport(report.companyIsin);
                   const effectiveBank = report.recInvestmentBank || report.investmentBank;
-                  const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
+                  const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? normalizeBankName(effectiveBank) : null;
 
                   return (
                     <tr

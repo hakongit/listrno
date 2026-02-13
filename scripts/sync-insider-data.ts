@@ -426,6 +426,28 @@ function parseTradeDetails(
   };
 }
 
+// Parse date string ("13 Feb 2026" or "2026-01-30T...") to YYYY-MM-DD
+const MONTH_MAP: Record<string, string> = {
+  jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+  jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+};
+
+function parseDate(dateStr: string): string {
+  // Already ISO format
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+    return dateStr.split("T")[0];
+  }
+  // "13 Feb 2026" format — parse manually to avoid timezone issues
+  const match = dateStr.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
+  if (match) {
+    const month = MONTH_MAP[match[2].toLowerCase()];
+    if (month) {
+      return `${match[3]}-${month}-${match[1].padStart(2, "0")}`;
+    }
+  }
+  return dateStr;
+}
+
 // Generate a unique message ID from the URL
 function extractMessageId(url: string): string {
   const match = url.match(/company-news\/(.+)$/);
@@ -582,11 +604,14 @@ function parseRowsFromHtml(html: string): EuronextNewsItem[] {
     const topicHtml = cells[4]?.replace(/<[^>]+>/g, "").trim() || "";
     const topic = topicHtml;
 
-    // Only include PDMR notifications
+    // Only include PDMR notifications (English and Norwegian topics)
+    const topicLower = topic.toLowerCase();
     const isPDMR =
-      topic.toLowerCase().includes("mandatory notification") ||
-      topic.toLowerCase().includes("primary insider") ||
-      topic.toLowerCase().includes("pdmr");
+      topicLower.includes("mandatory notification") ||
+      topicLower.includes("primary insider") ||
+      topicLower.includes("pdmr") ||
+      topicLower.includes("meldepliktig handel") ||
+      topicLower.includes("primærinnsider");
 
     if (company && title && isPDMR) {
       items.push({ date: dateStr, company, title, url: fullUrl, topic });
@@ -682,7 +707,7 @@ async function syncInsiderData() {
           await new Promise((resolve) => setTimeout(resolve, 200));
 
           if (pdfText) {
-            const trades = parsePdfTrades(pdfText, item.company, item.date.split("T")[0]);
+            const trades = parsePdfTrades(pdfText, item.company, parseDate(item.date));
 
             for (const trade of trades) {
               const messageId = `${extractMessageId(item.url)}-${slugify(trade.insiderName)}`;
@@ -708,7 +733,7 @@ async function syncInsiderData() {
                   trade.price,
                   trade.totalValue,
                   trade.currency,
-                  trade.tradeDate || item.date.split("T")[0],
+                  trade.tradeDate || parseDate(item.date),
                   item.date,
                   null,
                   null,
@@ -760,7 +785,7 @@ async function syncInsiderData() {
         details.price,
         details.totalValue,
         details.currency,
-        item.date.split("T")[0],
+        parseDate(item.date),
         item.date,
         details.sharesAfter,
         null,

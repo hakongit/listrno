@@ -12,17 +12,18 @@ import {
 import { unstable_cache } from "next/cache";
 
 // Newspapers/newsletters that aggregate reports from actual banks — never show as a bank source
-const AGGREGATOR_SOURCES = [
+const AGGREGATOR_PREFIXES = [
   "finansavisen",
-  "finansavisen+",
   "børsxtra",
   "borsxtra",
   "børsbjellen",
   "borsbjellen",
+  "coinmarketcap",
 ];
 
 export function isAggregatorSource(name: string): boolean {
-  return AGGREGATOR_SOURCES.includes(name.toLowerCase());
+  const lower = name.toLowerCase().trim();
+  return AGGREGATOR_PREFIXES.some((prefix) => lower.startsWith(prefix));
 }
 
 // Initialize analyst reports schema
@@ -671,7 +672,8 @@ export interface InvestmentBankSummary {
 
 export async function getInvestmentBanks(): Promise<InvestmentBankSummary[]> {
   const db = getDb();
-  const placeholders = AGGREGATOR_SOURCES.map(() => '?').join(',');
+  const likeConditions = AGGREGATOR_PREFIXES.map(() => "LOWER(TRIM(COALESCE(rec.investment_bank, ar.investment_bank))) NOT LIKE ?").join(' AND ');
+  const likeArgs = AGGREGATOR_PREFIXES.map((p) => `${p}%`);
   const result = await db.execute({
     sql: `
       SELECT COALESCE(rec.investment_bank, ar.investment_bank) as name, COUNT(DISTINCT rec.id) as report_count
@@ -680,11 +682,11 @@ export async function getInvestmentBanks(): Promise<InvestmentBankSummary[]> {
       WHERE ar.extraction_status = 'processed'
         AND COALESCE(rec.investment_bank, ar.investment_bank) IS NOT NULL
         AND rec.target_price IS NOT NULL
-        AND LOWER(COALESCE(rec.investment_bank, ar.investment_bank)) NOT IN (${placeholders})
+        AND ${likeConditions}
       GROUP BY COALESCE(rec.investment_bank, ar.investment_bank)
       ORDER BY report_count DESC
     `,
-    args: AGGREGATOR_SOURCES,
+    args: likeArgs,
   });
   return result.rows.map((row) => ({
     name: String(row.name),

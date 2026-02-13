@@ -140,119 +140,43 @@ All user-facing text is in Norwegian (nb). Key terms:
 - Behandle = Process
 - Godkjente domener = Approved domains
 
+## Workflow
+
+- When user says "save" or "exit" or "save and quit": always update this Session Status section with current progress, pending tasks, and blockers before stopping
+- Save ongoing/new tasks to this file automatically
+
 ## Session Status (2026-02-13)
 
-### Recently completed
-- **IMAP email sync + historical recommendations + per-rec bank attribution** (2026-02-13):
-  - `lib/imap.ts` — IMAP client using `imapflow` for Gmail (UID-based fetch, mailbox state)
-  - `lib/email-processor.ts` — Shared pipeline: dedup, PDF extraction, LLM extraction, previous rec enrichment, exponential backoff retry
-  - `scripts/bulk-import.ts` — Bulk IMAP import with batch processing (50 UIDs/batch, 5 concurrent), checkpoint/resume via `sync_state` table
-  - `app/api/cron/sync-emails/route.ts` — Hourly Vercel cron for new email sync (authenticated via `CRON_SECRET`)
-  - `vercel.json` — Cron schedule configuration
-  - `analyst_recommendations` extended with `investment_bank`, `previous_target_price`, `previous_recommendation` columns
-  - `sync_state` table for IMAP UID checkpointing (`imap_last_uid`, `imap_uid_validity`, `last_sync_at`)
-  - LLM extraction prompt updated to extract per-rec `investmentBank` (for aggregator emails like Børsextra), `previousTargetPrice`, `previousRecommendation`
-  - `getPreviousRecommendation()` DB function for historical lookups
-  - `getInvestmentBanks()` and `getPublicAnalystReports()` use `COALESCE(rec.investment_bank, ar.investment_bank)` for proper Børsextra attribution
-  - All analyser pages + company page updated to show `recInvestmentBank || investmentBank` and previous target price in parentheses
-  - Admin dashboard: per-rec `investmentBank` field in edit form for aggregator-type emails
-  - Gmail IMAP must be enabled in Gmail settings; env vars: `GMAIL_EMAIL`, `GMAIL_APP_PASSWORD`, `CRON_SECRET`
-- Made everything clickable on `/analyser` pages: all company names link to `/{slug}` (if short data) or `/analyser/selskap/{slug}` (new page); bank names visible + clickable on mobile; bank hover styles added
-- Created `/analyser/selskap/[slug]` company profile page — shows all analyst reports for a company with breadcrumb, stats grid, and link to short positions page if available
-- Created `/analyser/bank/[slug]` bank profile page — breadcrumb navigation added
-- Added `getCachedPublicAnalystReportsByCompany`, `getCachedAnalystCompanies` to `analyst-db.ts`
-- Changed `companyName` filter in `getPublicAnalystReports` from `LIKE` to exact `=` match
-- Tailwind dark: overrides in `globals.css` remap all gray/colored utilities to navy palette — full visual consistency across every page
-- Site-wide premium navy-dark design with gold accent, Inter + JetBrains Mono fonts
-- Client-side `<SiteNav />` component with `usePathname()` active state and pill-style hover
-- All page inline headers removed — nav, accent line, and footer now in root layout
-- Dashboard stats grid (4 cards), recommendation bars (Kjøp/Hold/Selg), bank leaderboard on `/analyser`
-- `formatDateShort()` for `DD.MM` date format on analyser pages
-- Batch pre-loading for analyst report review: pre-loads 5 reports ahead for instant "Godkjenn og neste"
-- Bar chart favicon (`app/icon.svg`) and reusable `<Logo />` component (`components/logo.tsx`)
-- Branding: Bluebox AS (blueboxas.no) in footer and /om page
-- Fixed insider sync: Euronext broke `?page=N` pagination (301 redirects), now fetches base URL
-- Admin pages moved from `/admin` to `/analystatwork`
-- POP3 fetch merges with existing DB-imported emails; separate server/total counts
-- Editable extraction results form in admin dashboard
-- LLM feedback loop: re-process reports with one-time feedback, persistent guidance prompt
-- `/analyser` page hides reports with no extracted data
+### Pending deployment (pushed to main, awaiting Vercel build)
+Vercel appears to be out of credits — builds failing since commit `5bc1d7e`. The following commits are pushed but NOT yet deployed:
 
-- **Company page (`/[ticker]`) revamp** — full redesign with navy-dark theme:
-  - Hero: prominent h1 company name, ticker badge, stock price, ISIN
-  - Stats grid (4 cards): total short %, stock price + 52-week, insider activity, analyst consensus
-  - Short position history chart restyled with `--an-*` CSS vars
-  - Two-column grid (desktop) / stacked (mobile): positions table (left 3/5) + analyst reports + insider trades + company info (right 2/5)
-  - Insider-only fallback with same layout minus short-specific sections
-  - All entities clickable with gold hover, `RecommendationBadge`, `an-stat-accent`, `an-table-row` patterns
-  - Removed all old gray Tailwind classes, uses CSS variables directly via `style={}` props
-  - Dates use `formatDateShort()` (DD.MM format) in compact panels
+- **`41672ea`** — `/analyser` page improvements:
+  - `formatDateShort()` changed from `DD.MM` to `DD.MM.YY` site-wide (`lib/utils.ts`)
+  - `/analyser` shows only latest 15 reports (no more search/pagination)
+  - Recommendation bars split into "Siste 30 dager" + "Totalt" sections
+  - Removed report count badges from banks panel on public page
+  - Added "Rapporter per bank" card to admin dashboard (`analystatwork/dashboard`)
+- **`9e5c292`** — Aggregator source filtering fix:
+  - Switched from exact match to prefix matching (`startsWith` / SQL `LIKE`)
+  - Catches "Finansavisen", "Finansavisen+", any variant with trailing chars
+  - Also filters CoinMarketCap as non-bank source
+  - `isAggregatorSource()` and `getInvestmentBanks()` SQL both updated
+
+### Pending tasks
+- Verify deployment works once Vercel billing is resolved
+- Data quality: "Sparebank 1 Markets" / "SpareBank 1 Markets" appear as two separate banks (capitalization mismatch) — may need DB normalization or case-insensitive grouping in `getInvestmentBanks()`
+
+### Recently completed
+- IMAP email sync + historical recommendations + per-rec bank attribution
+- Full site navy-dark redesign with gold accent
+- All pages clickable, mobile responsive, shared component extraction
+- `/analyser/bank/[slug]` and `/analyser/selskap/[slug]` profile pages
+- Company page (`/[ticker]`) two-column layout revamp
 
 ### Known state
-- 431 reports imported in DB, 5 whitelisted domains configured
-- Gmail POP3 must be set to "Enable POP for all mail" in Gmail settings to expose all historical emails
-- Gmail IMAP must be enabled for bulk import and cron sync
-- IMAP bulk import processes ALL emails (no domain filter), uses `sync_state` table for UID checkpointing
+- ~2651 reports in DB, 5 whitelisted domains configured
+- Gmail IMAP enabled for bulk import and cron sync
+- IMAP bulk import uses `sync_state` table for UID checkpointing
 - Vercel cron requires `CRON_SECRET` env var, runs hourly at `0 * * * *`
 - `imapflow` added as dependency for IMAP support
-
-### Clickability audit (2026-02-12)
-All core entities are properly clickable across every page:
-- Company names → `/{slug}` or `/analyser/selskap/{slug}` (100%)
-- Actor/holder names → `/aktor/{slug}` (100%)
-- Insider names → `/innsidehandel/{slug}` (100%)
-- Bank names → `/analyser/bank/{slug}` (100%)
-- Breadcrumbs present on all nested pages
-- External source links open in new tabs
-- No missing navigation paths found
-
-### Design consistency audit (2026-02-12)
-All pages now use navy CSS vars (`--an-*`) via `style={}` props:
-
-- `/page.tsx` (dashboard) — full navy redesign ✓
-- `/[ticker]/page.tsx` — full navy redesign ✓ (headers improved: "Short-historikk", "Aktive shortposisjoner", "Siste innsidehandler")
-- `/aktor/[slug]/page.tsx` — full navy redesign ✓ (breadcrumb, stats grid, descriptive headers)
-- `/innsidehandel/page.tsx` — full navy redesign ✓
-- `/innsidehandel/[slug]/page.tsx` — full navy redesign ✓ (breadcrumb, company pills, trades table)
-- `/topp/[kategori]/page.tsx` — full navy redesign ✓ (gold accent period filter, breadcrumb)
-- `/analyser/page.tsx` — full navy redesign ✓
-- `/analyser/bank/[slug]/page.tsx` — full navy redesign ✓
-- `/analyser/selskap/[slug]/page.tsx` — full navy redesign ✓
-- `components/insider-table.tsx` — navy redesign ✓ (removed lucide icons, CSS var badges)
-- `components/searchable-table.tsx` — navy redesign ✓ (inline SVG search icon, CSS var styling)
-
-### Mobile responsive fixes (2026-02-12)
-All pages optimized for iPhone-class screens (~393px):
-- **Nav**: Shortened labels on mobile (Short/Innside/Analyse/Om), `overflow-x-auto no-scrollbar`, `shrink-0` on logo
-- **Page containers**: `px-4 sm:px-6` everywhere (was `px-6`)
-- **Stat cards**: `p-3 sm:p-4`, numbers `text-[20px] sm:text-[26px]`
-- **Table cells**: `px-3 sm:px-[18px]` everywhere (was `px-[18px]`)
-- **Company/holder names**: `truncate` with `max-w-[120px]-[160px] sm:max-w-none` on mobile
-- **Hero sections**: ISIN hidden on mobile (`hidden sm:inline`), reduced gaps and font sizes
-- **Footer**: responsive padding
-- CSS utility `.no-scrollbar` added to `globals.css`
-
-### Completed: Full site navy redesign
-All pages and shared components now use `--an-*` CSS variables via `style={}` props. No pages remain on old gray Tailwind styling. Lucide icons removed from redesigned components in favor of CSS-based styling and inline SVGs.
-
-### Completed: Consistency pass + shared component extraction (2026-02-12)
-
-Extracted 4 shared UI components and ensured navy theme everywhere:
-
-**Shared components (`components/ui/`):**
-- `trade-type-badge.tsx` — Kjøp/Salg/Annet badge (was duplicated 4×)
-- `recommendation-badge.tsx` — Buy/Hold/Sell analyst badge (was duplicated 4×)
-- `change-indicator.tsx` — Short % change with arrow + date (was duplicated 2× with old Tailwind)
-- `period-selector.tsx` — Chart period buttons with gold accent active state (was duplicated 2×)
-
-**Chart components restyled:**
-- `short-history-chart.tsx` — COLORS const matching CSS vars, PeriodSelector, navy tooltips
-- `holder-history-chart.tsx` — CHART_THEME/LINE_COLORS for dark backgrounds, PeriodSelector, navy tooltips
-- `lazy-short-chart.tsx` / `lazy-holder-chart.tsx` — loading state uses CSS vars
-
-**Pages restyled:**
-- `shortoversikt/page.tsx` — full navy redesign with HighlightCard component, removed lucide icons
-- `short-table.tsx` — full navy redesign with ChangeIndicator, removed local format functions
-- `page.tsx` — added SEO metadata (Metadata export)
-
-**All duplicated components replaced** — single source of truth for each UI pattern
+- Production currently serving commit `32ba1e9` (4+ hours old)

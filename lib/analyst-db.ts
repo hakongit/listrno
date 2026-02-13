@@ -707,30 +707,38 @@ export const getCachedPublicAnalystReportsByBank = unstable_cache(
 );
 
 export const getCachedPublicAnalystReportsByCompany = unstable_cache(
-  async (companyName: string) => getPublicAnalystReports({ limit: 200, companyName }),
+  async (companyName: string, companyIsin?: string) =>
+    companyIsin
+      ? getPublicAnalystReports({ limit: 500, companyIsin })
+      : getPublicAnalystReports({ limit: 500, companyName }),
   ["public-analyst-reports-by-company"],
   { revalidate: 300, tags: ["public-analyst-reports"] }
 );
 
 export interface AnalystCompanySummary {
   name: string;
+  isin: string | null;
   reportCount: number;
 }
 
 export async function getAnalystCompanies(): Promise<AnalystCompanySummary[]> {
   const db = getDb();
   const result = await db.execute(`
-    SELECT rec.company_name as name, COUNT(DISTINCT rec.id) as report_count
+    SELECT
+      MAX(rec.company_name) as name,
+      rec.company_isin as isin,
+      COUNT(DISTINCT rec.id) as report_count
     FROM analyst_recommendations rec
     JOIN analyst_reports ar ON ar.id = rec.report_id
     WHERE ar.extraction_status = 'processed'
       AND rec.company_name IS NOT NULL
       AND rec.target_price IS NOT NULL
-    GROUP BY rec.company_name
+    GROUP BY COALESCE(rec.company_isin, rec.company_name)
     ORDER BY report_count DESC
   `);
   return result.rows.map((row) => ({
     name: String(row.name),
+    isin: row.isin ? String(row.isin) : null,
     reportCount: Number(row.report_count),
   }));
 }

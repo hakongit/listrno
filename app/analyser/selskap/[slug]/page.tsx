@@ -20,7 +20,8 @@ interface PageProps {
 
 async function resolveCompany(slug: string) {
   const companies = await getCachedAnalystCompanies();
-  return companies.find((c) => slugify(c.name) === slug) ?? null;
+  return companies.find((c) => slugify(c.name) === slug) ??
+    companies.find((c) => slugify(c.name).startsWith(slug)) ?? null;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -60,7 +61,7 @@ export default async function CompanyProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  const allReports = await getCachedPublicAnalystReportsByCompany(company.name);
+  const allReports = await getCachedPublicAnalystReportsByCompany(company.name, company.isin ?? undefined);
   const reports = allReports.filter(
     (r) => r.companyName || r.recommendation || r.targetPrice
   );

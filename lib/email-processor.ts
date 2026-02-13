@@ -8,6 +8,7 @@ import {
   getExtractionGuidance,
   getPreviousRecommendation,
   getBankNameForDomain,
+  isAggregatorSource,
 } from "./analyst-db";
 import { extractReportData } from "./analyst-extraction";
 import { extractTextFromPdf, extractLinkedPdfTexts } from "./pdf-extract";
@@ -103,7 +104,8 @@ export async function processEmail(
     );
 
     // Set investment bank from domain whitelist if LLM didn't find one
-    if (!extracted.investmentBank && bankName) {
+    // Never use aggregator/newspaper names as the bank — the per-rec bank from LLM is the real source
+    if (!extracted.investmentBank && bankName && !isAggregatorSource(bankName)) {
       extracted.investmentBank = bankName;
     }
 

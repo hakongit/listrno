@@ -14,6 +14,7 @@ import { unstable_cache } from "next/cache";
 // Newspapers/newsletters that aggregate reports from actual banks — never show as a bank source
 const AGGREGATOR_SOURCES = [
   "finansavisen",
+  "finansavisen+",
   "børsxtra",
   "borsxtra",
   "børsbjellen",

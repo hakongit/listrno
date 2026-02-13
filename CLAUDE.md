@@ -107,7 +107,7 @@ TURSO_AUTH_TOKEN=...
 - Ticker symbols are Yahoo Finance format (`HEX.OL` for Oslo Børs)
 - Currency is primarily NOK; insider trades may have other currencies
 - Mobile-first responsive design with Tailwind breakpoints
-- Dates on `/analyser` pages use `DD.MM` format (e.g., `12.02`) via `formatDateShort()` — never month names
+- Dates on `/analyser` pages use `DD.MM.YY` format (e.g., `12.02.26`) via `formatDateShort()` — never month names
 
 ## Site-wide Dark Theme
 

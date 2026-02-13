@@ -74,11 +74,19 @@ function formatTargetPrice(price?: number, currency?: string): string {
   return `${formatNumber(price)} ${currency || "NOK"}`;
 }
 
+function classifyRec(rec?: string): "buy" | "hold" | "sell" | null {
+  const r = rec?.toLowerCase();
+  if (r === "buy" || r === "overweight" || r === "outperform") return "buy";
+  if (r === "sell" || r === "underweight" || r === "underperform") return "sell";
+  if (r === "hold") return "hold";
+  return null;
+}
+
 export default async function AnalystReportsPage() {
   await initializeAnalystDatabase();
 
   const [allReports, totalCount, banks, shortData] = await Promise.all([
-    getCachedPublicAnalystReports({ limit: 200 }),
+    getCachedPublicAnalystReports(),
     getCachedAnalystReportCount(),
     getCachedInvestmentBanks(),
     getShortData(),
@@ -93,7 +101,6 @@ export default async function AnalystReportsPage() {
   }
 
   function getCompanyLink(isin?: string, name?: string): string | null {
-    // First try short-data pages
     if (isin) {
       const slug = isinToSlug.get(isin);
       if (slug) return `/${slug}`;
@@ -102,7 +109,6 @@ export default async function AnalystReportsPage() {
       const slug = nameToSlug.get(name.toLowerCase());
       if (slug) return `/${slug}`;
     }
-    // Fall back to analyst company page
     if (name) {
       return `/analyser/selskap/${slugify(name)}`;
     }
@@ -125,19 +131,24 @@ export default async function AnalystReportsPage() {
   ).size;
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
 
-  // Recommendation counts
+  // Recommendation counts — total
   const recCounts = { buy: 0, hold: 0, sell: 0 };
   for (const r of reports) {
-    const rec = r.recommendation?.toLowerCase();
-    if (rec === "buy" || rec === "overweight" || rec === "outperform") {
-      recCounts.buy++;
-    } else if (rec === "sell" || rec === "underweight" || rec === "underperform") {
-      recCounts.sell++;
-    } else if (rec === "hold") {
-      recCounts.hold++;
-    }
+    const cls = classifyRec(r.recommendation);
+    if (cls) recCounts[cls]++;
   }
   const recTotal = recCounts.buy + recCounts.hold + recCounts.sell;
+
+  // Recommendation counts — last 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const recCountsMonth = { buy: 0, hold: 0, sell: 0 };
+  for (const r of reports) {
+    if (new Date(r.receivedDate) < thirtyDaysAgo) break; // reports are sorted newest first
+    const cls = classifyRec(r.recommendation);
+    if (cls) recCountsMonth[cls]++;
+  }
+  const recTotalMonth = recCountsMonth.buy + recCountsMonth.hold + recCountsMonth.sell;
 
   // Check if latest report is from today
   const isUpdatedToday = (() => {
@@ -150,6 +161,9 @@ export default async function AnalystReportsPage() {
       latest.getDate() === now.getDate()
     );
   })();
+
+  // Only show the latest 15 reports
+  const displayReports = reports.slice(0, 15);
 
   if (reports.length === 0) {
     return (
@@ -308,25 +322,68 @@ export default async function AnalystReportsPage() {
               Anbefalinger
             </span>
           </div>
-          <div className="px-[18px] py-4 space-y-3.5">
-            <RecommendationBar
-              label="Kjøp"
-              count={recCounts.buy}
-              total={recTotal}
-              type="buy"
-            />
-            <RecommendationBar
-              label="Hold"
-              count={recCounts.hold}
-              total={recTotal}
-              type="hold"
-            />
-            <RecommendationBar
-              label="Selg"
-              count={recCounts.sell}
-              total={recTotal}
-              type="sell"
-            />
+          <div className="px-[18px] py-4">
+            {/* Last 30 days */}
+            <div className="mb-4">
+              <div
+                className="text-[11px] font-medium uppercase tracking-wider mb-2.5"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                Siste 30 dager
+              </div>
+              <div className="space-y-3">
+                <RecommendationBar
+                  label="Kjøp"
+                  count={recCountsMonth.buy}
+                  total={recTotalMonth}
+                  type="buy"
+                />
+                <RecommendationBar
+                  label="Hold"
+                  count={recCountsMonth.hold}
+                  total={recTotalMonth}
+                  type="hold"
+                />
+                <RecommendationBar
+                  label="Selg"
+                  count={recCountsMonth.sell}
+                  total={recTotalMonth}
+                  type="sell"
+                />
+              </div>
+            </div>
+            {/* Total */}
+            <div
+              className="pt-4"
+              style={{ borderTop: "1px solid var(--an-border-subtle)" }}
+            >
+              <div
+                className="text-[11px] font-medium uppercase tracking-wider mb-2.5"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                Totalt
+              </div>
+              <div className="space-y-3">
+                <RecommendationBar
+                  label="Kjøp"
+                  count={recCounts.buy}
+                  total={recTotal}
+                  type="buy"
+                />
+                <RecommendationBar
+                  label="Hold"
+                  count={recCounts.hold}
+                  total={recTotal}
+                  type="hold"
+                />
+                <RecommendationBar
+                  label="Selg"
+                  count={recCounts.sell}
+                  total={recTotal}
+                  type="sell"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -339,7 +396,7 @@ export default async function AnalystReportsPage() {
           }}
         >
           <div
-            className="px-[18px] py-3 border-b flex justify-between items-center"
+            className="px-[18px] py-3 border-b"
             style={{ borderColor: "var(--an-border)" }}
           >
             <span
@@ -348,15 +405,12 @@ export default async function AnalystReportsPage() {
             >
               Banker
             </span>
-            <span className="text-[11px]" style={{ color: "var(--an-text-muted)" }}>
-              etter antall
-            </span>
           </div>
           <div className="px-[18px] py-2">
             {banks.map((bank, i) => (
               <div
                 key={bank.name}
-                className="flex items-center justify-between py-[9px]"
+                className="py-[9px]"
                 style={{
                   borderBottom:
                     i < banks.length - 1
@@ -371,22 +425,13 @@ export default async function AnalystReportsPage() {
                 >
                   {bank.name}
                 </Link>
-                <span
-                  className="text-xs font-medium px-2 py-0.5 rounded-[10px]"
-                  style={{
-                    color: "var(--an-text-muted)",
-                    background: "var(--an-bg-base)",
-                  }}
-                >
-                  {bank.reportCount}
-                </span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Reports Table */}
+      {/* Reports Table — latest 15 */}
       <div className="mt-3 mb-10">
         <div
           className="rounded-lg overflow-hidden border"
@@ -395,69 +440,74 @@ export default async function AnalystReportsPage() {
             borderColor: "var(--an-border)",
           }}
         >
+          <div
+            className="px-3 sm:px-[18px] py-3 border-b flex justify-between items-center"
+            style={{ borderColor: "var(--an-border)" }}
+          >
+            <span
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Siste rapporter
+            </span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
                   <th
-                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                     style={{
                       color: "var(--an-text-muted)",
                       borderBottom: "1px solid var(--an-border)",
-                      background: "var(--an-bg-surface)",
                       width: "80px",
                     }}
                   >
                     Dato
                   </th>
                   <th
-                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                     style={{
                       color: "var(--an-text-muted)",
                       borderBottom: "1px solid var(--an-border)",
-                      background: "var(--an-bg-surface)",
                     }}
                   >
                     Selskap
                   </th>
                   <th
-                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12 hidden md:table-cell"
+                    className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden md:table-cell"
                     style={{
                       color: "var(--an-text-muted)",
                       borderBottom: "1px solid var(--an-border)",
-                      background: "var(--an-bg-surface)",
                     }}
                   >
                     Bank
                   </th>
                   <th
-                    className="text-center text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    className="text-center text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                     style={{
                       color: "var(--an-text-muted)",
                       borderBottom: "1px solid var(--an-border)",
-                      background: "var(--an-bg-surface)",
                       width: "110px",
                     }}
                   >
                     Anbefaling
                   </th>
                   <th
-                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12"
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
                     style={{
                       color: "var(--an-text-muted)",
                       borderBottom: "1px solid var(--an-border)",
-                      background: "var(--an-bg-surface)",
                       width: "120px",
                     }}
                   >
                     Kursmål
                   </th>
                   <th
-                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-[18px] py-[11px] sticky top-12 hidden lg:table-cell"
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden lg:table-cell"
                     style={{
                       color: "var(--an-text-muted)",
                       borderBottom: "1px solid var(--an-border)",
-                      background: "var(--an-bg-surface)",
                       width: "120px",
                     }}
                   >
@@ -466,7 +516,7 @@ export default async function AnalystReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((report, i) => {
+                {displayReports.map((report, i) => {
                   const companyLink = getCompanyLink(
                     report.companyIsin,
                     report.companyName
@@ -481,18 +531,18 @@ export default async function AnalystReportsPage() {
                       className="an-table-row transition-colors"
                       style={{
                         borderBottom:
-                          i < reports.length - 1
+                          i < displayReports.length - 1
                             ? "1px solid var(--an-border-subtle)"
                             : "none",
                       }}
                     >
                       <td
-                        className="px-[18px] py-3 text-xs whitespace-nowrap"
+                        className="px-3 sm:px-[18px] py-3 text-xs whitespace-nowrap"
                         style={{ color: "var(--an-text-muted)" }}
                       >
                         {formatDateShort(report.receivedDate)}
                       </td>
-                      <td className="px-[18px] py-3">
+                      <td className="px-3 sm:px-[18px] py-3">
                         {companyLink ? (
                           <Link
                             href={companyLink}
@@ -528,7 +578,7 @@ export default async function AnalystReportsPage() {
                           </Link>
                         )}
                       </td>
-                      <td className="px-[18px] py-3 hidden md:table-cell">
+                      <td className="px-3 sm:px-[18px] py-3 hidden md:table-cell">
                         {bankName ? (
                           <Link
                             href={`/analyser/bank/${slugify(bankName)}`}
@@ -539,12 +589,12 @@ export default async function AnalystReportsPage() {
                           </Link>
                         ) : null}
                       </td>
-                      <td className="px-[18px] py-3 text-center">
+                      <td className="px-3 sm:px-[18px] py-3 text-center">
                         <RecommendationBadge
                           recommendation={report.recommendation}
                         />
                       </td>
-                      <td className="px-[18px] py-3 text-right">
+                      <td className="px-3 sm:px-[18px] py-3 text-right">
                         {report.targetPrice ? (
                           <span
                             className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
@@ -562,7 +612,7 @@ export default async function AnalystReportsPage() {
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-[18px] py-3 text-right hidden lg:table-cell">
+                      <td className="px-3 sm:px-[18px] py-3 text-right hidden lg:table-cell">
                         {report.priceAtReport ? (
                           <span
                             className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"

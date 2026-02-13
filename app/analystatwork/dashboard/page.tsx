@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { isAuthenticated, getSession } from "@/lib/admin-auth";
 import { isGmailConfigured } from "@/lib/gmail";
 import { isOpenRouterConfigured } from "@/lib/analyst-extraction";
-import { getAnalystReportCount, getAllAnalystDomains, getAllAnalystReports } from "@/lib/analyst-db";
+import { getAnalystReportCount, getAllAnalystDomains, getAllAnalystReports, getInvestmentBanks } from "@/lib/analyst-db";
 import { initializeAnalystDatabase } from "@/lib/analyst-db";
 import AdminDashboardClient from "./client";
 
@@ -24,13 +24,14 @@ export default async function AdminDashboardPage() {
   const openRouterConfigured = isOpenRouterConfigured();
 
   // Get stats and existing reports
-  const [totalReports, pendingReports, processedReports, failedReports, domains, existingReports] = await Promise.all([
+  const [totalReports, pendingReports, processedReports, failedReports, domains, existingReports, banks] = await Promise.all([
     getAnalystReportCount(),
     getAnalystReportCount("pending"),
     getAnalystReportCount("processed"),
     getAnalystReportCount("failed"),
     getAllAnalystDomains(),
     getAllAnalystReports({ limit: 1000 }),
+    getInvestmentBanks(),
   ]);
 
   console.log("[admin] existingReports:", existingReports.length, existingReports.map(r => ({ id: r.id, gmail: r.gmailMessageId, subject: r.subject })));
@@ -63,6 +64,7 @@ export default async function AdminDashboardPage() {
         processed: processedReports,
         failed: failedReports,
       }}
+      banks={banks}
       domains={domains}
       initialEmails={initialEmails}
     />

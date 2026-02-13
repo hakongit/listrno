@@ -29,6 +29,11 @@ import {
 } from "lucide-react";
 import { AnalystDomain } from "@/lib/analyst-types";
 
+interface BankSummary {
+  name: string;
+  reportCount: number;
+}
+
 interface Props {
   session: { expiresAt: Date } | null;
   config: {
@@ -41,6 +46,7 @@ interface Props {
     processed: number;
     failed: number;
   };
+  banks: BankSummary[];
   domains: AnalystDomain[];
   initialEmails?: EmailItem[];
 }
@@ -109,6 +115,7 @@ export default function AdminDashboardClient({
   session,
   config,
   stats: initialStats,
+  banks,
   domains: initialDomains,
   initialEmails = [],
 }: Props) {
@@ -883,6 +890,33 @@ export default function AdminDashboardClient({
             </div>
           </div>
         </div>
+
+        {/* Bank sources breakdown */}
+        {banks.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg mb-6">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-gray-500" />
+              <h2 className="font-semibold text-sm">Rapporter per bank</h2>
+            </div>
+            <div className="px-4 py-2">
+              {banks.map((bank, i) => (
+                <div
+                  key={bank.name}
+                  className="flex items-center justify-between py-2"
+                  style={{
+                    borderBottom: i < banks.length - 1 ? "1px solid" : "none",
+                    borderColor: "var(--tw-border-opacity, rgba(229,231,235,1))",
+                  }}
+                >
+                  <span className="text-sm">{bank.name}</span>
+                  <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                    {bank.reportCount}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Two-column layout: Domains + Activity Log */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

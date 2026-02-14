@@ -1,11 +1,9 @@
 import {
   getCachedPublicAnalystReports,
-  getCachedAnalystReportCount,
   initializeAnalystDatabase,
   isAggregatorSource,
   normalizeBankName,
 } from "@/lib/analyst-db";
-import { getShortData } from "@/lib/data";
 import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
 import { isinToTicker } from "@/lib/tickers";
 import { RecommendationBadge } from "@/components/ui/recommendation-badge";
@@ -15,12 +13,12 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Analytikerrapporter - Listr",
+  title: "Analyser - Listr",
   description:
-    "Analytikerrapporter og kursmål for norske aksjer fra ledende investeringsbanker.",
+    "Analyser og kursmål for norske aksjer fra ledende investeringsbanker.",
   openGraph: {
-    title: "Analytikerrapporter - Listr",
-    description: "Analytikerrapporter og kursmål for norske aksjer",
+    title: "Analyser - Listr",
+    description: "Analyser og kursmål for norske aksjer",
   },
 };
 
@@ -85,29 +83,9 @@ function classifyRec(rec?: string): "buy" | "hold" | "sell" | null {
 export default async function AnalystReportsPage() {
   await initializeAnalystDatabase();
 
-  const [allReports, totalCount, shortData] = await Promise.all([
-    getCachedPublicAnalystReports(),
-    getCachedAnalystReportCount(),
-    getShortData(),
-  ]);
+  const allReports = await getCachedPublicAnalystReports();
 
-  // Build ISIN → slug and name → slug maps
-  const isinToSlug = new Map<string, string>();
-  const nameToSlug = new Map<string, string>();
-  for (const company of shortData.companies) {
-    isinToSlug.set(company.isin, company.slug);
-    nameToSlug.set(company.issuerName.toLowerCase(), company.slug);
-  }
-
-  function getCompanyLink(isin?: string, name?: string): string | null {
-    if (isin) {
-      const slug = isinToSlug.get(isin);
-      if (slug) return `/${slug}`;
-    }
-    if (name) {
-      const slug = nameToSlug.get(name.toLowerCase());
-      if (slug) return `/${slug}`;
-    }
+  function getCompanyLink(name?: string): string | null {
     if (name) {
       return `/analyser/selskap/${slugify(name)}`;
     }
@@ -195,7 +173,7 @@ export default async function AnalystReportsPage() {
             Ingen rapporter enn&aring;
           </h2>
           <p className="text-sm" style={{ color: "var(--an-text-secondary)" }}>
-            Analytikerrapporter vil vises her n&aring;r de er tilgjengelige.
+            Analyser vil vises her n&aring;r de er tilgjengelige.
           </p>
         </div>
       </div>
@@ -208,7 +186,7 @@ export default async function AnalystReportsPage() {
       <div className="pt-8 flex justify-between items-end">
         <div>
           <h1 className="text-[22px] font-bold tracking-tight mb-1">
-            Analytikerrapporter
+            Analyser
           </h1>
           <p className="text-[13px]" style={{ color: "var(--an-text-secondary)" }}>
             Kursmål og anbefalinger fra ledende investeringsbanker
@@ -238,13 +216,13 @@ export default async function AnalystReportsPage() {
             className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
-            {totalCount}
+            {reports.length}
           </div>
           <div
             className="text-xs font-medium"
             style={{ color: "var(--an-text-secondary)" }}
           >
-            Rapporter
+            Analyser
           </div>
         </div>
         <div
@@ -386,7 +364,7 @@ export default async function AnalystReportsPage() {
               className="text-xs font-semibold uppercase tracking-wider"
               style={{ color: "var(--an-text-secondary)" }}
             >
-              Siste rapporter
+              Siste analyser
             </span>
           </div>
           <div className="overflow-x-auto">
@@ -455,10 +433,7 @@ export default async function AnalystReportsPage() {
               </thead>
               <tbody>
                 {displayReports.map((report, i) => {
-                  const companyLink = getCompanyLink(
-                    report.companyIsin,
-                    report.companyName
-                  );
+                  const companyLink = getCompanyLink(report.companyName);
                   const ticker = getTickerForReport(report.companyIsin);
                   const effectiveBank = report.recInvestmentBank || report.investmentBank;
                   const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? normalizeBankName(effectiveBank) : null;
@@ -488,6 +463,14 @@ export default async function AnalystReportsPage() {
                             style={{ color: "var(--an-text-primary)" }}
                           >
                             {report.companyName}
+                            {ticker && (
+                              <span
+                                className="font-normal text-[11px] ml-1"
+                                style={{ color: "var(--an-text-muted)" }}
+                              >
+                                ({ticker})
+                              </span>
+                            )}
                           </Link>
                         ) : (
                           <span
@@ -495,15 +478,15 @@ export default async function AnalystReportsPage() {
                             style={{ color: "var(--an-text-primary)" }}
                           >
                             {report.companyName || ""}
+                            {ticker && (
+                              <span
+                                className="font-normal text-[11px] ml-1"
+                                style={{ color: "var(--an-text-muted)" }}
+                              >
+                                ({ticker})
+                              </span>
+                            )}
                           </span>
-                        )}
-                        {ticker && (
-                          <div
-                            className="text-[11px] mt-px"
-                            style={{ color: "var(--an-text-muted)" }}
-                          >
-                            {ticker}
-                          </div>
                         )}
                         {/* Bank name on mobile */}
                         {bankName && (

@@ -35,11 +35,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: `${company.name} - Analytikerrapporter | Listr`,
-    description: `Se alle analytikerrapporter for ${company.name}. ${company.reportCount} rapporter med kursmål fra ledende investeringsbanker.`,
+    title: `${company.name} - Analyser | Listr`,
+    description: `Se alle analyser for ${company.name}. ${company.reportCount} analyser med kursmål fra ledende investeringsbanker.`,
     openGraph: {
-      title: `${company.name} - Analytikerrapporter`,
-      description: `${company.reportCount} rapporter med kursmål fra ledende investeringsbanker`,
+      title: `${company.name} - Analyser`,
+      description: `${company.reportCount} analyser med kursmål fra ledende investeringsbanker`,
     },
   };
 }
@@ -99,7 +99,7 @@ export default async function CompanyProfilePage({ params }: PageProps) {
             className="text-[13px] transition-colors hover:text-[var(--an-accent)]"
             style={{ color: "var(--an-text-muted)" }}
           >
-            Analytikerrapporter
+            Analyser
           </Link>
           <span style={{ color: "var(--an-text-muted)" }}>/</span>
         </div>
@@ -146,7 +146,7 @@ export default async function CompanyProfilePage({ params }: PageProps) {
             className="text-xs font-medium"
             style={{ color: "var(--an-text-secondary)" }}
           >
-            Rapporter
+            Analyser
           </div>
         </div>
         <div

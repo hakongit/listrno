@@ -575,16 +575,68 @@ export async function getAnalystReportCount(status?: 'pending' | 'processed' | '
   return Number(result.rows[0].count);
 }
 
-export async function getAnalystStats(): Promise<{ reportCount: number; companyCount: number }> {
+export async function getAnalystStats(): Promise<{
+  reportCount: number;
+  companyCount: number;
+  recCounts: { buy: number; hold: number; sell: number };
+  recCountsMonth: { buy: number; hold: number; sell: number };
+}> {
   const db = getDb();
-  const result = await db.execute(
-    `SELECT COUNT(*) as report_count, COUNT(DISTINCT company_name) as company_count
+
+  // Count recommendations and unique companies (prefer ISIN for dedup, fall back to name)
+  const countResult = await db.execute(
+    `SELECT COUNT(*) as report_count,
+            COUNT(DISTINCT COALESCE(NULLIF(company_isin, ''), LOWER(company_name))) as company_count
      FROM analyst_recommendations
      WHERE company_name IS NOT NULL AND company_name != ''`
   );
+
+  // Recommendation breakdown — total
+  const recResult = await db.execute(
+    `SELECT recommendation, COUNT(*) as cnt
+     FROM analyst_recommendations
+     WHERE recommendation IS NOT NULL AND recommendation != ''
+     GROUP BY recommendation`
+  );
+
+  const recCounts = { buy: 0, hold: 0, sell: 0 };
+  for (const row of recResult.rows) {
+    const rec = String(row.recommendation).toLowerCase();
+    const cnt = Number(row.cnt);
+    if (rec === "buy" || rec === "overweight" || rec === "outperform") recCounts.buy += cnt;
+    else if (rec === "sell" || rec === "underweight" || rec === "underperform") recCounts.sell += cnt;
+    else if (rec === "hold") recCounts.hold += cnt;
+  }
+
+  // Recommendation breakdown — last 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const cutoff = thirtyDaysAgo.toISOString();
+
+  const recMonthResult = await db.execute({
+    sql: `SELECT ar2.recommendation, COUNT(*) as cnt
+          FROM analyst_recommendations ar2
+          JOIN analyst_reports ar ON ar.id = ar2.report_id
+          WHERE ar2.recommendation IS NOT NULL AND ar2.recommendation != ''
+            AND ar.received_date >= ?
+          GROUP BY ar2.recommendation`,
+    args: [cutoff],
+  });
+
+  const recCountsMonth = { buy: 0, hold: 0, sell: 0 };
+  for (const row of recMonthResult.rows) {
+    const rec = String(row.recommendation).toLowerCase();
+    const cnt = Number(row.cnt);
+    if (rec === "buy" || rec === "overweight" || rec === "outperform") recCountsMonth.buy += cnt;
+    else if (rec === "sell" || rec === "underweight" || rec === "underperform") recCountsMonth.sell += cnt;
+    else if (rec === "hold") recCountsMonth.hold += cnt;
+  }
+
   return {
-    reportCount: Number(result.rows[0].report_count),
-    companyCount: Number(result.rows[0].company_count),
+    reportCount: Number(countResult.rows[0].report_count),
+    companyCount: Number(countResult.rows[0].company_count),
+    recCounts,
+    recCountsMonth,
   };
 }
 

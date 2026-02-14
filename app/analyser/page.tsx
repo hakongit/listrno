@@ -73,14 +73,6 @@ function formatTargetPrice(price?: number, currency?: string): string {
   return `${formatNumber(price)} ${currency || "NOK"}`;
 }
 
-function classifyRec(rec?: string): "buy" | "hold" | "sell" | null {
-  const r = rec?.toLowerCase();
-  if (r === "buy" || r === "overweight" || r === "outperform") return "buy";
-  if (r === "sell" || r === "underweight" || r === "underperform") return "sell";
-  if (r === "hold") return "hold";
-  return null;
-}
-
 export default async function AnalystReportsPage() {
   await initializeAnalystDatabase();
 
@@ -109,23 +101,9 @@ export default async function AnalystReportsPage() {
   // Compute stats
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
 
-  // Recommendation counts — total
-  const recCounts = { buy: 0, hold: 0, sell: 0 };
-  for (const r of reports) {
-    const cls = classifyRec(r.recommendation);
-    if (cls) recCounts[cls]++;
-  }
+  // Recommendation counts from DB (all data)
+  const { recCounts, recCountsMonth } = stats;
   const recTotal = recCounts.buy + recCounts.hold + recCounts.sell;
-
-  // Recommendation counts — last 30 days
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const recCountsMonth = { buy: 0, hold: 0, sell: 0 };
-  for (const r of reports) {
-    if (new Date(r.receivedDate) < thirtyDaysAgo) break; // reports are sorted newest first
-    const cls = classifyRec(r.recommendation);
-    if (cls) recCountsMonth[cls]++;
-  }
   const recTotalMonth = recCountsMonth.buy + recCountsMonth.hold + recCountsMonth.sell;
 
   // Check if latest report is from today

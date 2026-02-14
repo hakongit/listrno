@@ -1,6 +1,6 @@
 import {
   getCachedPublicAnalystReports,
-  getCachedAnalystReportCount,
+  getCachedAnalystStats,
   initializeAnalystDatabase,
   isAggregatorSource,
   normalizeBankName,
@@ -84,9 +84,9 @@ function classifyRec(rec?: string): "buy" | "hold" | "sell" | null {
 export default async function AnalystReportsPage() {
   await initializeAnalystDatabase();
 
-  const [allReports, totalCount] = await Promise.all([
+  const [allReports, stats] = await Promise.all([
     getCachedPublicAnalystReports(),
-    getCachedAnalystReportCount(),
+    getCachedAnalystStats(),
   ]);
 
   function getCompanyLink(name?: string): string | null {
@@ -107,9 +107,6 @@ export default async function AnalystReportsPage() {
   );
 
   // Compute stats
-  const uniqueCompanies = new Set(
-    reports.map((r) => r.companyName).filter(Boolean)
-  ).size;
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
 
   // Recommendation counts — total
@@ -220,7 +217,7 @@ export default async function AnalystReportsPage() {
             className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
-            {totalCount}
+            {stats.reportCount}
           </div>
           <div
             className="text-xs font-medium"
@@ -237,7 +234,7 @@ export default async function AnalystReportsPage() {
           }}
         >
           <div className="text-[26px] font-bold tracking-tight leading-tight mb-0.5">
-            {uniqueCompanies}
+            {stats.companyCount}
           </div>
           <div
             className="text-xs font-medium"

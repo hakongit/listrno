@@ -575,6 +575,19 @@ export async function getAnalystReportCount(status?: 'pending' | 'processed' | '
   return Number(result.rows[0].count);
 }
 
+export async function getAnalystStats(): Promise<{ reportCount: number; companyCount: number }> {
+  const db = getDb();
+  const result = await db.execute(
+    `SELECT COUNT(*) as report_count, COUNT(DISTINCT company_name) as company_count
+     FROM analyst_recommendations
+     WHERE company_name IS NOT NULL AND company_name != ''`
+  );
+  return {
+    reportCount: Number(result.rows[0].report_count),
+    companyCount: Number(result.rows[0].company_count),
+  };
+}
+
 // Domain whitelist operations
 
 export async function addAnalystDomain(domain: string, bankName: string): Promise<void> {
@@ -705,6 +718,12 @@ export const getCachedPublicAnalystReports = unstable_cache(
 export const getCachedAnalystReportCount = unstable_cache(
   async () => getAnalystReportCount('processed'),
   ["analyst-report-count"],
+  { revalidate: 300, tags: ["public-analyst-reports"] }
+);
+
+export const getCachedAnalystStats = unstable_cache(
+  async () => getAnalystStats(),
+  ["analyst-stats"],
   { revalidate: 300, tags: ["public-analyst-reports"] }
 );
 

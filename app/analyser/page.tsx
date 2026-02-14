@@ -1,5 +1,6 @@
 import {
   getCachedPublicAnalystReports,
+  getCachedAnalystReportCount,
   initializeAnalystDatabase,
   isAggregatorSource,
   normalizeBankName,
@@ -83,7 +84,10 @@ function classifyRec(rec?: string): "buy" | "hold" | "sell" | null {
 export default async function AnalystReportsPage() {
   await initializeAnalystDatabase();
 
-  const allReports = await getCachedPublicAnalystReports();
+  const [allReports, totalCount] = await Promise.all([
+    getCachedPublicAnalystReports(),
+    getCachedAnalystReportCount(),
+  ]);
 
   function getCompanyLink(name?: string): string | null {
     if (name) {
@@ -139,8 +143,8 @@ export default async function AnalystReportsPage() {
     );
   })();
 
-  // Only show the latest 15 reports
-  const displayReports = reports.slice(0, 15);
+  // Only show the latest 5 reports
+  const displayReports = reports.slice(0, 5);
 
   if (reports.length === 0) {
     return (
@@ -216,7 +220,7 @@ export default async function AnalystReportsPage() {
             className="text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
-            {reports.length}
+            {totalCount}
           </div>
           <div
             className="text-xs font-medium"
@@ -550,6 +554,19 @@ export default async function AnalystReportsPage() {
               </tbody>
             </table>
           </div>
+          {reports.length > 5 && (
+            <div
+              className="px-3 sm:px-[18px] py-4 text-center border-t"
+              style={{ borderColor: "var(--an-border-subtle)" }}
+            >
+              <span
+                className="text-[13px]"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                +{reports.length - 5} flere analyser
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

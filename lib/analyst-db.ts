@@ -583,10 +583,20 @@ export async function getAnalystStats(): Promise<{
 }> {
   const db = getDb();
 
-  // Count recommendations and unique companies (prefer ISIN for dedup, fall back to name)
+  // Count recommendations and unique companies
+  // Normalize names: lowercase, strip suffixes (ASA, AB, AS), strip ticker parentheticals, trim
   const countResult = await db.execute(
     `SELECT COUNT(*) as report_count,
-            COUNT(DISTINCT COALESCE(NULLIF(company_isin, ''), LOWER(company_name))) as company_count
+            COUNT(DISTINCT
+              TRIM(
+                REPLACE(REPLACE(REPLACE(
+                  CASE
+                    WHEN company_name LIKE '% (%' THEN LOWER(SUBSTR(company_name, 1, INSTR(company_name, ' (') - 1))
+                    ELSE LOWER(company_name)
+                  END,
+                ' asa', ''), ' ab', ''), ' as', '')
+              )
+            ) as company_count
      FROM analyst_recommendations
      WHERE company_name IS NOT NULL AND company_name != ''`
   );

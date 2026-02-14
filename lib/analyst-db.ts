@@ -727,6 +727,7 @@ export async function getAnalystStats(): Promise<{
   companyCount: number;
   recCounts: { buy: number; hold: number; sell: number };
   recCountsMonth: { buy: number; hold: number; sell: number };
+  recCountsPrevMonth: { buy: number; hold: number; sell: number };
 }> {
   const db = getDb();
 
@@ -789,11 +790,36 @@ export async function getAnalystStats(): Promise<{
     else if (rec === "hold") recCountsMonth.hold += cnt;
   }
 
+  // Recommendation breakdown — previous 30 days (days 31-60) for sentiment comparison
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  const cutoff60 = sixtyDaysAgo.toISOString();
+
+  const recPrevMonthResult = await db.execute({
+    sql: `SELECT ar2.recommendation, COUNT(*) as cnt
+          FROM analyst_recommendations ar2
+          JOIN analyst_reports ar ON ar.id = ar2.report_id
+          WHERE ar2.recommendation IS NOT NULL AND ar2.recommendation != ''
+            AND ar.received_date >= ? AND ar.received_date < ?
+          GROUP BY ar2.recommendation`,
+    args: [cutoff60, cutoff],
+  });
+
+  const recCountsPrevMonth = { buy: 0, hold: 0, sell: 0 };
+  for (const row of recPrevMonthResult.rows) {
+    const rec = String(row.recommendation).toLowerCase();
+    const cnt = Number(row.cnt);
+    if (rec === "buy" || rec === "overweight" || rec === "outperform") recCountsPrevMonth.buy += cnt;
+    else if (rec === "sell" || rec === "underweight" || rec === "underperform") recCountsPrevMonth.sell += cnt;
+    else if (rec === "hold") recCountsPrevMonth.hold += cnt;
+  }
+
   return {
     reportCount: Number(countResult.rows[0].report_count),
     companyCount: Number(countResult.rows[0].company_count),
     recCounts,
     recCountsMonth,
+    recCountsPrevMonth,
   };
 }
 

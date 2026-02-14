@@ -59,11 +59,74 @@ function RecommendationBar({
         />
       </div>
       <span
-        className="text-[13px] font-semibold w-7 text-right shrink-0"
+        className="text-[13px] font-semibold w-[70px] text-right shrink-0"
         style={{ color: c.count }}
       >
-        {count}
+        {count}{" "}
+        <span className="font-normal text-[11px]" style={{ color: "var(--an-text-muted)" }}>
+          {Math.round(pct)}%
+        </span>
       </span>
+    </div>
+  );
+}
+
+function SentimentShift({
+  current,
+  previous,
+}: {
+  current: { buy: number; hold: number; sell: number };
+  previous: { buy: number; hold: number; sell: number };
+}) {
+  const curTotal = current.buy + current.hold + current.sell;
+  const prevTotal = previous.buy + previous.hold + previous.sell;
+  if (curTotal === 0 || prevTotal === 0) return null;
+
+  const curBuyPct = (current.buy / curTotal) * 100;
+  const prevBuyPct = (previous.buy / prevTotal) * 100;
+  const curSellPct = (current.sell / curTotal) * 100;
+  const prevSellPct = (previous.sell / prevTotal) * 100;
+
+  const buyShift = curBuyPct - prevBuyPct;
+  const sellShift = curSellPct - prevSellPct;
+
+  // Only show if shift is significant (>5pp)
+  const threshold = 5;
+  const signals: { text: string; color: string }[] = [];
+
+  if (buyShift > threshold) {
+    signals.push({ text: `Kjøp +${Math.round(buyShift)}pp`, color: "var(--an-green)" });
+  } else if (buyShift < -threshold) {
+    signals.push({ text: `Kjøp ${Math.round(buyShift)}pp`, color: "var(--an-red)" });
+  }
+  if (sellShift > threshold) {
+    signals.push({ text: `Selg +${Math.round(sellShift)}pp`, color: "var(--an-red)" });
+  } else if (sellShift < -threshold) {
+    signals.push({ text: `Selg ${Math.round(sellShift)}pp`, color: "var(--an-green)" });
+  }
+
+  if (signals.length === 0) return null;
+
+  return (
+    <div
+      className="mt-3 pt-3 flex items-center gap-2 flex-wrap"
+      style={{ borderTop: "1px solid var(--an-border-subtle)" }}
+    >
+      <span
+        className="text-[11px] font-medium uppercase tracking-wider"
+        style={{ color: "var(--an-text-muted)" }}
+      >
+        Endring vs forrige 30d:
+      </span>
+      {signals.map((s, i) => (
+        <span
+          key={i}
+          className="text-[11px] font-semibold px-2 py-0.5 rounded"
+          style={{ color: s.color, background: "var(--an-bg-card)" }}
+        >
+          {s.text}
+        </span>
+      ))}
     </div>
   );
 }
@@ -102,7 +165,7 @@ export default async function AnalystReportsPage() {
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;
 
   // Recommendation counts from DB (all data)
-  const { recCounts, recCountsMonth } = stats;
+  const { recCounts, recCountsMonth, recCountsPrevMonth } = stats;
   const recTotal = recCounts.buy + recCounts.hold + recCounts.sell;
   const recTotalMonth = recCountsMonth.buy + recCountsMonth.hold + recCountsMonth.sell;
 
@@ -289,6 +352,7 @@ export default async function AnalystReportsPage() {
                   type="sell"
                 />
               </div>
+              <SentimentShift current={recCountsMonth} previous={recCountsPrevMonth} />
             </div>
             {/* Total */}
             <div

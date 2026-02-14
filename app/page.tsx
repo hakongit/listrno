@@ -1,7 +1,9 @@
 import { getShortData } from "@/lib/data";
 import { getInsiderTrades, getInsiderStats, getTopInsiders } from "@/lib/insider-data";
-import { formatPercent, formatNOK, formatDateShort } from "@/lib/utils";
+import { getCachedAnalystStats, getCachedPublicAnalystReports, initializeAnalystDatabase, normalizeBankName, isAggregatorSource } from "@/lib/analyst-db";
+import { formatPercent, formatNOK, formatDateShort, slugify } from "@/lib/utils";
 import { TradeTypeBadge } from "@/components/ui/trade-type-badge";
+import { RecommendationBadge } from "@/components/ui/recommendation-badge";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -20,11 +22,14 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const [shortData, insiderTrades, insiderStats, topInsiders] = await Promise.all([
+  await initializeAnalystDatabase();
+  const [shortData, insiderTrades, insiderStats, topInsiders, analystStats, analystReports] = await Promise.all([
     getShortData(),
     getInsiderTrades({ limit: 5 }),
     getInsiderStats(),
     getTopInsiders(5),
+    getCachedAnalystStats(),
+    getCachedPublicAnalystReports(),
   ]);
 
   // Short data calculations
@@ -66,20 +71,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
-      {/* Hero */}
-      <div className="pt-8 pb-6 text-center">
-        <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-1">
-          Norsk aksjemarked
-        </h1>
-        <p
-          className="text-[13px]"
-          style={{ color: "var(--an-text-secondary)" }}
-        >
-          Shortposisjoner og innsidehandler i norske aksjer
-        </p>
-      </div>
-
       {/* Stats Grid */}
+      <div className="pt-8"></div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
           className="an-stat-accent rounded-lg p-3 sm:p-4 border"
@@ -536,8 +529,146 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Analyser Section */}
+      <div className="flex flex-col gap-3 mt-3">
+        <div className="flex items-center justify-between pt-3">
+          <Link
+            href="/analyser"
+            className="text-[13px] font-semibold uppercase tracking-wider transition-colors hover:text-[var(--an-accent)]"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Analyser
+          </Link>
+          <Link
+            href="/analyser"
+            className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
+            style={{ color: "var(--an-text-muted)" }}
+          >
+            Se alle
+          </Link>
+        </div>
+
+        {/* Analyst stats row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div
+            className="an-stat-accent rounded-lg p-3 sm:p-4 border"
+            style={{ borderColor: "var(--an-border)" }}
+          >
+            <div
+              className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+              style={{ color: "var(--an-accent)" }}
+            >
+              {analystStats.reportCount}
+            </div>
+            <div
+              className="text-xs font-medium"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Analyser
+            </div>
+          </div>
+          <div
+            className="rounded-lg p-3 sm:p-4 border"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+              {analystStats.companyCount}
+            </div>
+            <div
+              className="text-xs font-medium"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Selskaper dekket
+            </div>
+          </div>
+          <div
+            className="rounded-lg p-3 sm:p-4 border"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+              <span style={{ color: "var(--an-green)" }}>{analystStats.recCounts.buy}</span>
+              <span style={{ color: "var(--an-text-muted)" }} className="mx-1 text-[18px]">/</span>
+              <span style={{ color: "var(--an-amber)" }}>{analystStats.recCounts.hold}</span>
+              <span style={{ color: "var(--an-text-muted)" }} className="mx-1 text-[18px]">/</span>
+              <span style={{ color: "var(--an-red)" }}>{analystStats.recCounts.sell}</span>
+            </div>
+            <div
+              className="text-xs font-medium"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Kjøp / Hold / Selg
+            </div>
+          </div>
+        </div>
+
+        {/* Latest 3 analyst reports */}
+        <div
+          className="rounded-lg overflow-hidden border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
+            style={{ borderColor: "var(--an-border)" }}
+          >
+            <span
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Siste analyser
+            </span>
+          </div>
+          <div>
+            {analystReports
+              .filter((r) => r.companyName && r.recommendation)
+              .slice(0, 3)
+              .map((report, i, arr) => {
+                const effectiveBank = report.recInvestmentBank || report.investmentBank;
+                const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? normalizeBankName(effectiveBank) : null;
+                return (
+                  <Link
+                    key={report.recommendationId}
+                    href={`/analyser/selskap/${slugify(report.companyName!)}`}
+                    className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
+                    style={{
+                      borderBottom: i < arr.length - 1
+                        ? "1px solid var(--an-border-subtle)"
+                        : "none",
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <div
+                        className="text-[13px] font-medium truncate"
+                        style={{ color: "var(--an-text-primary)" }}
+                      >
+                        {report.companyName}
+                      </div>
+                      {bankName && (
+                        <div
+                          className="text-[11px] truncate"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          {bankName}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-3">
+                      <RecommendationBadge recommendation={report.recommendation} />
+                      <div
+                        className="text-[11px]"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(report.receivedDate)}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+          </div>
+        </div>
+      </div>
+
       {/* Footer Links */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6 mb-6">
         <Link
           href="/shortoversikt"
           className="flex items-center justify-between p-4 rounded-lg border transition-colors hover:border-[var(--an-accent)]"
@@ -587,6 +718,35 @@ export default async function DashboardPage() {
               style={{ color: "var(--an-text-muted)" }}
             >
               {insiderStats.totalTrades} handler fra primærinnsidere
+            </div>
+          </div>
+          <span
+            className="text-[13px]"
+            style={{ color: "var(--an-text-muted)" }}
+          >
+            →
+          </span>
+        </Link>
+        <Link
+          href="/analyser"
+          className="flex items-center justify-between p-4 rounded-lg border transition-colors hover:border-[var(--an-accent)]"
+          style={{
+            background: "var(--an-bg-surface)",
+            borderColor: "var(--an-border)",
+          }}
+        >
+          <div>
+            <div
+              className="text-[13px] font-semibold mb-0.5"
+              style={{ color: "var(--an-text-primary)" }}
+            >
+              Alle analyser
+            </div>
+            <div
+              className="text-[11px]"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              {analystStats.reportCount} analyser, {analystStats.companyCount} selskaper
             </div>
           </div>
           <span

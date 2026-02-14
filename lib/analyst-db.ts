@@ -9,7 +9,144 @@ import {
   Recommendation,
   RecommendationRow,
 } from "./analyst-types";
+import { isinToTicker } from "./tickers";
 import { unstable_cache } from "next/cache";
+
+// Build name→ISIN map for resolving company ISINs from names
+const nameToIsinMap = new Map<string, string>();
+
+// From isinToTicker comments (hardcoded known companies)
+const knownCompanies: Record<string, string> = {
+  "nordic semiconductor": "NO0003067902",
+  "nel": "NO0010081235",
+  "hexagon composites": "NO0003079709",
+  "høegh autoliners": "NO0010571680",
+  "hoegh autoliners": "NO0010571680",
+  "tgs": "BMG8788W1079",
+  "mpc container ships": "CY0101162119",
+  "salmon evolution": "NO0010892094",
+  "autostore": "BMG0670A1099",
+  "autostore holdings": "BMG0670A1099",
+  "bw lpg": "BMG1466R1732",
+  "link mobility": "NO0010823131",
+  "link mobility group": "NO0010823131",
+  "cavendish hydrogen": "NO0012929155",
+  "kitron": "NO0010360266",
+  "orkla": "NO0010196140",
+  "aker bp": "NO0003399909",
+  "avance gas": "NO0010844038",
+  "aker solutions": "NO0010715139",
+  "pgs": "NO0003078800",
+  "belships": "NO0010716863",
+  "mowi": "NO0010208051",
+  "vår energi": "NO0012470089",
+  "var energi": "NO0012470089",
+  "hadean ventures": "NO0010861115",
+  "storebrand": "NO0003054108",
+  "dnb": "NO0010031479",
+  "dnb bank": "NO0010031479",
+  "norsk hydro": "NO0003733800",
+  "equinor": "NO0010096985",
+  "atea": "NO0010365521",
+  "scatec": "NO0010310956",
+  "kongsberg gruppen": "NO0003043309",
+  "telenor": "NO0010063308",
+  "gjensidige forsikring": "NO0010582521",
+  "gjensidige": "NO0010582521",
+  "bw energy": "NO0050086222",
+  "frontline": "BMG3682E1921",
+  "odfjell drilling": "BMG671801022",
+  "protector forsikring": "NO0010209331",
+  "lerøy seafood": "NO0003096208",
+  "lerøy seafood group": "NO0003096208",
+  "leroy seafood": "NO0003096208",
+  "moreld": "NO0012851011",
+  "morrow bank": "NO0013037132",
+  "tomra": "NO0005668905",
+  "tomra systems": "NO0005668905",
+  "yara": "NO0010208065",
+  "yara international": "NO0010208065",
+  "subsea 7": "LU0075646355",
+  "bakkafrost": "FO0000000179",
+  "wallenius wilhelmsen": "NO0010571698",
+  "hafnia": "BMG4233B1090",
+  "borr drilling": "BMG1466R2078",
+  "dof": "NO0010070063",
+  "sfl": "BMG7945E1057",
+  "sfl corp": "BMG7945E1057",
+  "okea": "NO0010816895",
+  "aker": "NO0010234552",
+  "entra": "NO0010716418",
+  "kid": "NO0010743545",
+  "pexip": "NO0010840507",
+  "pexip holding": "NO0010840507",
+  "smartcraft": "NO0010907090",
+  "crayon": "NO0010808892",
+  "crayon group": "NO0010808892",
+  "elmera": "NO0010028860",
+  "elmera group": "NO0010028860",
+  "rec silicon": "NO0010112675",
+  "golden ocean": "BMG396372051",
+  "golden ocean group": "BMG396372051",
+  "kongsberg automotive": "NO0003033102",
+  "bonheur": "NO0003110603",
+  "norske skog": "NO0010861982",
+  "flex lng": "BMG359472021",
+  "cool company": "BMG2415R1047",
+  "arcticzymes": "NO0010014632",
+  "arcticzymes technologies": "NO0010014632",
+  "akva group": "NO0003097503",
+  "af gruppen": "NO0003078107",
+  "klaveness combination carriers": "NO0010833262",
+  "nibe": "SE0015988019",
+  "sandvik": "SE0000667891",
+  "alfa laval": "SE0000695876",
+  "boliden": "SE0020050417",
+  "husqvarna": "SE0001662230",
+  "volvo": "SE0000115446",
+  "eolus": "SE0007075056",
+  "noble corp": "GB00BMXNWH07",
+  "noble corporation": "GB00BMXNWH07",
+  "solstad maritime": "NO0003080608",
+  "sparebank 1 nord-norge": "NO0006000801",
+};
+for (const [name, isin] of Object.entries(knownCompanies)) {
+  nameToIsinMap.set(name, isin);
+}
+
+// Lazy-loaded from DB at first use
+let dbNamesLoaded = false;
+async function ensureDbNames() {
+  if (dbNamesLoaded) return;
+  dbNamesLoaded = true;
+  try {
+    const db = getDb();
+    const result = await db.execute(
+      `SELECT isin, issuer_name FROM companies WHERE isin IS NOT NULL AND isin != ''`
+    );
+    for (const row of result.rows) {
+      const isin = String(row.isin);
+      const name = String(row.issuer_name).toLowerCase();
+      nameToIsinMap.set(name, isin);
+      nameToIsinMap.set(name.replace(/\s+(asa|ab|as)$/i, ''), isin);
+    }
+  } catch {
+    // DB not initialized yet, skip
+  }
+}
+
+export function resolveCompanyIsin(companyName: string): string | null {
+  const baseName = companyName
+    .replace(/\s*\([^)]*\)\s*$/, '')   // strip (TICKER)
+    .replace(/\s+(ASA|AB|AS|Ltd\.?|Inc\.?)$/i, '')
+    .trim()
+    .toLowerCase();
+
+  return nameToIsinMap.get(baseName)
+    || nameToIsinMap.get(companyName.toLowerCase())
+    || nameToIsinMap.get(companyName.toLowerCase().replace(/\s*\([^)]*\)\s*$/, ''))
+    || null;
+}
 
 // Newspapers/newsletters that aggregate reports from actual banks — never show as a bank source
 const AGGREGATOR_PREFIXES = [
@@ -392,16 +529,21 @@ export async function updateAnalystReportExtraction(
     args: [id],
   });
 
+  // Ensure DB company names are loaded for ISIN resolution
+  await ensureDbNames();
+
   // Insert new recommendations - only those with a targetPrice
   for (const rec of data.recommendations) {
     if (!rec.targetPrice) continue;
+    // Resolve ISIN from company name if not already set
+    const isin = rec.companyIsin || (rec.companyName ? resolveCompanyIsin(rec.companyName) : null);
     await db.execute({
       sql: `INSERT INTO analyst_recommendations (report_id, company_name, company_isin, recommendation, target_price, target_currency, summary, investment_bank, previous_target_price, previous_recommendation)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         rec.companyName ?? null,
-        rec.companyIsin ?? null,
+        isin,
         rec.recommendation ?? null,
         rec.targetPrice,
         rec.targetCurrency ?? 'NOK',
@@ -494,14 +636,19 @@ export async function getPublicAnalystReports(options?: {
   let whereClause = `ar.extraction_status = 'processed' AND rec.target_price IS NOT NULL`;
   const args: (string | number)[] = [];
 
-  if (options?.companyIsin) {
-    whereClause += ` AND rec.company_isin = ?`;
-    args.push(options.companyIsin);
-  }
-
-  if (options?.companyName) {
-    whereClause += ` AND rec.company_name = ?`;
-    args.push(options.companyName);
+  if (options?.companyIsin || options?.companyName) {
+    const conditions: string[] = [];
+    if (options?.companyIsin) {
+      conditions.push(`rec.company_isin = ?`);
+      args.push(options.companyIsin);
+    }
+    if (options?.companyName) {
+      // Match by name: case-insensitive, also match with/without common suffixes
+      const baseName = options.companyName.replace(/\s+(ASA|AB|AS)$/i, '').trim();
+      conditions.push(`(LOWER(rec.company_name) LIKE ? OR LOWER(rec.company_name) LIKE ?)`);
+      args.push(baseName.toLowerCase() + '%', baseName.toLowerCase() + ' (%');
+    }
+    whereClause += ` AND (${conditions.join(' OR ')})`;
   }
 
   if (options?.investmentBank) {
@@ -771,7 +918,7 @@ export async function getPreviousRecommendation(
 
 // Cached versions for public pages
 export const getCachedPublicAnalystReports = unstable_cache(
-  async (options?: { limit?: number; companyIsin?: string }) =>
+  async (options?: { limit?: number; companyIsin?: string; companyName?: string }) =>
     getPublicAnalystReports(options),
   ["public-analyst-reports"],
   { revalidate: 300, tags: ["public-analyst-reports"] }

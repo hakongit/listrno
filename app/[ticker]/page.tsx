@@ -67,6 +67,7 @@ export default async function CompanyPage({ params }: PageProps) {
   const analystReports = await getCachedPublicAnalystReports({
     limit: 10,
     companyIsin: companyIsin || undefined,
+    companyName: companyName || undefined,
   });
   const filteredReports = analystReports.filter(
     (r) => r.companyName || r.recommendation || r.targetPrice

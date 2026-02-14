@@ -16,39 +16,71 @@ import { unstable_cache } from "next/cache";
 const nameToIsinMap = new Map<string, string>();
 
 // From isinToTicker comments (hardcoded known companies)
+// ISINs sourced from Finanstilsynet short positions API where available
 const knownCompanies: Record<string, string> = {
-  "nordic semiconductor": "NO0003067902",
+  "hexagon composites": "NO0003067902",
+  "nordic semiconductor": "NO0003055501",
   "nel": "NO0010081235",
-  "hexagon composites": "NO0003079709",
-  "høegh autoliners": "NO0010571680",
-  "hoegh autoliners": "NO0010571680",
-  "tgs": "BMG8788W1079",
-  "mpc container ships": "CY0101162119",
+  "høegh autoliners": "NO0011082075",
+  "hoegh autoliners": "NO0011082075",
+  "wallenius wilhelmsen": "NO0010571680",
+  "tgs": "NO0003078800",
+  "tgs asa": "NO0003078800",
+  "mpc container ships": "NO0010791353",
   "salmon evolution": "NO0010892094",
   "autostore": "BMG0670A1099",
   "autostore holdings": "BMG0670A1099",
-  "bw lpg": "BMG1466R1732",
-  "link mobility": "NO0010823131",
-  "link mobility group": "NO0010823131",
-  "cavendish hydrogen": "NO0012929155",
-  "kitron": "NO0010360266",
-  "orkla": "NO0010196140",
-  "aker bp": "NO0003399909",
-  "avance gas": "NO0010844038",
-  "aker solutions": "NO0010715139",
-  "pgs": "NO0003078800",
-  "belships": "NO0010716863",
-  "mowi": "NO0010208051",
-  "vår energi": "NO0012470089",
-  "var energi": "NO0012470089",
-  "hadean ventures": "NO0010861115",
-  "storebrand": "NO0003054108",
+  "bw lpg": "BMG173841013",
+  "borr drilling": "BMG1466R1732",
+  "link mobility": "NO0010894231",
+  "link mobility group": "NO0010894231",
+  "cavendish hydrogen": "NO0013219535",
+  "kitron": "NO0003079709",
+  "norwegian air shuttle": "NO0010196140",
+  "norwegian": "NO0010196140",
+  "aker bp": "NO0010345853",
+  "avance gas": "BMG067231032",
+  "aker solutions": "NO0010716582",
+  "pgs": "NO0010199151",
+  "scatec": "NO0010715139",
+  "mowi": "NO0003054108",
+  "vår energi": "NO0011202772",
+  "var energi": "NO0011202772",
+  "norske skog": "NO0010861115",
+  "norsk hydro": "NO0005052605",
+  "equinor": "NO0010096985",
+  "grieg seafood": "NO0010365521",
+  "salmar": "NO0010310956",
+  "tomra": "NO0012470089",
+  "tomra systems": "NO0012470089",
+  "yara": "NO0010208051",
+  "yara international": "NO0010208051",
+  "hexagon purus": "NO0010904923",
+  "elkem": "NO0010816093",
+  "europris": "NO0010735343",
+  "crayon": "NO0010808892",
+  "crayon group": "NO0010808892",
+  "flex lng": "BMG359472021",
+  "okea": "NO0010816895",
+  "subsea 7": "LU0075646355",
+  "dno": "NO0003921009",
+  "kid": "NO0010743545",
+  "borregaard": "NO0010657505",
+  "panoro energy": "NO0010564701",
+  "bakkafrost": "FO0000000179",
+  "nykode therapeutics": "NO0010714785",
+  "rec silicon": "NO0010112675",
+  "stolt-nielsen": "BMG850801025",
+  "bluenord": "NO0010379266",
+  "cadeler": "DK0061412772",
+  "photocure": "NO0010000045",
+  // Non-Finanstilsynet companies
+  "orkla": "NO0003733800",
+  "storebrand": "NO0003053605",
   "dnb": "NO0010031479",
   "dnb bank": "NO0010031479",
-  "norsk hydro": "NO0003733800",
-  "equinor": "NO0010096985",
-  "atea": "NO0010365521",
-  "scatec": "NO0010310956",
+  "atea": "NO0010234552",
+  "belships": "NO0010716863",
   "kongsberg gruppen": "NO0003043309",
   "telenor": "NO0010063308",
   "gjensidige forsikring": "NO0010582521",
@@ -62,36 +94,21 @@ const knownCompanies: Record<string, string> = {
   "leroy seafood": "NO0003096208",
   "moreld": "NO0012851011",
   "morrow bank": "NO0013037132",
-  "tomra": "NO0005668905",
-  "tomra systems": "NO0005668905",
-  "yara": "NO0010208065",
-  "yara international": "NO0010208065",
-  "subsea 7": "LU0075646355",
-  "bakkafrost": "FO0000000179",
-  "wallenius wilhelmsen": "NO0010571698",
   "hafnia": "BMG4233B1090",
-  "borr drilling": "BMG1466R2078",
   "dof": "NO0010070063",
   "sfl": "BMG7945E1057",
   "sfl corp": "BMG7945E1057",
-  "okea": "NO0010816895",
   "aker": "NO0010234552",
   "entra": "NO0010716418",
-  "kid": "NO0010743545",
   "pexip": "NO0010840507",
   "pexip holding": "NO0010840507",
   "smartcraft": "NO0010907090",
-  "crayon": "NO0010808892",
-  "crayon group": "NO0010808892",
   "elmera": "NO0010028860",
   "elmera group": "NO0010028860",
-  "rec silicon": "NO0010112675",
   "golden ocean": "BMG396372051",
   "golden ocean group": "BMG396372051",
   "kongsberg automotive": "NO0003033102",
   "bonheur": "NO0003110603",
-  "norske skog": "NO0010861982",
-  "flex lng": "BMG359472021",
   "cool company": "BMG2415R1047",
   "arcticzymes": "NO0010014632",
   "arcticzymes technologies": "NO0010014632",
@@ -722,12 +739,20 @@ export async function getAnalystReportCount(status?: 'pending' | 'processed' | '
   return Number(result.rows[0].count);
 }
 
+export interface MonthlyRecTrend {
+  month: string; // "2026-01"
+  buy: number;
+  hold: number;
+  sell: number;
+}
+
 export async function getAnalystStats(): Promise<{
   reportCount: number;
   companyCount: number;
   recCounts: { buy: number; hold: number; sell: number };
   recCountsMonth: { buy: number; hold: number; sell: number };
   recCountsPrevMonth: { buy: number; hold: number; sell: number };
+  monthlyTrend: MonthlyRecTrend[];
 }> {
   const db = getDb();
 
@@ -814,12 +839,46 @@ export async function getAnalystStats(): Promise<{
     else if (rec === "hold") recCountsPrevMonth.hold += cnt;
   }
 
+  // Monthly trend — last 6 months
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const cutoff6m = sixMonthsAgo.toISOString();
+
+  const trendResult = await db.execute({
+    sql: `SELECT STRFTIME('%Y-%m', ar.received_date) as month, ar2.recommendation, COUNT(*) as cnt
+          FROM analyst_recommendations ar2
+          JOIN analyst_reports ar ON ar.id = ar2.report_id
+          WHERE ar2.recommendation IS NOT NULL AND ar2.recommendation != ''
+            AND ar.received_date >= ?
+          GROUP BY month, ar2.recommendation
+          ORDER BY month`,
+    args: [cutoff6m],
+  });
+
+  const trendMap = new Map<string, { buy: number; hold: number; sell: number }>();
+  for (const row of trendResult.rows) {
+    const month = String(row.month);
+    const rec = String(row.recommendation).toLowerCase();
+    const cnt = Number(row.cnt);
+    if (!trendMap.has(month)) trendMap.set(month, { buy: 0, hold: 0, sell: 0 });
+    const entry = trendMap.get(month)!;
+    if (rec === "buy" || rec === "overweight" || rec === "outperform") entry.buy += cnt;
+    else if (rec === "sell" || rec === "underweight" || rec === "underperform") entry.sell += cnt;
+    else if (rec === "hold") entry.hold += cnt;
+  }
+
+  const monthlyTrend: MonthlyRecTrend[] = [...trendMap.entries()].map(([month, counts]) => ({
+    month,
+    ...counts,
+  }));
+
   return {
     reportCount: Number(countResult.rows[0].report_count),
     companyCount: Number(countResult.rows[0].company_count),
     recCounts,
     recCountsMonth,
     recCountsPrevMonth,
+    monthlyTrend,
   };
 }
 

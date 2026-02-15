@@ -142,7 +142,7 @@ export default async function DashboardPage() {
           style={{ borderColor: "var(--an-border)" }}
         >
           <div
-            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            className="text-[20px] lg:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
             style={{ color: "var(--an-accent)" }}
           >
             {analystStats.reportCount}
@@ -158,11 +158,11 @@ export default async function DashboardPage() {
           className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[14px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 whitespace-nowrap overflow-hidden">
+          <div className="text-[14px] sm:text-[18px] lg:text-[26px] font-bold tracking-tight leading-tight mb-0.5 whitespace-nowrap overflow-hidden">
             <span style={{ color: "var(--an-green)" }}>{analystStats.recCounts.buy}</span>
-            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 sm:mx-1 text-[12px] sm:text-[18px]">/</span>
+            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 lg:mx-1 text-[12px] lg:text-[18px]">/</span>
             <span style={{ color: "var(--an-amber)" }}>{analystStats.recCounts.hold}</span>
-            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 sm:mx-1 text-[12px] sm:text-[18px]">/</span>
+            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 lg:mx-1 text-[12px] lg:text-[18px]">/</span>
             <span style={{ color: "var(--an-red)" }}>{analystStats.recCounts.sell}</span>
           </div>
           <div
@@ -176,7 +176,7 @@ export default async function DashboardPage() {
           className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+          <div className="text-[20px] lg:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
             {shortData.totalCompanies}
           </div>
           <div
@@ -190,7 +190,7 @@ export default async function DashboardPage() {
           className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+          <div className="text-[20px] lg:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
             {insiderStats.totalTrades}
           </div>
           <div

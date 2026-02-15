@@ -4,6 +4,7 @@ export interface StockQuote {
   regularMarketVolume: number | null;
   fiftyTwoWeekHigh: number | null;
   fiftyTwoWeekLow: number | null;
+  marketCap: number | null;
 }
 
 const FETCH_TIMEOUT_MS = 10_000; // 10 second timeout per request
@@ -51,6 +52,7 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Map<string, S
                 regularMarketVolume: meta?.regularMarketVolume || null,
                 fiftyTwoWeekHigh: meta?.fiftyTwoWeekHigh || null,
                 fiftyTwoWeekLow: meta?.fiftyTwoWeekLow || null,
+                marketCap: meta?.marketCap || null,
               } as StockQuote,
             };
           }

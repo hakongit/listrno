@@ -53,6 +53,7 @@ export interface CompanyShortData {
   regularMarketVolume: number | null;
   fiftyTwoWeekHigh: number | null;
   fiftyTwoWeekLow: number | null;
+  marketCap: number | null;
 }
 
 export interface HolderPositionHistory {

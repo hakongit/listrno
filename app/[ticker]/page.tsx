@@ -2,7 +2,7 @@ import { getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
 import { getCachedPublicAnalystReports, initializeAnalystDatabase, isAggregatorSource } from "@/lib/analyst-db";
 import { getTicker } from "@/lib/tickers";
-import { fetchStockQuotes, StockQuote } from "@/lib/prices";
+import { fetchStockQuotes, StockQuote, formatMarketValue } from "@/lib/prices";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume, formatDateShort } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -142,6 +142,18 @@ export default async function CompanyPage({ params }: PageProps) {
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
           >
             <div className="px-3 sm:px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+              {company.ticker && (
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Ticker</div>
+                  <div className="mono font-medium">{company.ticker.replace(".OL", "")}</div>
+                </div>
+              )}
+              {company.marketCap && (
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Markedsverdi</div>
+                  <div className="mono font-medium">{formatMarketValue(company.marketCap)}</div>
+                </div>
+              )}
               {company.regularMarketVolume && (
                 <div>
                   <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Daglig volum</div>
@@ -275,8 +287,8 @@ export default async function CompanyPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* History Chart */}
-        {company.history.length > 1 && (
+        {/* Analyst Reports Panel */}
+        {filteredReports.length > 0 && (
           <div
             className="rounded-lg overflow-hidden border mt-3"
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
@@ -289,25 +301,83 @@ export default async function CompanyPage({ params }: PageProps) {
                 className="text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--an-text-secondary)" }}
               >
-                Short-historikk
+                Analytikerrapporter
               </span>
-              <span
-                className="text-[11px]"
+              <Link
+                href="/analyser"
+                className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
                 style={{ color: "var(--an-text-muted)" }}
               >
-                Total short % over tid
-              </span>
+                Se alle
+              </Link>
             </div>
-            <div className="p-4">
-              <LazyShortChart history={company.history} companyName={company.issuerName} />
+            <div>
+              {filteredReports.slice(0, 5).map((report, i) => {
+                const effectiveBank = report.recInvestmentBank || report.investmentBank;
+                const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
+                return (
+                <div
+                  key={report.recommendationId}
+                  className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
+                  style={{
+                    borderBottom: i < Math.min(filteredReports.length, 5) - 1
+                      ? "1px solid var(--an-border-subtle)"
+                      : "none",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      {bankName ? (
+                        <Link
+                          href={`/analyser/bank/${slugify(bankName)}`}
+                          className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
+                          style={{ color: "var(--an-text-primary)" }}
+                        >
+                          {bankName}
+                        </Link>
+                      ) : (
+                        <span
+                          className="text-[13px]"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          Ukjent bank
+                        </span>
+                      )}
+                      <span
+                        className="text-[11px]"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(report.receivedDate)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <RecommendationBadge recommendation={report.recommendation} />
+                      {report.targetPrice && (
+                        <span
+                          className="mono text-[12px] font-medium select-none blur-[5px]"
+                          style={{ color: "var(--an-text-secondary)" }}
+                        >
+                          {formatNumber(report.targetPrice)}
+                          {report.previousTargetPrice && (
+                            <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
+                              ({formatNumber(report.previousTargetPrice)})
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-3 mb-10">
-          {/* Left: Positions table (3/5 width) */}
-          <div className="lg:col-span-3">
+        {/* Chart + Positions side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+          {/* Short History Chart */}
+          {company.history.length > 1 && (
             <div
               className="rounded-lg overflow-hidden border"
               style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
@@ -320,293 +390,215 @@ export default async function CompanyPage({ params }: PageProps) {
                   className="text-xs font-semibold uppercase tracking-wider"
                   style={{ color: "var(--an-text-secondary)" }}
                 >
-                  Aktive shortposisjoner
+                  Short-historikk
                 </span>
                 <span
                   className="text-[11px]"
                   style={{ color: "var(--an-text-muted)" }}
                 >
-                  {company.positions.length} aktører
+                  Total short % over tid
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr>
-                      <th
-                        className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
-                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
-                      >
-                        Posisjonsholder
-                      </th>
-                      <th
-                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
-                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "90px" }}
-                      >
-                        Posisjon
-                      </th>
-                      <th
-                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden sm:table-cell"
-                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
-                      >
-                        Aksjer
-                      </th>
-                      <th
-                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden lg:table-cell"
-                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
-                      >
-                        Verdi
-                      </th>
-                      <th
-                        className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
-                        style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
-                      >
-                        Dato
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {company.positions.map((position, i) => (
-                      <tr
-                        key={`${position.positionHolder}-${i}`}
-                        className="an-table-row transition-colors"
-                        style={{
-                          borderBottom: i < company.positions.length - 1
-                            ? "1px solid var(--an-border-subtle)"
-                            : "none",
-                        }}
-                      >
-                        <td className="px-3 sm:px-[18px] py-3">
-                          <Link
-                            href={`/aktor/${slugify(position.positionHolder)}`}
-                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] truncate block max-w-[140px] sm:max-w-none"
-                            style={{ color: "var(--an-text-primary)" }}
-                            title={position.positionHolder}
-                          >
-                            {position.positionHolder}
-                          </Link>
-                        </td>
-                        <td className="px-3 sm:px-[18px] py-3 text-right">
-                          <span
-                            className="mono text-[13px] font-semibold"
-                            style={{ color: "var(--an-red)" }}
-                          >
-                            {formatPercent(position.positionPct)}
-                          </span>
-                        </td>
-                        <td
-                          className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden sm:table-cell"
-                          style={{ color: "var(--an-text-muted)" }}
-                        >
-                          {formatNumber(position.positionShares)}
-                        </td>
-                        <td
-                          className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden lg:table-cell"
-                          style={{ color: "var(--an-text-muted)" }}
-                        >
-                          {company.stockPrice
-                            ? formatNOK(position.positionShares * company.stockPrice)
-                            : "-"}
-                        </td>
-                        <td
-                          className="px-3 sm:px-[18px] py-3 text-right text-xs"
-                          style={{ color: "var(--an-text-muted)" }}
-                        >
-                          {formatDateShort(position.positionDate)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="p-4">
+                <LazyShortChart history={company.history} companyName={company.issuerName} />
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Right: Analyst + Insider panels (2/5 width) */}
-          <div className="lg:col-span-2 flex flex-col gap-3">
-            {/* Analyst Reports Panel */}
-            {filteredReports.length > 0 && (
-              <div
-                className="rounded-lg overflow-hidden border"
-                style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          {/* Positions table */}
+          <div
+            className="rounded-lg overflow-hidden border"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div
+              className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
+              style={{ borderColor: "var(--an-border)" }}
+            >
+              <span
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: "var(--an-text-secondary)" }}
               >
-                <div
-                  className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
-                  style={{ borderColor: "var(--an-border)" }}
-                >
-                  <span
-                    className="text-xs font-semibold uppercase tracking-wider"
-                    style={{ color: "var(--an-text-secondary)" }}
-                  >
-                    Analytikerrapporter
-                  </span>
-                  <Link
-                    href="/analyser"
-                    className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
-                    style={{ color: "var(--an-text-muted)" }}
-                  >
-                    Se alle
-                  </Link>
-                </div>
-                <div>
-                  {filteredReports.slice(0, 5).map((report, i) => {
-                    const effectiveBank = report.recInvestmentBank || report.investmentBank;
-                    const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
-                    return (
-                    <div
-                      key={report.recommendationId}
-                      className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
+                Aktive shortposisjoner
+              </span>
+              <span
+                className="text-[11px]"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                {company.positions.length} aktører
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th
+                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                      style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
+                    >
+                      Posisjonsholder
+                    </th>
+                    <th
+                      className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                      style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "90px" }}
+                    >
+                      Posisjon
+                    </th>
+                    <th
+                      className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden sm:table-cell"
+                      style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "100px" }}
+                    >
+                      Aksjer
+                    </th>
+                    <th
+                      className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                      style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
+                    >
+                      Dato
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {company.positions.map((position, i) => (
+                    <tr
+                      key={`${position.positionHolder}-${i}`}
+                      className="an-table-row transition-colors"
                       style={{
-                        borderBottom: i < Math.min(filteredReports.length, 5) - 1
+                        borderBottom: i < company.positions.length - 1
                           ? "1px solid var(--an-border-subtle)"
                           : "none",
                       }}
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          {bankName ? (
-                            <Link
-                              href={`/analyser/bank/${slugify(bankName)}`}
-                              className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
-                              style={{ color: "var(--an-text-primary)" }}
-                            >
-                              {bankName}
-                            </Link>
-                          ) : (
-                            <span
-                              className="text-[13px]"
-                              style={{ color: "var(--an-text-muted)" }}
-                            >
-                              Ukjent bank
-                            </span>
-                          )}
+                      <td className="px-3 sm:px-[18px] py-3">
+                        <Link
+                          href={`/aktor/${slugify(position.positionHolder)}`}
+                          className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] truncate block max-w-[140px] sm:max-w-none"
+                          style={{ color: "var(--an-text-primary)" }}
+                          title={position.positionHolder}
+                        >
+                          {position.positionHolder}
+                        </Link>
+                      </td>
+                      <td className="px-3 sm:px-[18px] py-3 text-right">
+                        <span
+                          className="mono text-[13px] font-semibold"
+                          style={{ color: "var(--an-red)" }}
+                        >
+                          {formatPercent(position.positionPct)}
+                        </span>
+                      </td>
+                      <td
+                        className="px-3 sm:px-[18px] py-3 text-right mono text-[13px] hidden sm:table-cell"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatNumber(position.positionShares)}
+                      </td>
+                      <td
+                        className="px-3 sm:px-[18px] py-3 text-right text-xs"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(position.positionDate)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Insider Trades Panel */}
+        <div
+          className="rounded-lg overflow-hidden border mt-3 mb-10"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
+            style={{ borderColor: "var(--an-border)" }}
+          >
+            <span
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--an-text-secondary)" }}
+            >
+              Siste innsidehandler
+            </span>
+            <Link
+              href="/innsidehandel"
+              className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              Se alle
+            </Link>
+          </div>
+          {insiderTrades.length > 0 ? (
+            <div>
+              {insiderTrades.slice(0, 5).map((trade, i) => (
+                <div
+                  key={trade.messageId}
+                  className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
+                  style={{
+                    borderBottom: i < Math.min(insiderTrades.length, 5) - 1
+                      ? "1px solid var(--an-border-subtle)"
+                      : "none",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      {trade.insiderName !== trade.issuerName ? (
+                        <Link
+                          href={`/innsidehandel/${trade.insiderSlug}`}
+                          className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
+                          style={{ color: "var(--an-text-primary)" }}
+                        >
+                          {trade.insiderName}
+                        </Link>
+                      ) : (
+                        <span
+                          className="text-[13px]"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          -
+                        </span>
+                      )}
+                      <div className="flex items-center gap-2">
+                        {trade.insiderRole && (
                           <span
                             className="text-[11px]"
                             style={{ color: "var(--an-text-muted)" }}
                           >
-                            {formatDateShort(report.receivedDate)}
+                            {trade.insiderRole}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <RecommendationBadge recommendation={report.recommendation} />
-                          {report.targetPrice && (
-                            <span
-                              className="mono text-[12px] font-medium select-none blur-[5px]"
-                              style={{ color: "var(--an-text-secondary)" }}
-                            >
-                              {formatNumber(report.targetPrice)}
-                              {report.previousTargetPrice && (
-                                <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
-                                  ({formatNumber(report.previousTargetPrice)})
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </div>
+                        )}
+                        <span
+                          className="text-[11px]"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          {formatDateShort(trade.tradeDate)}
+                        </span>
                       </div>
                     </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Insider Trades Panel */}
-            <div
-              className="rounded-lg overflow-hidden border"
-              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
-            >
-              <div
-                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
-                style={{ borderColor: "var(--an-border)" }}
-              >
-                <span
-                  className="text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--an-text-secondary)" }}
-                >
-                  Siste innsidehandler
-                </span>
-                <Link
-                  href="/innsidehandel"
-                  className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
-                  style={{ color: "var(--an-text-muted)" }}
-                >
-                  Se alle
-                </Link>
-              </div>
-              {insiderTrades.length > 0 ? (
-                <div>
-                  {insiderTrades.slice(0, 5).map((trade, i) => (
-                    <div
-                      key={trade.messageId}
-                      className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
-                      style={{
-                        borderBottom: i < Math.min(insiderTrades.length, 5) - 1
-                          ? "1px solid var(--an-border-subtle)"
-                          : "none",
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          {trade.insiderName !== trade.issuerName ? (
-                            <Link
-                              href={`/innsidehandel/${trade.insiderSlug}`}
-                              className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
-                              style={{ color: "var(--an-text-primary)" }}
-                            >
-                              {trade.insiderName}
-                            </Link>
-                          ) : (
-                            <span
-                              className="text-[13px]"
-                              style={{ color: "var(--an-text-muted)" }}
-                            >
-                              -
-                            </span>
-                          )}
-                          <div className="flex items-center gap-2">
-                            {trade.insiderRole && (
-                              <span
-                                className="text-[11px]"
-                                style={{ color: "var(--an-text-muted)" }}
-                              >
-                                {trade.insiderRole}
-                              </span>
-                            )}
-                            <span
-                              className="text-[11px]"
-                              style={{ color: "var(--an-text-muted)" }}
-                            >
-                              {formatDateShort(trade.tradeDate)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <TradeTypeBadge type={trade.tradeType} />
-                          {trade.totalValue && (
-                            <span
-                              className="mono text-[12px]"
-                              style={{ color: "var(--an-text-muted)" }}
-                            >
-                              {formatNOK(trade.totalValue)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <TradeTypeBadge type={trade.tradeType} />
+                      {trade.totalValue && (
+                        <span
+                          className="mono text-[12px]"
+                          style={{ color: "var(--an-text-muted)" }}
+                        >
+                          {formatNOK(trade.totalValue)}
+                        </span>
+                      )}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              ) : (
-                <div
-                  className="px-3 sm:px-[18px] py-8 text-center text-[13px]"
-                  style={{ color: "var(--an-text-muted)" }}
-                >
-                  Ingen innsidehandler registrert
-                </div>
-              )}
+              ))}
             </div>
-
-          </div>
+          ) : (
+            <div
+              className="px-3 sm:px-[18px] py-8 text-center text-[13px]"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              Ingen innsidehandler registrert
+            </div>
+          )}
         </div>
       </div>
     );

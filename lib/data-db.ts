@@ -193,6 +193,7 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
       regularMarketVolume: null,
       fiftyTwoWeekHigh: null,
       fiftyTwoWeekLow: null,
+      marketCap: null,
     });
   }
 
@@ -232,6 +233,7 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
         company.regularMarketVolume = quote.regularMarketVolume;
         company.fiftyTwoWeekHigh = quote.fiftyTwoWeekHigh;
         company.fiftyTwoWeekLow = quote.fiftyTwoWeekLow;
+        company.marketCap = quote.marketCap;
       }
     }
 

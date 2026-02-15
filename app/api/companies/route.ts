@@ -6,13 +6,14 @@ import { NextResponse } from "next/server";
 
 export const revalidate = 3600;
 
-// Strip parenthetical ticker suffixes from analyst company names
+// Strip parenthetical suffixes and trailing tags from analyst company names
+// e.g. "Link Mobility Group (LINK NO)" → "Link Mobility Group"
 // e.g. "2020 Bulkers (NO:TOM)" → "2020 Bulkers"
-// e.g. "2020 Bulkers NO" → "2020 Bulkers" (trailing 2-letter country code)
+// e.g. "Aker BP ASA" → "Aker BP"
 function cleanCompanyName(name: string): string {
   return name
-    .replace(/\s*\((?:NO|OSE|XOSL|OB)[:\s]?\s*\w+\)\s*$/i, "")
-    .replace(/\s+(?:NO|ASA)$/i, "")
+    .replace(/\s*\([^)]+\)\s*$/i, "")   // Strip ANY trailing parenthetical
+    .replace(/\s+(?:NO|ASA|LTD)$/i, "")  // Strip trailing NO, ASA, LTD
     .trim();
 }
 
@@ -23,44 +24,51 @@ export async function GET() {
   ]);
   const analystCompanies = await getCachedAnalystCompanies();
 
-  const seen = new Set<string>();
+  const seenSlugs = new Set<string>();
+  const seenTickers = new Set<string>();
   const companies: { name: string; slug: string; ticker: string | null; type: string }[] = [];
 
-  // Short position companies
+  // Short position companies (canonical source — added first)
   for (const c of shortData.companies) {
     const slug = c.slug;
-    if (!seen.has(slug)) {
-      seen.add(slug);
+    if (!seenSlugs.has(slug)) {
+      seenSlugs.add(slug);
+      const ticker = c.ticker?.replace(".OL", "") ?? null;
+      if (ticker) seenTickers.add(ticker);
       companies.push({
         name: c.issuerName,
         slug: `/${slug}`,
-        ticker: c.ticker?.replace(".OL", "") ?? null,
+        ticker,
         type: "short",
       });
     }
   }
 
-  // Analyst-only companies
+  // Analyst-only companies (skip if same slug or same ticker already exists)
   for (const c of analystCompanies) {
     const cleanName = cleanCompanyName(c.name);
     const slug = slugify(cleanName);
-    if (!seen.has(slug)) {
-      seen.add(slug);
-      // Resolve ticker from ISIN or name
-      let ticker: string | null = null;
-      if (c.isin) {
-        ticker = isinToTicker[c.isin] ?? getTicker(c.isin, cleanName);
-      }
-      if (!ticker) {
-        ticker = getTicker("", cleanName);
-      }
-      companies.push({
-        name: cleanName,
-        slug: `/${slug}`,
-        ticker: ticker?.replace(".OL", "") ?? null,
-        type: "analyst",
-      });
+    // Resolve ticker from ISIN or name
+    let ticker: string | null = null;
+    if (c.isin) {
+      ticker = isinToTicker[c.isin] ?? getTicker(c.isin, cleanName);
     }
+    if (!ticker) {
+      ticker = getTicker("", cleanName);
+    }
+    const tickerShort = ticker?.replace(".OL", "") ?? null;
+
+    // Deduplicate by slug AND by ticker
+    if (seenSlugs.has(slug) || (tickerShort && seenTickers.has(tickerShort))) continue;
+
+    seenSlugs.add(slug);
+    if (tickerShort) seenTickers.add(tickerShort);
+    companies.push({
+      name: cleanName,
+      slug: `/${slug}`,
+      ticker: tickerShort,
+      type: "analyst",
+    });
   }
 
   companies.sort((a, b) => a.name.localeCompare(b.name, "nb"));

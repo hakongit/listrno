@@ -99,14 +99,19 @@ export default async function DashboardPage() {
     }
   }
 
+  // Biggest short decreases
+  let biggestDecreases: typeof shortData.companies = [];
+  for (const dateStr of uniqueDates) {
+    const companiesOnDate = shortData.companies.filter((c) => c.latestDate === dateStr && c.change < 0);
+    if (companiesOnDate.length > 0) {
+      biggestDecreases = companiesOnDate.sort((a, b) => a.change - b.change).slice(0, 3);
+      break;
+    }
+  }
+
   // Highest shorts
   const highestShorts = [...shortData.companies]
     .sort((a, b) => b.totalShortPct - a.totalShortPct)
-    .slice(0, 3);
-
-  // Top holders
-  const topHolders = [...shortData.holders]
-    .sort((a, b) => b.totalPositions - a.totalPositions)
     .slice(0, 3);
 
   // Filter to real insiders (not company names as fallback)
@@ -153,11 +158,11 @@ export default async function DashboardPage() {
           className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+          <div className="text-[16px] sm:text-[22px] font-bold tracking-tight leading-tight mb-0.5 whitespace-nowrap overflow-hidden">
             <span style={{ color: "var(--an-green)" }}>{analystStats.recCounts.buy}</span>
-            <span style={{ color: "var(--an-text-muted)" }} className="mx-1 text-[18px]">/</span>
+            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 sm:mx-1 text-[14px] sm:text-[18px]">/</span>
             <span style={{ color: "var(--an-amber)" }}>{analystStats.recCounts.hold}</span>
-            <span style={{ color: "var(--an-text-muted)" }} className="mx-1 text-[18px]">/</span>
+            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 sm:mx-1 text-[14px] sm:text-[18px]">/</span>
             <span style={{ color: "var(--an-red)" }}>{analystStats.recCounts.sell}</span>
           </div>
           <div
@@ -449,6 +454,116 @@ export default async function DashboardPage() {
             </Link>
           </div>
 
+          {/* Biggest Increases */}
+          {biggestIncreases.length > 0 && (
+            <div
+              className="rounded-lg overflow-hidden border"
+              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+            >
+              <div
+                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
+                style={{ borderColor: "var(--an-border)" }}
+              >
+                <span
+                  className="text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--an-text-secondary)" }}
+                >
+                  Størst økning i short
+                </span>
+              </div>
+              <div>
+                {biggestIncreases.map((company, i) => (
+                  <Link
+                    key={company.isin}
+                    href={`/${company.slug}`}
+                    className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
+                    style={{
+                      borderBottom: i < biggestIncreases.length - 1
+                        ? "1px solid var(--an-border-subtle)"
+                        : "none",
+                    }}
+                  >
+                    <span
+                      className="text-[13px] font-medium truncate mr-3"
+                      style={{ color: "var(--an-text-primary)" }}
+                    >
+                      {company.issuerName}
+                    </span>
+                    <div className="text-right shrink-0">
+                      <div
+                        className="mono text-[13px] font-semibold"
+                        style={{ color: "var(--an-red)" }}
+                      >
+                        +{company.change.toFixed(2)}%
+                      </div>
+                      <div
+                        className="text-[11px]"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(company.latestDate)}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Biggest Decreases */}
+          {biggestDecreases.length > 0 && (
+            <div
+              className="rounded-lg overflow-hidden border"
+              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+            >
+              <div
+                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
+                style={{ borderColor: "var(--an-border)" }}
+              >
+                <span
+                  className="text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--an-text-secondary)" }}
+                >
+                  Størst nedgang i short
+                </span>
+              </div>
+              <div>
+                {biggestDecreases.map((company, i) => (
+                  <Link
+                    key={company.isin}
+                    href={`/${company.slug}`}
+                    className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
+                    style={{
+                      borderBottom: i < biggestDecreases.length - 1
+                        ? "1px solid var(--an-border-subtle)"
+                        : "none",
+                    }}
+                  >
+                    <span
+                      className="text-[13px] font-medium truncate mr-3"
+                      style={{ color: "var(--an-text-primary)" }}
+                    >
+                      {company.issuerName}
+                    </span>
+                    <div className="text-right shrink-0">
+                      <div
+                        className="mono text-[13px] font-semibold"
+                        style={{ color: "var(--an-green)" }}
+                      >
+                        {company.change.toFixed(2)}%
+                      </div>
+                      <div
+                        className="text-[11px]"
+                        style={{ color: "var(--an-text-muted)" }}
+                      >
+                        {formatDateShort(company.latestDate)}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Highest Shorts */}
           <div
             className="rounded-lg overflow-hidden border"
@@ -501,106 +616,6 @@ export default async function DashboardPage() {
               ))}
             </div>
           </div>
-
-          {/* Biggest Increases */}
-          {biggestIncreases.length > 0 && (
-            <div
-              className="rounded-lg overflow-hidden border"
-              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
-            >
-              <div
-                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
-                style={{ borderColor: "var(--an-border)" }}
-              >
-                <span
-                  className="text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--an-text-secondary)" }}
-                >
-                  Siste økninger
-                </span>
-              </div>
-              <div>
-                {biggestIncreases.map((company, i) => (
-                  <Link
-                    key={company.isin}
-                    href={`/${company.slug}`}
-                    className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
-                    style={{
-                      borderBottom: i < biggestIncreases.length - 1
-                        ? "1px solid var(--an-border-subtle)"
-                        : "none",
-                    }}
-                  >
-                    <span
-                      className="text-[13px] font-medium truncate mr-3"
-                      style={{ color: "var(--an-text-primary)" }}
-                    >
-                      {company.issuerName}
-                    </span>
-                    <div className="text-right shrink-0">
-                      <div
-                        className="mono text-[13px] font-semibold"
-                        style={{ color: "var(--an-red)" }}
-                      >
-                        +{company.change.toFixed(2)}%
-                      </div>
-                      <div
-                        className="text-[11px]"
-                        style={{ color: "var(--an-text-muted)" }}
-                      >
-                        {formatDateShort(company.latestDate)}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Top Holders */}
-          <div
-            className="rounded-lg overflow-hidden border"
-            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
-          >
-            <div
-              className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
-              style={{ borderColor: "var(--an-border)" }}
-            >
-              <span
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: "var(--an-text-secondary)" }}
-              >
-                Mest aktive shortere
-              </span>
-            </div>
-            <div>
-              {topHolders.map((holder, i) => (
-                <Link
-                  key={holder.slug}
-                  href={`/aktor/${holder.slug}`}
-                  className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
-                  style={{
-                    borderBottom: i < topHolders.length - 1
-                      ? "1px solid var(--an-border-subtle)"
-                      : "none",
-                  }}
-                >
-                  <span
-                    className="text-[13px] font-medium truncate mr-3"
-                    style={{ color: "var(--an-text-primary)" }}
-                  >
-                    {holder.name}
-                  </span>
-                  <span
-                    className="mono text-[13px] font-medium shrink-0"
-                    style={{ color: "var(--an-text-secondary)" }}
-                  >
-                    {holder.totalPositions} pos
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Right: Insider Trading */}
@@ -636,7 +651,7 @@ export default async function DashboardPage() {
                 className="text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--an-text-secondary)" }}
               >
-                Siste handler
+                Siste innsidehandler
               </span>
             </div>
             <div>
@@ -707,7 +722,7 @@ export default async function DashboardPage() {
                   className="text-xs font-semibold uppercase tracking-wider"
                   style={{ color: "var(--an-text-secondary)" }}
                 >
-                  Største handler
+                  Største innsidekjøp
                 </span>
               </div>
               <div>

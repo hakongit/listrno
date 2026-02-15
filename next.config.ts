@@ -29,7 +29,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https://unavatar.io",
       "font-src 'self'",
-      "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com",
+      "connect-src 'self' https://*.google-analytics.com https://*.googletagmanager.com",
       "frame-ancestors 'none'",
     ].join("; "),
   },

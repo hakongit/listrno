@@ -146,7 +146,7 @@ export function HolderHistoryChart({ companies }: HolderHistoryChartProps) {
       </div>
 
       <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={CHART_THEME.border} vertical={false} />
             <XAxis

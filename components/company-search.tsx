@@ -99,7 +99,7 @@ export function CompanySearch() {
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative min-w-0 flex-1">
       {/* Collapsed: search button */}
       {!open && (
         <button
@@ -132,9 +132,9 @@ export function CompanySearch() {
 
       {/* Expanded: search input + dropdown */}
       {open && (
-        <div className="flex items-center">
+        <div className="flex items-center w-full">
           <div
-            className="flex items-center rounded-[5px] border px-2.5 py-1"
+            className="flex items-center rounded-[5px] border px-2.5 py-1 w-full"
             style={{
               background: "var(--an-bg-main)",
               borderColor: "var(--an-border)",
@@ -161,7 +161,7 @@ export function CompanySearch() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Søk selskap..."
-              className="bg-transparent outline-none text-[13px] ml-2 w-[140px] sm:w-[200px]"
+              className="bg-transparent outline-none text-[13px] ml-2 w-full"
               style={{ color: "var(--an-text-primary)" }}
             />
           </div>
@@ -169,7 +169,7 @@ export function CompanySearch() {
           {/* Results dropdown */}
           {results.length > 0 && (
             <div
-              className="absolute top-full right-0 mt-1 w-[280px] sm:w-[320px] rounded-lg border overflow-hidden shadow-xl z-50"
+              className="absolute top-full left-0 mt-1 w-[280px] sm:w-[320px] rounded-lg border overflow-hidden shadow-xl z-50"
               style={{
                 background: "var(--an-bg-surface)",
                 borderColor: "var(--an-border)",
@@ -208,7 +208,7 @@ export function CompanySearch() {
           {/* No results message */}
           {query.trim().length > 0 && results.length === 0 && allCompanies.length > 0 && (
             <div
-              className="absolute top-full right-0 mt-1 w-[280px] sm:w-[320px] rounded-lg border overflow-hidden shadow-xl z-50 px-3 py-4 text-center text-[13px]"
+              className="absolute top-full left-0 mt-1 w-[280px] sm:w-[320px] rounded-lg border overflow-hidden shadow-xl z-50 px-3 py-4 text-center text-[13px]"
               style={{
                 background: "var(--an-bg-surface)",
                 borderColor: "var(--an-border)",

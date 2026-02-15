@@ -21,7 +21,7 @@ export function SiteNav() {
         background: "var(--an-bg-surface)",
       }}
     >
-      <div className="max-w-[1120px] mx-auto px-4 sm:px-6 h-12 flex items-center justify-between gap-2">
+      <div className="max-w-[1120px] mx-auto px-4 sm:px-6 h-12 flex items-center gap-2">
         <Link
           href="/"
           className="flex items-center gap-[7px] shrink-0"
@@ -45,8 +45,9 @@ export function SiteNav() {
             <span style={{ color: "var(--an-text-secondary)" }}>.no</span>
           </span>
         </Link>
-        <div className="flex items-center gap-1">
-          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+        <CompanySearch />
+        <div className="flex items-center gap-1 min-w-0 ml-auto">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar min-w-0">
             {navLinks.map((link) => {
               const isActive =
                 pathname === link.href || pathname.startsWith(link.href + "/");
@@ -65,7 +66,6 @@ export function SiteNav() {
               );
             })}
           </div>
-          <CompanySearch />
         </div>
       </div>
     </nav>

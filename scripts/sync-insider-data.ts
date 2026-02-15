@@ -1,9 +1,6 @@
 import { getDb, initializeInsiderDatabase, resetInsiderDatabase } from "../lib/db";
 import { slugify } from "../lib/utils";
 
-// Euronext press releases page for Oslo market
-const EURONEXT_URL = "https://live.euronext.com/en/listview/company-press-releases/1061";
-
 interface EuronextNewsItem {
   date: string;
   company: string;
@@ -621,38 +618,72 @@ function parseRowsFromHtml(html: string): EuronextNewsItem[] {
   return items;
 }
 
-// Fetch the latest press releases from Euronext
-// Note: Euronext broke server-side pagination (all ?page=N 301-redirect to the base URL).
-// We fetch the base URL which returns the newest ~50 items — sufficient for daily syncing.
-async function fetchPressReleases(): Promise<EuronextNewsItem[]> {
-  console.log(`Fetching press releases: ${EURONEXT_URL}`);
+// Fetch a single page of press releases via Euronext's Drupal AJAX endpoint
+async function fetchPressReleasePage(page: number): Promise<EuronextNewsItem[]> {
+  const ajaxUrl = `https://live.euronext.com/en/views/ajax?view_name=company_press_releases_view&view_display_id=page_3&view_args=1061&page=${page}`;
 
-  const response = await fetch(EURONEXT_URL, {
+  const response = await fetch(ajaxUrl, {
     headers: {
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "User-Agent": "Mozilla/5.0 (compatible; listr.no/1.0)",
-      "Accept-Language": "en-US,en;q=0.9,nb;q=0.8",
+      Accept: "application/json",
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch press releases: ${response.status}`);
+    throw new Error(`Failed to fetch page ${page}: ${response.status}`);
   }
 
-  const html = await response.text();
-  const items = parseRowsFromHtml(html);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any[] = await response.json();
+  const insertCmd = data.find((cmd: { command?: string }) => cmd.command === "insert");
+  if (!insertCmd) return [];
 
-  if (items.length === 0 && !html.includes("<tbody")) {
-    console.log("  No table body found — Euronext may have changed their HTML structure");
+  return parseRowsFromHtml(insertCmd.data);
+}
+
+// Fetch press releases from Euronext (supports pagination via AJAX endpoint)
+async function fetchPressReleases(fullBackfill: boolean): Promise<EuronextNewsItem[]> {
+  if (!fullBackfill) {
+    // Quick mode: just fetch page 0 (~50 newest items)
+    console.log("Fetching latest press releases (page 0)...");
+    const items = await fetchPressReleasePage(0);
+    console.log(`  Found ${items.length} PDMR items`);
+    return items;
   }
 
-  return items;
+  // Full backfill: paginate through all available pages
+  console.log("Fetching all press releases (full backfill)...");
+  let allItems: EuronextNewsItem[] = [];
+  let page = 0;
+  let emptyPages = 0;
+  const maxPages = 50;
+
+  while (page < maxPages && emptyPages < 3) {
+    try {
+      const items = await fetchPressReleasePage(page);
+      if (items.length === 0) {
+        emptyPages++;
+      } else {
+        emptyPages = 0;
+        allItems = allItems.concat(items);
+        console.log(`  Page ${page}: ${items.length} items (total: ${allItems.length})`);
+      }
+      page++;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    } catch (error) {
+      console.error(`  Error fetching page ${page}:`, error);
+      break;
+    }
+  }
+
+  return allItems;
 }
 
 async function syncInsiderData() {
   const shouldReset = process.argv.includes("--reset");
   const fetchDetails = !process.argv.includes("--skip-details");
   const parsePdfs = process.argv.includes("--with-pdfs");
+  const fullBackfill = process.argv.includes("--full");
 
   if (shouldReset) {
     console.log("Resetting insider database...");
@@ -664,14 +695,13 @@ async function syncInsiderData() {
 
   console.log("Fetching PDMR notifications from Euronext...");
   console.log(
-    `Mode: ${fetchDetails ? "with details" : "quick"}${parsePdfs ? " + PDFs" : ""}`
+    `Mode: ${fetchDetails ? "with details" : "quick"}${parsePdfs ? " + PDFs" : ""}${fullBackfill ? " + full backfill" : ""}`
   );
 
   let allItems: EuronextNewsItem[] = [];
 
   try {
-    allItems = await fetchPressReleases();
-    console.log(`  Found ${allItems.length} PDMR items`);
+    allItems = await fetchPressReleases(fullBackfill);
   } catch (error) {
     console.error("Error fetching press releases:", error);
   }

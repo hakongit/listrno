@@ -145,43 +145,30 @@ All user-facing text is in Norwegian (nb). Key terms:
 - When user says "save" or "exit" or "save and quit": always update this Session Status section with current progress, pending tasks, and blockers before stopping
 - Save ongoing/new tasks to this file automatically
 
-## Session Status (2026-02-13, evening)
-
-### Pending deployment (pushed to main, awaiting Vercel build)
-Vercel Hobby plan limits cron to daily. Cron schedule changed from hourly to daily at 6 AM UTC (`0 6 * * *`) in commit `b40f289` to unblock builds.
-
-Latest commit on main: **`ed76845`**
+## Session Status (2026-02-15)
 
 ### Recent commits (this session)
-- **`b40f289`** — Change cron to daily (`0 6 * * *`) for Vercel Hobby plan
-- **`22feae8`** — Group analyst company reports by ISIN (not exact company name) so all recommendations show on company profile pages regardless of name variant
-- **`dc85e1b`** — Consolidate bank names + move banks panel to admin only:
-  - `BANK_NAME_MAP` normalizes variants (Arctic/Arctic Securities, Pareto/Pareto Securities AB/AS, BNP/BNP Paribas, Citi/Citigroup, Fearnley/Fearnley Securities, SB1 Markets/SpareBank 1 Markets, Clarksons/Clarksons Securities, DNB/DNB Carnegie)
-  - `getInvestmentBanks()` merges counts for normalized names
-  - Bank profile pages query all name variants via case-insensitive matching
-  - Removed banks panel from public `/analyser` page (stays in admin dashboard)
-  - Recommendations panel now full-width with side-by-side layout on desktop
-- **`ed76845`** — Fix insider sync: Norwegian PDMR topic detection + date parsing timezone fix
+- **`dcc9ece`** — Redesign analyst company page to match main company page layout (ticker, stock price, ISIN, 4-col stats grid with consensus)
+- **`f22c018`** — Fix ~20 wrong ISIN-to-ticker mappings + add monthly sentiment trend to `getAnalystStats()`
+- **`7fa6ff6`** — Move Selskapsinfo to hero section next to company name (both short-positions and insider-only views)
+- (pending commit) — Fix Euronext pagination via Drupal AJAX endpoint + expand bank name map
 
 ### Pending tasks
-- Verify deployment works once Vercel build completes
-- Bank name normalization map (`BANK_NAME_MAP` in `lib/analyst-db.ts`) may need additions as new bank variants appear in data
-- Euronext pagination is broken (all pages return same data) — insider sync only captures current day's items; running daily via build keeps data fresh but can't backfill gaps
-- Consider adding more Euronext data sources or alternative scraping approach for historical insider data
+- Run `npm run db:sync-insider -- --full --with-pdfs` to backfill historical insider trades using fixed pagination
+- `BANK_NAME_MAP` may still need additions as new bank variants appear in data (now covers ~20 banks)
+- Untracked files: `components/sentiment-trend-chart.tsx`, `mockup-analyser.html`, `scripts/test-stats.ts` — decide whether to commit or delete
 
 ### Recently completed
-- ISIN-based grouping for `/analyser/selskap/[slug]` — all recommendations for a company show regardless of name variant
-- Bank name consolidation — duplicates like "Pareto Securities" / "Pareto Securities AB" merged into single canonical names
-- Banks panel moved from public `/analyser` to admin dashboard only
-- Insider sync fixes: Norwegian PDMR topics ("meldepliktig handel", "primærinnsider") now detected; date parsing avoids timezone shift
-- Fixed 154 existing insider_trades records with wrong dates (timezone bug)
-- IMAP email sync + historical recommendations + per-rec bank attribution
-- Full site navy-dark redesign with gold accent
-- `/analyser/bank/[slug]` and `/analyser/selskap/[slug]` profile pages
+- Analyst company page (`/analyser/selskap/[slug]`) redesigned: ticker badge, live stock price, ISIN, 52-week range, buy/hold/sell consensus in stats grid
+- Fixed ISIN-to-ticker mappings (~20 corrections in `tickers.ts` and `analyst-db.ts` knownCompanies)
+- Monthly sentiment trend added to `getAnalystStats()` (buy/hold/sell counts by month, last 6 months)
+- Selskapsinfo moved from sidebar to hero section on company pages
+- Euronext pagination fixed: uses Drupal AJAX endpoint (`/en/views/ajax`) instead of broken `?page=N` HTML pagination. Supports `--full` flag for backfill (up to 50 pages)
+- Bank name map expanded: added ABG Sundal Collier, Nordea, Swedbank, SEB, Kepler Cheuvreux, Handelsbanken, Carnegie, Norne Securities + variants
 
 ### Known state
 - ~2651 analyst reports in DB, 5 whitelisted domains configured
-- 185 insider trades in DB, range 2026-01-01 to 2026-02-13
+- 185 insider trades in DB, range 2026-01-01 to 2026-02-13 (backfill pending)
 - Gmail IMAP enabled for bulk import and cron sync
 - Vercel cron: daily at 6 AM UTC (`0 6 * * *`), requires `CRON_SECRET` env var
 - `imapflow` added as dependency for IMAP support

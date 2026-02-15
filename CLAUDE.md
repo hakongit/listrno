@@ -52,8 +52,8 @@ TURSO_AUTH_TOKEN=...
 - `pdf-extract.ts` - PDF text extraction for email attachments
 - `imap.ts` - IMAP client (imapflow) for Gmail: connect, mailbox state, UID-based fetch
 - `email-processor.ts` - Shared email processing pipeline: dedup, PDF extraction, LLM extraction, previous rec enrichment, retry logic
-- `prices.ts` - Yahoo Finance API for stock quotes (price, volume, 52-week range)
-- `tickers.ts` - ISIN/company name to Yahoo Finance ticker mapping
+- `prices.ts` - Yahoo Finance API for stock quotes (price, volume, 52-week range) and ticker search
+- `tickers.ts` - ISIN/company name to Yahoo Finance ticker mapping with async auto-resolve via DB + Yahoo search
 - `insider-profiles.ts` - Manual profile data (Twitter handles, bios)
 - `types.ts` - Core types: `CompanyShortData`, `ShortPosition`, `PositionHolder`
 - `insider-types.ts` - Types: `InsiderTrade`, `InsiderSummary`
@@ -104,7 +104,7 @@ TURSO_AUTH_TOKEN=...
 ## Key Patterns
 
 - Company URLs use slugified issuer names (e.g., `/hexagon-composites`)
-- Ticker symbols are Yahoo Finance format (`HEX.OL` for Oslo Børs)
+- Ticker symbols are Yahoo Finance format (`HEX.OL` for Oslo Børs); resolved via `resolveTicker()` (hardcoded → DB → Yahoo search → cache)
 - Currency is primarily NOK; insider trades may have other currencies
 - Mobile-first responsive design with Tailwind breakpoints
 - Dates on `/analyser` pages use `DD.MM.YY` format (e.g., `12.02.26`) via `formatDateShort()` — never month names
@@ -127,6 +127,7 @@ The entire site uses a premium navy-dark design with gold accent:
 - `analyst_domains` - Whitelisted sender domains (auto-import)
 - `extraction_guidance` - Single-row table for persistent LLM instructions
 - `sync_state` - Key-value store for IMAP sync checkpointing (`imap_last_uid`, `imap_uid_validity`, `last_sync_at`)
+- `ticker_mappings` - ISIN→ticker cache (auto-populated from hardcoded maps + Yahoo Finance search). Columns: `isin` (PK), `ticker`, `company_name`, `source` ('hardcoded'|'yahoo-search'), `created_at`
 
 ## Language
 
@@ -148,6 +149,7 @@ All user-facing text is in Norwegian (nb). Key terms:
 ## Session Status (2026-02-15)
 
 ### Recent commits (this session)
+- **`1b38e8c`** — Add auto-resolve ISIN → Yahoo Finance ticker via DB cache (`ticker_mappings` table, `resolveTicker()`, `searchTicker()`)
 - **`dcc9ece`** — Redesign analyst company page to match main company page layout (ticker, stock price, ISIN, 4-col stats grid with consensus)
 - **`f22c018`** — Fix ~20 wrong ISIN-to-ticker mappings + add monthly sentiment trend to `getAnalystStats()`
 - **`7fa6ff6`** — Move Selskapsinfo to hero section next to company name (both short-positions and insider-only views)
@@ -156,9 +158,10 @@ All user-facing text is in Norwegian (nb). Key terms:
 ### Pending tasks
 - Run `npm run db:sync-insider -- --full --with-pdfs` to backfill historical insider trades using fixed pagination
 - `BANK_NAME_MAP` may still need additions as new bank variants appear in data (now covers ~20 banks)
-- Untracked files: `components/sentiment-trend-chart.tsx`, `mockup-analyser.html`, `scripts/test-stats.ts` — decide whether to commit or delete
+- Untracked files: `mockup-analyser.html`, `scripts/test-stats.ts` — decide whether to commit or delete
 
 ### Recently completed
+- Auto-resolve ISIN→ticker via DB: `resolveTicker()` chains hardcoded maps → `ticker_mappings` DB table → Yahoo Finance search API → caches result. New companies no longer need manual code changes for stock prices.
 - Analyst company page (`/analyser/selskap/[slug]`) redesigned: ticker badge, live stock price, ISIN, 52-week range, buy/hold/sell consensus in stats grid
 - Fixed ISIN-to-ticker mappings (~20 corrections in `tickers.ts` and `analyst-db.ts` knownCompanies)
 - Monthly sentiment trend added to `getAnalystStats()` (buy/hold/sell counts by month, last 6 months)
@@ -172,3 +175,4 @@ All user-facing text is in Norwegian (nb). Key terms:
 - Gmail IMAP enabled for bulk import and cron sync
 - Vercel cron: daily at 6 AM UTC (`0 6 * * *`), requires `CRON_SECRET` env var
 - `imapflow` added as dependency for IMAP support
+- `ticker_mappings` table auto-bootstraps from hardcoded maps on first use

@@ -10,7 +10,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { LazyShortChart } from "@/components/lazy-short-chart";
 import { TradeTypeBadge } from "@/components/ui/trade-type-badge";
-import { RecommendationBadge } from "@/components/ui/recommendation-badge";
+import { AnalystReportsTable } from "@/components/analyst-reports-table";
 
 export const revalidate = 3600;
 
@@ -33,9 +33,22 @@ async function resolveAnalystCompany(slug: string): Promise<AnalystCompanySummar
     companies.find((c) => slugify(c.name).startsWith(slug)) ?? null;
 }
 
-function formatTargetPrice(price?: number, currency?: string): string {
-  if (!price) return "-";
-  return `${formatNumber(price)} ${currency || "NOK"}`;
+function toReportRows(reports: import("@/lib/analyst-types").PublicAnalystReport[]) {
+  return reports.map((r) => {
+    const effectiveBank = r.recInvestmentBank || r.investmentBank;
+    const bank = effectiveBank && !isAggregatorSource(effectiveBank) ? normalizeBankName(effectiveBank) : null;
+    return {
+      recommendationId: r.recommendationId,
+      receivedDate: r.receivedDate,
+      bankName: bank,
+      bankSlug: bank ? `/analyser/bank/${slugify(bank)}` : null,
+      recommendation: r.recommendation,
+      targetPrice: r.targetPrice,
+      targetCurrency: r.targetCurrency,
+      previousTargetPrice: r.previousTargetPrice,
+      priceAtReport: r.priceAtReport,
+    };
+  });
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -328,6 +341,11 @@ export default async function CompanyPage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* Analyst Reports Table (before short info) */}
+        {filteredReports.length > 0 && (
+          <AnalystReportsTable reports={toReportRows(filteredReports)} collapsedCount={5} />
+        )}
+
         {/* Chart + Positions side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
           {/* Short History Chart */}
@@ -555,10 +573,6 @@ export default async function CompanyPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* Full Analyst Reports Table */}
-        {filteredReports.length > 0 && (
-          <AnalystReportsTable reports={filteredReports} />
-        )}
       </div>
     );
   }
@@ -757,6 +771,11 @@ export default async function CompanyPage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* Analyst Reports Table (before insider trades) */}
+      {filteredReports.length > 0 && (
+        <AnalystReportsTable reports={toReportRows(filteredReports)} collapsedCount={5} />
+      )}
+
       {/* Content */}
       <div className="mt-3">
         {/* Insider Trades table */}
@@ -867,141 +886,6 @@ export default async function CompanyPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Full Analyst Reports Table */}
-        {filteredReports.length > 0 && (
-          <AnalystReportsTable reports={filteredReports} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Shared Analyst Reports Table ───
-
-function AnalystReportsTable({ reports }: { reports: import("@/lib/analyst-types").PublicAnalystReport[] }) {
-  return (
-    <div
-      className="rounded-lg overflow-hidden border mt-3 mb-10"
-      style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
-    >
-      <div
-        className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
-        style={{ borderColor: "var(--an-border)" }}
-      >
-        <span
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ color: "var(--an-text-secondary)" }}
-        >
-          Alle analyser
-        </span>
-        <Link
-          href="/analyser"
-          className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
-          style={{ color: "var(--an-text-muted)" }}
-        >
-          Tilbake til oversikt
-        </Link>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th
-                className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
-                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
-              >
-                Dato
-              </th>
-              <th
-                className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
-                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
-              >
-                Bank
-              </th>
-              <th
-                className="text-center text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
-                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "110px" }}
-              >
-                Anbefaling
-              </th>
-              <th
-                className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
-                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "120px" }}
-              >
-                Kursmål
-              </th>
-              <th
-                className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden lg:table-cell"
-                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "120px" }}
-              >
-                Kurs ved rapp.
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((report, i) => {
-              const effectiveBank = report.recInvestmentBank || report.investmentBank;
-              const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? normalizeBankName(effectiveBank) : null;
-              return (
-                <tr
-                  key={report.recommendationId}
-                  className="an-table-row transition-colors"
-                  style={{
-                    borderBottom: i < reports.length - 1
-                      ? "1px solid var(--an-border-subtle)"
-                      : "none",
-                  }}
-                >
-                  <td
-                    className="px-3 sm:px-[18px] py-3 text-xs whitespace-nowrap"
-                    style={{ color: "var(--an-text-muted)" }}
-                  >
-                    {formatDateShort(report.receivedDate)}
-                  </td>
-                  <td className="px-3 sm:px-[18px] py-3">
-                    {bankName ? (
-                      <Link
-                        href={`/analyser/bank/${slugify(bankName)}`}
-                        className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
-                        style={{ color: "var(--an-text-primary)" }}
-                      >
-                        {bankName}
-                      </Link>
-                    ) : null}
-                  </td>
-                  <td className="px-3 sm:px-[18px] py-3 text-center">
-                    <RecommendationBadge recommendation={report.recommendation} />
-                  </td>
-                  <td className="px-3 sm:px-[18px] py-3 text-right">
-                    {report.targetPrice ? (
-                      <span
-                        className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
-                        style={{ color: "var(--an-text-secondary)" }}
-                      >
-                        {formatTargetPrice(report.targetPrice, report.targetCurrency)}
-                        {report.previousTargetPrice && (
-                          <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
-                            ({formatNumber(report.previousTargetPrice)})
-                          </span>
-                        )}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-3 sm:px-[18px] py-3 text-right hidden lg:table-cell">
-                    {report.priceAtReport ? (
-                      <span
-                        className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
-                        style={{ color: "var(--an-text-secondary)" }}
-                      >
-                        {formatNumber(report.priceAtReport)} {report.targetCurrency}
-                      </span>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
     </div>
   );
@@ -1180,9 +1064,9 @@ async function renderAnalystOnlyView(company: AnalystCompanySummary) {
         </div>
       </div>
 
-      {/* Full Reports Table */}
+      {/* Reports Table */}
       {reports.length > 0 && (
-        <AnalystReportsTable reports={reports} />
+        <AnalystReportsTable reports={toReportRows(reports)} collapsedCount={5} />
       )}
     </div>
   );

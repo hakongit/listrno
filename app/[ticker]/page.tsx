@@ -18,9 +18,18 @@ interface PageProps {
   params: Promise<{ ticker: string }>;
 }
 
+// Strip parenthetical ticker suffixes from analyst company names
+function cleanCompanyName(name: string): string {
+  return name
+    .replace(/\s*\((?:NO|OSE|XOSL|OB)[:\s]?\s*\w+\)\s*$/i, "")
+    .replace(/\s+(?:NO|ASA)$/i, "")
+    .trim();
+}
+
 async function resolveAnalystCompany(slug: string): Promise<AnalystCompanySummary | null> {
   const companies = await getCachedAnalystCompanies();
-  return companies.find((c) => slugify(c.name) === slug) ??
+  return companies.find((c) => slugify(cleanCompanyName(c.name)) === slug) ??
+    companies.find((c) => slugify(c.name) === slug) ??
     companies.find((c) => slugify(c.name).startsWith(slug)) ?? null;
 }
 

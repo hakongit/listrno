@@ -49,6 +49,7 @@ export const isinToTicker: Record<string, string> = {
   "NO0010379266": "BNOR.OL",      // BLUENORD ASA
   "DK0061412772": "CADLR.OL",     // CADELER A/S
   "NO0010000045": "PHO.OL",       // PHOTOCURE
+  "BMG9156K1018": "2020.OL",      // 2020 BULKERS
 };
 
 // Reverse lookup: company name to ticker
@@ -126,6 +127,8 @@ export const companyNameToTicker: Record<string, string> = {
   "ATEA ASA": "ATEA.OL",
   "BELSHIPS": "BELCO.OL",
   "BELSHIPS ASA": "BELCO.OL",
+  "2020 BULKERS": "2020.OL",
+  "2020 BULKERS LTD": "2020.OL",
 };
 
 export function getTicker(isin: string, companyName: string): string | null {

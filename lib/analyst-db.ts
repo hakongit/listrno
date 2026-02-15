@@ -126,6 +126,8 @@ const knownCompanies: Record<string, string> = {
   "noble corporation": "GB00BMXNWH07",
   "solstad maritime": "NO0003080608",
   "sparebank 1 nord-norge": "NO0006000801",
+  "2020 bulkers": "BMG9156K1018",
+  "2020 bulkers ltd": "BMG9156K1018",
 };
 for (const [name, isin] of Object.entries(knownCompanies)) {
   nameToIsinMap.set(name, isin);

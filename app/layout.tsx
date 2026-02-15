@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import Link from "next/link";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { SiteNav } from "@/components/site-nav";
 import "./globals.css";
@@ -80,6 +81,8 @@ export default function RootLayout({
               Data fra offentlig tilgjengelige kilder. Ikke finansiell r&aring;dgivning.
               <br />
               Bluebox AS
+              <span className="mx-1.5">&middot;</span>
+              <Link href="/om" className="underline underline-offset-2 hover:opacity-80 transition-opacity" style={{ color: "var(--an-text-muted)" }}>Om Listr</Link>
             </p>
           </div>
         </footer>

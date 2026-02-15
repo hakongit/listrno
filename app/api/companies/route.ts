@@ -1,6 +1,6 @@
 import { getShortData } from "@/lib/data";
 import { getCachedAnalystCompanies, initializeAnalystDatabase } from "@/lib/analyst-db";
-import { getTicker, isinToTicker } from "@/lib/tickers";
+import { resolveTicker } from "@/lib/tickers";
 import { slugify } from "@/lib/utils";
 import { NextResponse } from "next/server";
 
@@ -48,14 +48,8 @@ export async function GET() {
   for (const c of analystCompanies) {
     const cleanName = cleanCompanyName(c.name);
     const slug = slugify(cleanName);
-    // Resolve ticker from ISIN or name
-    let ticker: string | null = null;
-    if (c.isin) {
-      ticker = isinToTicker[c.isin] ?? getTicker(c.isin, cleanName);
-    }
-    if (!ticker) {
-      ticker = getTicker("", cleanName);
-    }
+    // Resolve ticker from ISIN or name (async with DB + Yahoo fallback)
+    const ticker = await resolveTicker(c.isin || "", cleanName);
     const tickerShort = ticker?.replace(".OL", "") ?? null;
 
     // Deduplicate by slug AND by ticker

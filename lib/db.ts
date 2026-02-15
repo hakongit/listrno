@@ -74,6 +74,53 @@ export async function initializeDatabase() {
   await getDb().execute(`CREATE INDEX IF NOT EXISTS idx_stock_prices_isin ON stock_prices(isin)`);
 }
 
+export async function initializeTickerMappings() {
+  await getDb().execute(`
+    CREATE TABLE IF NOT EXISTS ticker_mappings (
+      isin TEXT PRIMARY KEY,
+      ticker TEXT NOT NULL,
+      company_name TEXT,
+      source TEXT DEFAULT 'hardcoded',
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+}
+
+export async function bootstrapTickerMappings(
+  mappings: Array<{ isin: string; ticker: string; companyName?: string }>
+) {
+  const db = getDb();
+  for (const m of mappings) {
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO ticker_mappings (isin, ticker, company_name, source) VALUES (?, ?, ?, 'hardcoded')`,
+      args: [m.isin, m.ticker, m.companyName ?? null],
+    });
+  }
+}
+
+export async function getTickerFromDb(isin: string): Promise<string | null> {
+  const result = await getDb().execute({
+    sql: `SELECT ticker FROM ticker_mappings WHERE isin = ?`,
+    args: [isin],
+  });
+  if (result.rows.length > 0) {
+    return String(result.rows[0].ticker);
+  }
+  return null;
+}
+
+export async function saveTickerMapping(
+  isin: string,
+  ticker: string,
+  companyName: string | null,
+  source: string
+): Promise<void> {
+  await getDb().execute({
+    sql: `INSERT OR REPLACE INTO ticker_mappings (isin, ticker, company_name, source, created_at) VALUES (?, ?, ?, ?, datetime('now'))`,
+    args: [isin, ticker, companyName, source],
+  });
+}
+
 export async function initializeInsiderDatabase() {
   // Insider trades table
   await getDb().execute(`

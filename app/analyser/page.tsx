@@ -6,7 +6,7 @@ import {
   normalizeBankName,
 } from "@/lib/analyst-db";
 import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
-import { isinToTicker } from "@/lib/tickers";
+import { resolveTicker } from "@/lib/tickers";
 import { RecommendationBadge } from "@/components/ui/recommendation-badge";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -151,15 +151,25 @@ export default async function AnalystReportsPage() {
     return null;
   }
 
-  function getTickerForReport(isin?: string): string | null {
-    if (!isin) return null;
-    return isinToTicker[isin] || null;
-  }
-
   // Filter to reports with extracted data
   const reports = allReports.filter(
     (r) => r.companyName || r.recommendation || r.targetPrice
   );
+
+  // Pre-resolve tickers for all unique ISINs
+  const tickerMap = new Map<string, string | null>();
+  const uniqueIsins = [...new Set(reports.map((r) => r.companyIsin).filter(Boolean))] as string[];
+  await Promise.all(
+    uniqueIsins.map(async (isin) => {
+      const companyName = reports.find((r) => r.companyIsin === isin)?.companyName || "";
+      tickerMap.set(isin, await resolveTicker(isin, companyName));
+    })
+  );
+
+  function getTickerForReport(isin?: string): string | null {
+    if (!isin) return null;
+    return tickerMap.get(isin) ?? null;
+  }
 
   // Compute stats
   const latestDate = reports.length > 0 ? reports[0].receivedDate : null;

@@ -2,7 +2,7 @@ import { getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
 import { getCachedPublicAnalystReportsByCompany, getCachedAnalystCompanies, initializeAnalystDatabase, isAggregatorSource, normalizeBankName } from "@/lib/analyst-db";
 import type { AnalystCompanySummary } from "@/lib/analyst-db";
-import { getTicker, isinToTicker } from "@/lib/tickers";
+import { resolveTicker } from "@/lib/tickers";
 import { fetchStockQuotes, StockQuote, formatMarketValue } from "@/lib/prices";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume, formatDateShort } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -582,11 +582,8 @@ export default async function CompanyPage({ params }: PageProps) {
   const isin = insiderTrades[0].isin;
 
   let tickerSymbol = insiderTrades[0].ticker;
-  if (!tickerSymbol && isin) {
-    tickerSymbol = getTicker(isin, insiderOnlyCompanyName);
-  }
   if (!tickerSymbol) {
-    tickerSymbol = getTicker("", insiderOnlyCompanyName);
+    tickerSymbol = await resolveTicker(isin || "", insiderOnlyCompanyName);
   }
 
   let stockQuote: StockQuote | null = null;
@@ -901,13 +898,7 @@ async function renderAnalystOnlyView(company: AnalystCompanySummary) {
 
   // Resolve ticker
   const isin = company.isin ?? (reports.length > 0 ? reports[0].companyIsin : null);
-  let ticker = isin ? isinToTicker[isin] : null;
-  if (!ticker && isin) {
-    ticker = getTicker(isin, company.name);
-  }
-  if (!ticker) {
-    ticker = getTicker("", company.name);
-  }
+  const ticker = await resolveTicker(isin || "", company.name);
 
   // Fetch stock quote
   let stockQuote: StockQuote | null = null;

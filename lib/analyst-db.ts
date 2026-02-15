@@ -9,7 +9,7 @@ import {
   Recommendation,
   RecommendationRow,
 } from "./analyst-types";
-import { isinToTicker } from "./tickers";
+import { resolveTicker } from "./tickers";
 import { unstable_cache } from "next/cache";
 
 // Build name→ISIN map for resolving company ISINs from names
@@ -578,6 +578,10 @@ export async function updateAnalystReportExtraction(
     if (!rec.targetPrice) continue;
     // Resolve ISIN from company name if not already set
     const isin = rec.companyIsin || (rec.companyName ? resolveCompanyIsin(rec.companyName) : null);
+    // Auto-resolve and cache ticker mapping for this ISIN
+    if (isin && rec.companyName) {
+      await resolveTicker(isin, rec.companyName).catch(() => null);
+    }
     await db.execute({
       sql: `INSERT INTO analyst_recommendations (report_id, company_name, company_isin, recommendation, target_price, target_currency, summary, investment_bank, previous_target_price, previous_recommendation)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

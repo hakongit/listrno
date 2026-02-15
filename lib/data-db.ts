@@ -1,7 +1,7 @@
 import { getDb } from "./db";
 import { ShortPosition, CompanyShortData, ShortDataSummary, HistoricalDataPoint, PositionHolder, HolderCompanyPosition } from "./types";
 import { slugify } from "./utils";
-import { getTicker } from "./tickers";
+import { resolveTicker } from "./tickers";
 import { fetchStockQuotes } from "./prices";
 import { unstable_cache } from "next/cache";
 
@@ -138,8 +138,8 @@ export async function getShortDataFromDB(): Promise<ShortDataSummary> {
       change = Math.round((totalShortPct - previousShortPct) * 100) / 100;
     }
 
-    // Get ticker
-    const ticker = getTicker(company.isin, company.issuer_name);
+    // Get ticker (async with DB + Yahoo fallback)
+    const ticker = await resolveTicker(company.isin, company.issuer_name);
 
     // Pre-group positions by holder name for O(n) lookup
     const positionsByHolder = new Map<string, DBPosition[]>();

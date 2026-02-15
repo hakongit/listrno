@@ -75,6 +75,42 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Map<string, S
   return quotes;
 }
 
+// Search Yahoo Finance for a ticker matching the given ISIN or company name
+// Returns the best .OL or .ST match, or null if none found
+export async function searchTicker(query: string): Promise<string | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=5&newsCount=0&listsCount=0`;
+
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "application/json",
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const quotes = data.quotes as Array<{ symbol: string; exchDisp?: string; quoteType?: string }> | undefined;
+    if (!quotes || quotes.length === 0) return null;
+
+    // Prefer Oslo (.OL) or Stockholm (.ST) listed equities
+    const nordicMatch = quotes.find(
+      (q) => q.quoteType === "EQUITY" && (q.symbol.endsWith(".OL") || q.symbol.endsWith(".ST"))
+    );
+    if (nordicMatch) return nordicMatch.symbol;
+
+    // Fall back to first equity result
+    const equityMatch = quotes.find((q) => q.quoteType === "EQUITY");
+    if (equityMatch) return equityMatch.symbol;
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function formatMarketValue(value: number): string {
   if (value >= 1_000_000_000) {
     return `${(value / 1_000_000_000).toFixed(1)} mrd`;

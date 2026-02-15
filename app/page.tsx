@@ -2,7 +2,7 @@ import { getShortData } from "@/lib/data";
 import { getInsiderTrades, getInsiderStats, getTopInsiders } from "@/lib/insider-data";
 import { getCachedAnalystStats, getCachedPublicAnalystReports, initializeAnalystDatabase, normalizeBankName, isAggregatorSource } from "@/lib/analyst-db";
 import { formatPercent, formatNOK, formatNumber, formatDateShort, slugify } from "@/lib/utils";
-import { isinToTicker } from "@/lib/tickers";
+import { resolveTicker } from "@/lib/tickers";
 import { TradeTypeBadge } from "@/components/ui/trade-type-badge";
 import { RecommendationBadge } from "@/components/ui/recommendation-badge";
 import Link from "next/link";
@@ -131,6 +131,16 @@ export default async function DashboardPage() {
   const displayReports = analystReports
     .filter((r) => r.companyName && r.recommendation)
     .slice(0, 5);
+
+  // Pre-resolve tickers for display reports
+  const reportTickerMap = new Map<string, string | null>();
+  await Promise.all(
+    displayReports.map(async (r) => {
+      if (r.companyIsin && !reportTickerMap.has(r.companyIsin)) {
+        reportTickerMap.set(r.companyIsin, await resolveTicker(r.companyIsin, r.companyName || ""));
+      }
+    })
+  );
 
   return (
     <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
@@ -348,7 +358,7 @@ export default async function DashboardPage() {
                   {displayReports.map((report, i) => {
                     const effectiveBank = report.recInvestmentBank || report.investmentBank;
                     const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? normalizeBankName(effectiveBank) : null;
-                    const ticker = report.companyIsin ? isinToTicker[report.companyIsin] : null;
+                    const ticker = report.companyIsin ? reportTickerMap.get(report.companyIsin) ?? null : null;
 
                     return (
                       <tr

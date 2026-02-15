@@ -5,7 +5,7 @@ import {
 } from "@/lib/analyst-db";
 import { getShortData } from "@/lib/data";
 import { formatDateShort, formatNumber, slugify } from "@/lib/utils";
-import { isinToTicker } from "@/lib/tickers";
+import { resolveTicker } from "@/lib/tickers";
 import { RecommendationBadge } from "@/components/ui/recommendation-badge";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -87,9 +87,19 @@ export default async function BankProfilePage({ params }: PageProps) {
     return null;
   }
 
+  // Pre-resolve tickers for all unique ISINs
+  const tickerMap = new Map<string, string | null>();
+  const uniqueIsins = [...new Set(reports.map((r) => r.companyIsin).filter(Boolean))] as string[];
+  await Promise.all(
+    uniqueIsins.map(async (isin) => {
+      const companyName = reports.find((r) => r.companyIsin === isin)?.companyName || "";
+      tickerMap.set(isin, await resolveTicker(isin, companyName));
+    })
+  );
+
   function getTickerForReport(isin?: string): string | null {
     if (!isin) return null;
-    return isinToTicker[isin] || null;
+    return tickerMap.get(isin) ?? null;
   }
 
   // Stats

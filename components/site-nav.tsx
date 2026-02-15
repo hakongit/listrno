@@ -8,7 +8,6 @@ const navLinks = [
   { href: "/shortoversikt", label: "Short", labelFull: "Shortposisjoner" },
   { href: "/innsidehandel", label: "Innside", labelFull: "Innsidehandel" },
   { href: "/analyser", label: "Analyse", labelFull: "Analyser" },
-  { href: "/om", label: "Om", labelFull: "Om" },
 ];
 
 export function SiteNav() {

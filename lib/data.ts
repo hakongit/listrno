@@ -158,6 +158,7 @@ export function parseShortPositions(data: RawInstrument[]): ShortDataSummary {
       stockPrice: null,
       shortValue: null,
       regularMarketVolume: null,
+      marketCap: null,
       fiftyTwoWeekHigh: null,
       fiftyTwoWeekLow: null,
     });

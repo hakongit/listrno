@@ -77,9 +77,9 @@ export function SentimentTrendChart({ data }: { data: MonthlyData[] }) {
               fontSize: 12,
             }}
             labelStyle={{ color: COLORS.textMuted, marginBottom: 4 }}
-            formatter={(value: number | undefined, name: string) => {
+            formatter={(value, name) => {
               const labels: Record<string, string> = { buyPct: "Kjøp", holdPct: "Hold", sellPct: "Selg" };
-              return [`${value ?? 0}%`, labels[name] || name];
+              return [`${value ?? 0}%`, labels[name ?? ""] || name || ""];
             }}
           />
           <Area

@@ -1,7 +1,8 @@
 import { getCompanyBySlug } from "@/lib/data";
 import { getCompanyInsiderTrades } from "@/lib/insider-data";
-import { getCachedPublicAnalystReports, initializeAnalystDatabase, isAggregatorSource } from "@/lib/analyst-db";
-import { getTicker } from "@/lib/tickers";
+import { getCachedPublicAnalystReportsByCompany, getCachedAnalystCompanies, initializeAnalystDatabase, isAggregatorSource, normalizeBankName } from "@/lib/analyst-db";
+import type { AnalystCompanySummary } from "@/lib/analyst-db";
+import { getTicker, isinToTicker } from "@/lib/tickers";
 import { fetchStockQuotes, StockQuote, formatMarketValue } from "@/lib/prices";
 import { formatPercent, formatNumber, formatDate, slugify, formatNOK, formatVolume, formatDateShort } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -15,6 +16,17 @@ export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ ticker: string }>;
+}
+
+async function resolveAnalystCompany(slug: string): Promise<AnalystCompanySummary | null> {
+  const companies = await getCachedAnalystCompanies();
+  return companies.find((c) => slugify(c.name) === slug) ??
+    companies.find((c) => slugify(c.name).startsWith(slug)) ?? null;
+}
+
+function formatTargetPrice(price?: number, currency?: string): string {
+  if (!price) return "-";
+  return `${formatNumber(price)} ${currency || "NOK"}`;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -47,6 +59,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  await initializeAnalystDatabase();
+  const analystCompany = await resolveAnalystCompany(ticker);
+  if (analystCompany) {
+    return {
+      title: `${analystCompany.name} - Analyser | Listr`,
+      description: `Se alle analyser for ${analystCompany.name}. ${analystCompany.reportCount} analyser med kursmål fra ledende investeringsbanker.`,
+      openGraph: {
+        title: `${analystCompany.name} - Analyser`,
+        description: `${analystCompany.reportCount} analyser med kursmål fra ledende investeringsbanker`,
+      },
+    };
+  }
+
   return { title: "Ikke funnet - Listr" };
 }
 
@@ -57,18 +82,25 @@ export default async function CompanyPage({ params }: PageProps) {
     getCompanyInsiderTrades(ticker),
   ]);
 
+  await initializeAnalystDatabase();
+
+  // If no short positions AND no insider trades, try analyst-only resolution
   if (!company && insiderTrades.length === 0) {
-    notFound();
+    const analystCompany = await resolveAnalystCompany(ticker);
+    if (!analystCompany) {
+      notFound();
+    }
+    // Render analyst-only view
+    return renderAnalystOnlyView(analystCompany);
   }
 
-  await initializeAnalystDatabase();
   const companyName = company?.issuerName || insiderTrades[0]?.issuerName;
   const companyIsin = company?.isin || insiderTrades[0]?.isin;
-  const analystReports = await getCachedPublicAnalystReports({
-    limit: 10,
-    companyIsin: companyIsin || undefined,
-    companyName: companyName || undefined,
-  });
+  const analystReports = companyIsin
+    ? await getCachedPublicAnalystReportsByCompany(companyName || "", companyIsin)
+    : companyName
+      ? await getCachedPublicAnalystReportsByCompany(companyName)
+      : [];
   const filteredReports = analystReports.filter(
     (r) => r.companyName || r.recommendation || r.targetPrice
   );
@@ -287,93 +319,6 @@ export default async function CompanyPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Analyst Reports Panel */}
-        {filteredReports.length > 0 && (
-          <div
-            className="rounded-lg overflow-hidden border mt-3"
-            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
-          >
-            <div
-              className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
-              style={{ borderColor: "var(--an-border)" }}
-            >
-              <span
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: "var(--an-text-secondary)" }}
-              >
-                Analytikerrapporter
-              </span>
-              <Link
-                href="/analyser"
-                className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
-                style={{ color: "var(--an-text-muted)" }}
-              >
-                Se alle
-              </Link>
-            </div>
-            <div>
-              {filteredReports.slice(0, 5).map((report, i) => {
-                const effectiveBank = report.recInvestmentBank || report.investmentBank;
-                const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
-                return (
-                <div
-                  key={report.recommendationId}
-                  className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
-                  style={{
-                    borderBottom: i < Math.min(filteredReports.length, 5) - 1
-                      ? "1px solid var(--an-border-subtle)"
-                      : "none",
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      {bankName ? (
-                        <Link
-                          href={`/analyser/bank/${slugify(bankName)}`}
-                          className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
-                          style={{ color: "var(--an-text-primary)" }}
-                        >
-                          {bankName}
-                        </Link>
-                      ) : (
-                        <span
-                          className="text-[13px]"
-                          style={{ color: "var(--an-text-muted)" }}
-                        >
-                          Ukjent bank
-                        </span>
-                      )}
-                      <span
-                        className="text-[11px]"
-                        style={{ color: "var(--an-text-muted)" }}
-                      >
-                        {formatDateShort(report.receivedDate)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <RecommendationBadge recommendation={report.recommendation} />
-                      {report.targetPrice && (
-                        <span
-                          className="mono text-[12px] font-medium select-none blur-[5px]"
-                          style={{ color: "var(--an-text-secondary)" }}
-                        >
-                          {formatNumber(report.targetPrice)}
-                          {report.previousTargetPrice && (
-                            <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
-                              ({formatNumber(report.previousTargetPrice)})
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Chart + Positions side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
           {/* Short History Chart */}
@@ -508,7 +453,7 @@ export default async function CompanyPage({ params }: PageProps) {
 
         {/* Insider Trades Panel */}
         <div
-          className="rounded-lg overflow-hidden border mt-3 mb-10"
+          className="rounded-lg overflow-hidden border mt-3"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
           <div
@@ -600,6 +545,11 @@ export default async function CompanyPage({ params }: PageProps) {
             </div>
           )}
         </div>
+
+        {/* Full Analyst Reports Table */}
+        {filteredReports.length > 0 && (
+          <AnalystReportsTable reports={filteredReports} />
+        )}
       </div>
     );
   }
@@ -799,9 +749,9 @@ export default async function CompanyPage({ params }: PageProps) {
       </div>
 
       {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-3 mb-10">
-        {/* Left: Insider Trades table (3/5 width) */}
-        <div className="lg:col-span-3">
+      <div className="mt-3">
+        {/* Insider Trades table */}
+        <div>
           <div
             className="rounded-lg overflow-hidden border"
             style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
@@ -908,97 +858,323 @@ export default async function CompanyPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Right: Analyst reports + Company info (2/5 width) */}
-        <div className="lg:col-span-2 flex flex-col gap-3">
-          {/* Analyst Reports Panel */}
-          {filteredReports.length > 0 && (
-            <div
-              className="rounded-lg overflow-hidden border"
-              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
-            >
-              <div
-                className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
-                style={{ borderColor: "var(--an-border)" }}
-              >
-                <span
-                  className="text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--an-text-secondary)" }}
-                >
-                  Analytikerrapporter
-                </span>
-                <Link
-                  href="/analyser"
-                  className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
-                  style={{ color: "var(--an-text-muted)" }}
-                >
-                  Se alle
-                </Link>
-              </div>
-              <div>
-                {filteredReports.slice(0, 5).map((report, i) => {
-                  const effectiveBank = report.recInvestmentBank || report.investmentBank;
-                  const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? effectiveBank : null;
-                  return (
-                  <div
-                    key={report.recommendationId}
-                    className="an-table-row px-3 sm:px-[18px] py-3 transition-colors"
-                    style={{
-                      borderBottom: i < Math.min(filteredReports.length, 5) - 1
-                        ? "1px solid var(--an-border-subtle)"
-                        : "none",
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        {bankName ? (
-                          <Link
-                            href={`/analyser/bank/${slugify(bankName)}`}
-                            className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)] block truncate"
-                            style={{ color: "var(--an-text-primary)" }}
-                          >
-                            {bankName}
-                          </Link>
-                        ) : (
-                          <span
-                            className="text-[13px]"
-                            style={{ color: "var(--an-text-muted)" }}
-                          >
-                            Ukjent bank
-                          </span>
-                        )}
-                        <span
-                          className="text-[11px]"
-                          style={{ color: "var(--an-text-muted)" }}
-                        >
-                          {formatDateShort(report.receivedDate)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <RecommendationBadge recommendation={report.recommendation} />
-                        {report.targetPrice && (
-                          <span
-                            className="mono text-[12px] font-medium select-none blur-[5px]"
-                            style={{ color: "var(--an-text-secondary)" }}
-                          >
-                            {formatNumber(report.targetPrice)}
-                            {report.previousTargetPrice && (
-                              <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
-                                ({formatNumber(report.previousTargetPrice)})
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        {/* Full Analyst Reports Table */}
+        {filteredReports.length > 0 && (
+          <AnalystReportsTable reports={filteredReports} />
+        )}
+      </div>
+    </div>
+  );
+}
 
+// ─── Shared Analyst Reports Table ───
+
+function AnalystReportsTable({ reports }: { reports: import("@/lib/analyst-types").PublicAnalystReport[] }) {
+  return (
+    <div
+      className="rounded-lg overflow-hidden border mt-3 mb-10"
+      style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+    >
+      <div
+        className="px-3 sm:px-[18px] py-3 border-b flex items-center justify-between"
+        style={{ borderColor: "var(--an-border)" }}
+      >
+        <span
+          className="text-xs font-semibold uppercase tracking-wider"
+          style={{ color: "var(--an-text-secondary)" }}
+        >
+          Alle analyser
+        </span>
+        <Link
+          href="/analyser"
+          className="text-[11px] font-medium transition-colors hover:text-[var(--an-accent)]"
+          style={{ color: "var(--an-text-muted)" }}
+        >
+          Tilbake til oversikt
+        </Link>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th
+                className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "80px" }}
+              >
+                Dato
+              </th>
+              <th
+                className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)" }}
+              >
+                Bank
+              </th>
+              <th
+                className="text-center text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "110px" }}
+              >
+                Anbefaling
+              </th>
+              <th
+                className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "120px" }}
+              >
+                Kursmål
+              </th>
+              <th
+                className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden lg:table-cell"
+                style={{ color: "var(--an-text-muted)", borderBottom: "1px solid var(--an-border)", width: "120px" }}
+              >
+                Kurs ved rapp.
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {reports.map((report, i) => {
+              const effectiveBank = report.recInvestmentBank || report.investmentBank;
+              const bankName = effectiveBank && !isAggregatorSource(effectiveBank) ? normalizeBankName(effectiveBank) : null;
+              return (
+                <tr
+                  key={report.recommendationId}
+                  className="an-table-row transition-colors"
+                  style={{
+                    borderBottom: i < reports.length - 1
+                      ? "1px solid var(--an-border-subtle)"
+                      : "none",
+                  }}
+                >
+                  <td
+                    className="px-3 sm:px-[18px] py-3 text-xs whitespace-nowrap"
+                    style={{ color: "var(--an-text-muted)" }}
+                  >
+                    {formatDateShort(report.receivedDate)}
+                  </td>
+                  <td className="px-3 sm:px-[18px] py-3">
+                    {bankName ? (
+                      <Link
+                        href={`/analyser/bank/${slugify(bankName)}`}
+                        className="text-[13px] font-medium transition-colors hover:text-[var(--an-accent)]"
+                        style={{ color: "var(--an-text-primary)" }}
+                      >
+                        {bankName}
+                      </Link>
+                    ) : null}
+                  </td>
+                  <td className="px-3 sm:px-[18px] py-3 text-center">
+                    <RecommendationBadge recommendation={report.recommendation} />
+                  </td>
+                  <td className="px-3 sm:px-[18px] py-3 text-right">
+                    {report.targetPrice ? (
+                      <span
+                        className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
+                        style={{ color: "var(--an-text-secondary)" }}
+                      >
+                        {formatTargetPrice(report.targetPrice, report.targetCurrency)}
+                        {report.previousTargetPrice && (
+                          <span className="text-[10px] ml-1" style={{ color: "var(--an-text-muted)" }}>
+                            ({formatNumber(report.previousTargetPrice)})
+                          </span>
+                        )}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="px-3 sm:px-[18px] py-3 text-right hidden lg:table-cell">
+                    {report.priceAtReport ? (
+                      <span
+                        className="mono text-[13px] font-medium select-none blur-[5px] whitespace-nowrap"
+                        style={{ color: "var(--an-text-secondary)" }}
+                      >
+                        {formatNumber(report.priceAtReport)} {report.targetCurrency}
+                      </span>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Analyst-only company view ───
+
+async function renderAnalystOnlyView(company: AnalystCompanySummary) {
+  const allReports = await getCachedPublicAnalystReportsByCompany(company.name, company.isin ?? undefined);
+  const reports = allReports.filter(
+    (r) => r.companyName || r.recommendation || r.targetPrice
+  );
+
+  // Resolve ticker
+  const isin = company.isin ?? (reports.length > 0 ? reports[0].companyIsin : null);
+  let ticker = isin ? isinToTicker[isin] : null;
+  if (!ticker && isin) {
+    ticker = getTicker(isin, company.name);
+  }
+  if (!ticker) {
+    ticker = getTicker("", company.name);
+  }
+
+  // Fetch stock quote
+  let stockQuote: StockQuote | null = null;
+  if (ticker) {
+    const quotes = await fetchStockQuotes([ticker]);
+    stockQuote = quotes.get(ticker) || null;
+  }
+
+  // Stats
+  const uniqueBanks = new Set(
+    reports
+      .map((r) => r.recInvestmentBank || r.investmentBank)
+      .filter((b): b is string => !!b && !isAggregatorSource(b))
+      .map(normalizeBankName)
+  ).size;
+
+  // Recommendation consensus
+  const recCounts = { buy: 0, hold: 0, sell: 0 };
+  for (const r of reports) {
+    const rec = r.recommendation?.toLowerCase();
+    if (rec === "buy" || rec === "overweight" || rec === "outperform") recCounts.buy++;
+    else if (rec === "sell" || rec === "underweight" || rec === "underperform") recCounts.sell++;
+    else if (rec === "hold") recCounts.hold++;
+  }
+  const recTotal = recCounts.buy + recCounts.hold + recCounts.sell;
+
+  return (
+    <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
+      {/* Hero */}
+      <div className="pt-8 pb-6">
+        <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-2">
+          {company.name}
+        </h1>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {ticker && (
+            <span
+              className="text-[12px] sm:text-[13px] mono font-medium px-2 sm:px-2.5 py-1 rounded border"
+              style={{
+                color: "var(--an-text-secondary)",
+                borderColor: "var(--an-border)",
+                background: "var(--an-bg-surface)",
+              }}
+            >
+              {ticker.replace(".OL", "")}
+            </span>
+          )}
+          {stockQuote?.price && (
+            <span
+              className="text-[14px] sm:text-[15px] mono font-semibold"
+              style={{ color: "var(--an-text-primary)" }}
+            >
+              {stockQuote.price.toFixed(2)} NOK
+            </span>
+          )}
+          {isin && (
+            <span
+              className="text-[11px] sm:text-[12px] mono hidden sm:inline"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              {isin}
+            </span>
+          )}
         </div>
       </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Analyst reports count */}
+        <div
+          className="an-stat-accent rounded-lg p-3 sm:p-4 border"
+          style={{ borderColor: "var(--an-border)" }}
+        >
+          <div
+            className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5"
+            style={{ color: "var(--an-accent)" }}
+          >
+            {company.reportCount}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Analyser
+          </div>
+          {recTotal > 0 && (
+            <div className="text-[11px] mt-1 flex gap-2">
+              {recCounts.buy > 0 && (
+                <span style={{ color: "var(--an-green)" }}>{recCounts.buy} kjøp</span>
+              )}
+              {recCounts.hold > 0 && (
+                <span style={{ color: "var(--an-amber)" }}>{recCounts.hold} hold</span>
+              )}
+              {recCounts.sell > 0 && (
+                <span style={{ color: "var(--an-red)" }}>{recCounts.sell} selg</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Stock price + 52-week */}
+        <div
+          className="rounded-lg p-3 sm:p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 mono">
+            {stockQuote?.price ? stockQuote.price.toFixed(2) : "-"}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Aksjekurs (NOK)
+          </div>
+          {stockQuote?.fiftyTwoWeekLow && stockQuote?.fiftyTwoWeekHigh && (
+            <div
+              className="text-[11px] mono mt-1"
+              style={{ color: "var(--an-text-muted)" }}
+            >
+              52u: {stockQuote.fiftyTwoWeekLow.toFixed(2)} – {stockQuote.fiftyTwoWeekHigh.toFixed(2)}
+            </div>
+          )}
+        </div>
+
+        {/* Banks */}
+        <div
+          className="rounded-lg p-3 sm:p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[20px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5">
+            {uniqueBanks}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Investeringsbanker
+          </div>
+        </div>
+
+        {/* Latest report date */}
+        <div
+          className="rounded-lg p-3 sm:p-4 border"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="text-[18px] sm:text-[20px] font-bold tracking-tight leading-tight mb-0.5 pt-1">
+            {reports.length > 0 ? formatDateShort(reports[0].receivedDate) : "-"}
+          </div>
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--an-text-secondary)" }}
+          >
+            Siste rapport
+          </div>
+        </div>
+      </div>
+
+      {/* Full Reports Table */}
+      {reports.length > 0 && (
+        <AnalystReportsTable reports={reports} />
+      )}
     </div>
   );
 }

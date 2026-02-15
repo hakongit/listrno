@@ -82,7 +82,7 @@ export default async function BankProfilePage({ params }: PageProps) {
       if (s) return `/${s}`;
     }
     if (name) {
-      return `/analyser/selskap/${slugify(name)}`;
+      return `/${slugify(name)}`;
     }
     return null;
   }

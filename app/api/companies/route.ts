@@ -36,7 +36,7 @@ export async function GET() {
       seen.add(slug);
       companies.push({
         name: c.name,
-        slug: `/analyser/selskap/${slug}`,
+        slug: `/${slug}`,
         ticker: null,
         type: "analyst",
       });

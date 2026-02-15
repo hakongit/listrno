@@ -146,7 +146,7 @@ export default async function AnalystReportsPage() {
 
   function getCompanyLink(name?: string): string | null {
     if (name) {
-      return `/analyser/selskap/${slugify(name)}`;
+      return `/${slugify(name)}`;
     }
     return null;
   }

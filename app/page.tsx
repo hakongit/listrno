@@ -627,7 +627,7 @@ export default async function DashboardPage() {
                 return (
                   <Link
                     key={report.recommendationId}
-                    href={`/analyser/selskap/${slugify(report.companyName!)}`}
+                    href={`/${slugify(report.companyName!)}`}
                     className="an-table-row flex items-center justify-between px-3 sm:px-[18px] py-3 transition-colors"
                     style={{
                       borderBottom: i < arr.length - 1

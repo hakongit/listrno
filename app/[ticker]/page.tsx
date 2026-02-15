@@ -99,39 +99,70 @@ export default async function CompanyPage({ params }: PageProps) {
     return (
       <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
         {/* Hero */}
-        <div className="pt-8 pb-6">
-          <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-2">
-            {company.issuerName}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {company.ticker && (
-              <span
-                className="text-[12px] sm:text-[13px] mono font-medium px-2 sm:px-2.5 py-1 rounded border"
-                style={{
-                  color: "var(--an-text-secondary)",
-                  borderColor: "var(--an-border)",
-                  background: "var(--an-bg-surface)",
-                }}
-              >
-                {company.ticker.replace(".OL", "")}
-              </span>
-            )}
-            {company.stockPrice && (
-              <span
-                className="text-[14px] sm:text-[15px] mono font-semibold"
-                style={{ color: "var(--an-text-primary)" }}
-              >
-                {company.stockPrice.toFixed(2)} NOK
-              </span>
-            )}
-            {company.isin && (
-              <span
-                className="text-[11px] sm:text-[12px] mono hidden sm:inline"
-                style={{ color: "var(--an-text-muted)" }}
-              >
-                {company.isin}
-              </span>
-            )}
+        <div className="pt-8 pb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div>
+            <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-2">
+              {company.issuerName}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {company.ticker && (
+                <span
+                  className="text-[12px] sm:text-[13px] mono font-medium px-2 sm:px-2.5 py-1 rounded border"
+                  style={{
+                    color: "var(--an-text-secondary)",
+                    borderColor: "var(--an-border)",
+                    background: "var(--an-bg-surface)",
+                  }}
+                >
+                  {company.ticker.replace(".OL", "")}
+                </span>
+              )}
+              {company.stockPrice && (
+                <span
+                  className="text-[14px] sm:text-[15px] mono font-semibold"
+                  style={{ color: "var(--an-text-primary)" }}
+                >
+                  {company.stockPrice.toFixed(2)} NOK
+                </span>
+              )}
+              {company.isin && (
+                <span
+                  className="text-[11px] sm:text-[12px] mono hidden sm:inline"
+                  style={{ color: "var(--an-text-muted)" }}
+                >
+                  {company.isin}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Company Info (inline) */}
+          <div
+            className="rounded-lg border shrink-0 lg:min-w-[280px]"
+            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+          >
+            <div className="px-3 sm:px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+              {company.regularMarketVolume && (
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Daglig volum</div>
+                  <div className="mono font-medium">{formatVolume(company.regularMarketVolume)}</div>
+                </div>
+              )}
+              {company.shortValue && (
+                <div>
+                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Short verdi</div>
+                  <div className="mono font-medium">{formatNOK(company.shortValue)}</div>
+                </div>
+              )}
+              <div>
+                <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Siste oppdatering</div>
+                <div>{formatDate(company.latestDate)}</div>
+              </div>
+              <div>
+                <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Markedsplass</div>
+                <div className="font-medium">Oslo Børs</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -575,55 +606,6 @@ export default async function CompanyPage({ params }: PageProps) {
               )}
             </div>
 
-            {/* Company Info Card */}
-            <div
-              className="rounded-lg overflow-hidden border"
-              style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
-            >
-              <div
-                className="px-3 sm:px-[18px] py-3 border-b"
-                style={{ borderColor: "var(--an-border)" }}
-              >
-                <span
-                  className="text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--an-text-secondary)" }}
-                >
-                  Selskapsinfo
-                </span>
-              </div>
-              <div className="px-3 sm:px-[18px] py-4 grid grid-cols-2 gap-4 text-[13px]">
-                {company.ticker && (
-                  <div>
-                    <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Ticker</div>
-                    <div className="mono font-medium">{company.ticker.replace(".OL", "")}</div>
-                  </div>
-                )}
-                <div>
-                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Markedsplass</div>
-                  <div className="font-medium">Oslo Børs</div>
-                </div>
-                {company.regularMarketVolume && (
-                  <div>
-                    <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Daglig volum</div>
-                    <div className="mono font-medium">{formatVolume(company.regularMarketVolume)}</div>
-                  </div>
-                )}
-                {company.shortValue && (
-                  <div>
-                    <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Short verdi</div>
-                    <div className="mono font-medium">{formatNOK(company.shortValue)}</div>
-                  </div>
-                )}
-                <div>
-                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Siste oppdatering</div>
-                  <div>{formatDate(company.latestDate)}</div>
-                </div>
-                <div>
-                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">ISIN</div>
-                  <div className="mono text-[11px]">{company.isin}</div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -651,48 +633,75 @@ export default async function CompanyPage({ params }: PageProps) {
   return (
     <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
       {/* Hero */}
-      <div className="pt-8 pb-6">
-        <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-2">
-          {insiderOnlyCompanyName}
-        </h1>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {tickerSymbol && (
+      <div className="pt-8 pb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div>
+          <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight mb-2">
+            {insiderOnlyCompanyName}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {tickerSymbol && (
+              <span
+                className="text-[12px] sm:text-[13px] mono font-medium px-2 sm:px-2.5 py-1 rounded border"
+                style={{
+                  color: "var(--an-text-secondary)",
+                  borderColor: "var(--an-border)",
+                  background: "var(--an-bg-surface)",
+                }}
+              >
+                {tickerSymbol.replace(".OL", "")}
+              </span>
+            )}
+            {stockQuote?.price && (
+              <span
+                className="text-[14px] sm:text-[15px] mono font-semibold"
+                style={{ color: "var(--an-text-primary)" }}
+              >
+                {stockQuote.price.toFixed(2)} NOK
+              </span>
+            )}
+            {isin && (
+              <span
+                className="hidden sm:inline text-[12px] mono"
+                style={{ color: "var(--an-text-muted)" }}
+              >
+                {isin}
+              </span>
+            )}
             <span
-              className="text-[12px] sm:text-[13px] mono font-medium px-2 sm:px-2.5 py-1 rounded border"
+              className="text-[11px] sm:text-[12px] font-medium px-2 sm:px-2.5 py-1 rounded-full border"
               style={{
-                color: "var(--an-text-secondary)",
+                color: "var(--an-text-muted)",
                 borderColor: "var(--an-border)",
-                background: "var(--an-bg-surface)",
               }}
             >
-              {tickerSymbol.replace(".OL", "")}
+              Ingen aktive shortposisjoner
             </span>
-          )}
-          {stockQuote?.price && (
-            <span
-              className="text-[14px] sm:text-[15px] mono font-semibold"
-              style={{ color: "var(--an-text-primary)" }}
-            >
-              {stockQuote.price.toFixed(2)} NOK
-            </span>
-          )}
-          {isin && (
-            <span
-              className="hidden sm:inline text-[12px] mono"
-              style={{ color: "var(--an-text-muted)" }}
-            >
-              {isin}
-            </span>
-          )}
-          <span
-            className="text-[11px] sm:text-[12px] font-medium px-2 sm:px-2.5 py-1 rounded-full border"
-            style={{
-              color: "var(--an-text-muted)",
-              borderColor: "var(--an-border)",
-            }}
-          >
-            Ingen aktive shortposisjoner
-          </span>
+          </div>
+        </div>
+
+        {/* Company Info (inline) */}
+        <div
+          className="rounded-lg border shrink-0 lg:min-w-[280px]"
+          style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
+        >
+          <div className="px-3 sm:px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+            {stockQuote?.price && (
+              <div>
+                <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Aksjekurs</div>
+                <div className="mono font-medium">{stockQuote.price.toFixed(2)} NOK</div>
+              </div>
+            )}
+            <div>
+              <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Markedsplass</div>
+              <div className="font-medium">Oslo Børs</div>
+            </div>
+            {isin && (
+              <div>
+                <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">ISIN</div>
+                <div className="mono text-[11px]">{isin}</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -996,47 +1005,6 @@ export default async function CompanyPage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Company Info Card */}
-          <div
-            className="rounded-lg overflow-hidden border"
-            style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
-          >
-            <div
-              className="px-3 sm:px-[18px] py-3 border-b"
-              style={{ borderColor: "var(--an-border)" }}
-            >
-              <span
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: "var(--an-text-secondary)" }}
-              >
-                Selskapsinfo
-              </span>
-            </div>
-            <div className="px-[18px] py-4 grid grid-cols-2 gap-4 text-[13px]">
-              {tickerSymbol && (
-                <div>
-                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Ticker</div>
-                  <div className="mono font-medium">{tickerSymbol.replace(".OL", "")}</div>
-                </div>
-              )}
-              <div>
-                <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Markedsplass</div>
-                <div className="font-medium">Oslo Børs</div>
-              </div>
-              {stockQuote?.price && (
-                <div>
-                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">Aksjekurs</div>
-                  <div className="mono font-medium">{stockQuote.price.toFixed(2)} NOK</div>
-                </div>
-              )}
-              {isin && (
-                <div>
-                  <div style={{ color: "var(--an-text-muted)" }} className="text-[11px] mb-0.5">ISIN</div>
-                  <div className="mono text-[11px]">{isin}</div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

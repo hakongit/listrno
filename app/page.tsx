@@ -158,11 +158,11 @@ export default async function DashboardPage() {
           className="rounded-lg p-3 sm:p-4 border"
           style={{ background: "var(--an-bg-surface)", borderColor: "var(--an-border)" }}
         >
-          <div className="text-[16px] sm:text-[22px] font-bold tracking-tight leading-tight mb-0.5 whitespace-nowrap overflow-hidden">
+          <div className="text-[14px] sm:text-[26px] font-bold tracking-tight leading-tight mb-0.5 whitespace-nowrap overflow-hidden">
             <span style={{ color: "var(--an-green)" }}>{analystStats.recCounts.buy}</span>
-            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 sm:mx-1 text-[14px] sm:text-[18px]">/</span>
+            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 sm:mx-1 text-[12px] sm:text-[18px]">/</span>
             <span style={{ color: "var(--an-amber)" }}>{analystStats.recCounts.hold}</span>
-            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 sm:mx-1 text-[14px] sm:text-[18px]">/</span>
+            <span style={{ color: "var(--an-text-muted)" }} className="mx-0.5 sm:mx-1 text-[12px] sm:text-[18px]">/</span>
             <span style={{ color: "var(--an-red)" }}>{analystStats.recCounts.sell}</span>
           </div>
           <div
@@ -295,17 +295,17 @@ export default async function DashboardPage() {
                 <thead>
                   <tr>
                     <th
-                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-2 sm:px-[18px] py-[11px]"
                       style={{
                         color: "var(--an-text-muted)",
                         borderBottom: "1px solid var(--an-border)",
-                        width: "70px",
+                        width: "62px",
                       }}
                     >
                       Dato
                     </th>
                     <th
-                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-2 sm:px-[18px] py-[11px]"
                       style={{
                         color: "var(--an-text-muted)",
                         borderBottom: "1px solid var(--an-border)",
@@ -314,7 +314,7 @@ export default async function DashboardPage() {
                       Selskap
                     </th>
                     <th
-                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px] hidden md:table-cell"
+                      className="text-left text-[11px] font-semibold uppercase tracking-wider px-2 sm:px-[18px] py-[11px] hidden md:table-cell"
                       style={{
                         color: "var(--an-text-muted)",
                         borderBottom: "1px solid var(--an-border)",
@@ -323,11 +323,11 @@ export default async function DashboardPage() {
                       Bank
                     </th>
                     <th
-                      className="text-center text-[11px] font-semibold uppercase tracking-wider px-3 sm:px-[18px] py-[11px]"
+                      className="text-center text-[11px] font-semibold uppercase tracking-wider px-2 sm:px-[18px] py-[11px]"
                       style={{
                         color: "var(--an-text-muted)",
                         borderBottom: "1px solid var(--an-border)",
-                        width: "100px",
+                        width: "85px",
                       }}
                     >
                       Anbefaling
@@ -362,12 +362,12 @@ export default async function DashboardPage() {
                         }}
                       >
                         <td
-                          className="px-3 sm:px-[18px] py-3 text-xs whitespace-nowrap"
+                          className="px-2 sm:px-[18px] py-3 text-xs whitespace-nowrap"
                           style={{ color: "var(--an-text-muted)" }}
                         >
                           {formatDateShort(report.receivedDate)}
                         </td>
-                        <td className="px-3 sm:px-[18px] py-3">
+                        <td className="px-2 sm:px-[18px] py-3">
                           <Link
                             href={`/${slugify(report.companyName!)}`}
                             className="font-semibold text-[13px] transition-colors hover:text-[var(--an-accent)]"
@@ -376,7 +376,7 @@ export default async function DashboardPage() {
                             {report.companyName}
                             {ticker && (
                               <span
-                                className="font-normal text-[11px] ml-1"
+                                className="font-normal text-[11px] ml-1 hidden sm:inline"
                                 style={{ color: "var(--an-text-muted)" }}
                               >
                                 ({ticker})
@@ -393,7 +393,7 @@ export default async function DashboardPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-3 sm:px-[18px] py-3 hidden md:table-cell">
+                        <td className="px-2 sm:px-[18px] py-3 hidden md:table-cell">
                           {bankName ? (
                             <Link
                               href={`/analyser/bank/${slugify(bankName)}`}
@@ -404,7 +404,7 @@ export default async function DashboardPage() {
                             </Link>
                           ) : null}
                         </td>
-                        <td className="px-3 sm:px-[18px] py-3 text-center">
+                        <td className="px-2 sm:px-[18px] py-3 text-center">
                           <RecommendationBadge
                             recommendation={report.recommendation}
                           />
